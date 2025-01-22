@@ -1,0 +1,19 @@
+name: Lint source code
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: prefix-dev/setup-pixi@v0.8.1
+      with:
+        pixi-version: v0.40.2
+        locked: true
+        cache: true
+
+    - name: Analysing the code with pylint
+      run: pixi run -e test pylint $(git ls-files '*.py')
