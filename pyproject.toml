@@ -1,10 +1,13 @@
 [build-system]
-build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = [
+  "setuptools >= 61",
+  "setuptools_scm[toml] >= 8",
+]
+build-backend = 'setuptools.build_meta'
 
 [project]
 name = "geoPFA"
-version = "0.0.1"
+dynamic = ["version"]
 description = "Geothermal Play Fairway Analysis"
 readme = "README.md"
 authors = [
@@ -77,6 +80,12 @@ test = [
 homepage = "https://https://github.com/GeothermalExplorationTools/geopfa2d"
 documentation = "https://https://github.com/GeothermalExplorationTools/geopfa2d"
 repository = "https://https://github.com/GeothermalExplorationTools/geopfa2d"
+
+[tool.setuptools]
+packages = ["geoPFA"]
+
+[tool.setuptools_scm]
+version_file = "geoPFA/_version.py"
 
 [tool.pixi.project]
 channels = ["conda-forge", "anaconda", "main"]
