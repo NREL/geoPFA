@@ -119,3 +119,83 @@ pylint = ">=3.3.3,<4"
 ipython = "==8.29.0"
 pre-commit = ">=4.0.1,<5"
 ruff = ">=0.9.2,<0.10"
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+preview = true
+select = [
+  "A", # flake8-builtins
+  "B", # flake8-bugbear
+  "ARG", # flake8-unused-arguments
+  "BLE", # flake8-blind-except
+  "C4", # flake8-comprehensions
+  "C90", # mccabe
+  "COM", # flake8-commas
+  # "D", # pydocstyle
+  # "E", # pycodestyle
+  # "EM", # flake8-errmsg
+  "F", # Pyflakes
+  # "FURB", # refurb
+  "FLY", #  flynt
+  "G", # flake8-logging-format
+  "I", # isort
+  "INP", # flake8-no-pep420
+  "ISC", # flake8-implicit-str-concat
+  "LOG", # flake8-logging
+  # "N", # pep8-naming
+  "NPY", # numpy-specific
+  # "PD", # pandas-vet
+  # "PERF", # Perflint
+  "PIE", # flake8-pie
+  # "PL", # Pylint
+  # "PTH", # flake8-use-pathlib
+  "PYI", # flake8-pyi
+  # "Q", # flake8-quotes
+  # "RET", # flake8-return
+  "RSE", # flake8-raise
+  # "RUF", # Ruff-specific rules
+  # "S", # flake8-bandit
+  "SLF", # flake8-self
+  # "SIM", # flake8-simplify
+  "TID", # flake8-tidy-imports (absolute imports)
+  # "TRY", # tryceratops
+  # "UP", # pyupgrade
+  # "W", # Warning
+  ]
+ignore = [
+  "A001", # Shadowing built-in
+  "ARG004",  # Unused argument
+  "B904",  # Use of assert
+  "B905",  # Use of assert
+  "BLE001",  # Using bare except
+  "C901",  # McCabe complexity
+  "COM812",  # Missing trailing comma
+  "D200",  # One-line docstring should fit on one line with quotes
+  "D205",  # 1 blank line required between summary line and description
+  "D400",  # First line should end with a period
+  "D401",  # First line should be in imperative mood
+  "D410",  # Missing blank line after section
+  "D411",  # Missing blank line before section
+  "E226",  # Missing whitespace around arithmetic operator
+  "E231",  # Missing whitespace after ','
+  "E402",  # Module level import not at top of file
+  "E501",  # Line too long
+  "E702",  # Multiple statements on one line
+  "EM101",  # Exception must not use a string literal
+  "F401",  # Unused import
+  "F811",  # Redefinition of unused
+  "F841",  # Unused variable
+  "I001",  # isort found an import in the wrong position
+]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
