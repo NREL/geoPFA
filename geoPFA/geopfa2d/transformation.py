@@ -7,100 +7,31 @@ import geopandas as gpd
 import numpy as np
 import shapely
 
+from geopfa.transformation import normalize_gdf as _normalize_gdf
+from geopfa.tranformation import normalize_array as _normalize_array
+from geopfa.transformation import transform as _transform
+
+
 class VoterVetoTransformation:
     """Class of functions for use in transforming data layers into evidence layers
     i.e., data values to 'favorability' values.
     """
     @staticmethod
     def normalize_gdf(gdf, col, norm_to=1): 
-        """
-        Normalize the values in a specified column of a GeoDataFrame using min-max scaling,
-        such that the minimum value becomes 0 and the maximum value becomes norm_to.
-        
-        Parameters:
-        - gdf: The GeoDataFrame containing the column to normalize.
-        - col: The name of the column in the GeoDataFrame to normalize.
-        - norm_to: The value to which the maximum column value should be scaled (default is 1).
-        
-        Returns:
-        - A new GeoDataFrame with the normalized column.
-        """
-        # Find the min and max of the column
-        min_val = gdf[col].min()
-        max_val = gdf[col].max()
-        
-        # Avoid division by zero if all values in the column are the same
-        if min_val == max_val:
-            gdf[col] = norm_to  # All values are the same, set them to norm_to
-        else:
-            # Perform min-max normalization
-            gdf[col] = (gdf[col] - min_val) / (max_val - min_val) * norm_to
-        
-        return gdf
+        return _normalize_gdf(gdf, col, norm_to)
 
     @staticmethod
     def normalize_array(rasterized_array,method):
         """Normalize a 2D NumPy array.
-
-        Parameters
-        ----------
-        rasterized_array : np.ndarray)
-            Input 2D NumPy array to be normalized.
-        method : str
-            Method to use to normalize rasterized_array. Can be one of 
-            ['minmax','mad']
-
-        Returns
-        -------
-        normalized_array : np.ndarray
-            Normalized 2D NumPy array.
         """
-        if method == 'minmax':
-            # Find the minimum and maximum values in the array
-            min_val = np.nanmin(rasterized_array)
-            max_val = np.nanmax(rasterized_array)
-            
-            # Normalize the array to the range [0, 1]
-            normalized_array = (rasterized_array - min_val) / (max_val - min_val)
-        if method == 'mad':
-            num = rasterized_array - np.nanmedian(rasterized_array)
-            den = 1.482*np.nanmedian(num)
-            normalized_array = num/den
-        if method == 'mad':
-            print('Normalized a layer using '+method+' >:(')
-        else:
-            print('Normalized a layer using '+method)
-        return normalized_array
+        return _normalize_array(rasterized_array, method)
 
     @staticmethod
     def transform(array, method):
         """Function to transform rasterized array to map data values to relative favorability values.
         Includes several types of transformation methods
-        
-        Parameters
-        ----------
-        array : np.ndarray
-            Input 2D rasterized np.array to transform
-        method : str
-            Method to transform data to relative favorability. Can be one of 
-            ['inverse', 'negate', 'ln']
-        Returns
-        -------
-        transformed_array : np.ndarray
-            Array with data values transformed to relative favorability values
         """
-        if (method == 'inverse') | (method == 'Inverse'):
-            transformed_array = 1/array
-        elif (method == 'negate') | (method == 'Negate'):
-            transformed_array = -array
-        elif (method == 'ln') | (method == 'Ln'):
-            transformed_array = np.log(array)
-        elif (method == 'none') | (method == 'None'):
-            transformed_array = array
-        else:
-            raise ValueError('Transformation method ',method,' not yet implemented.')
-        print('Transformed a layer using '+method)
-        return transformed_array
+        return _transform(array, method)
 
     @staticmethod
     def rasterize_map(gdf, col):

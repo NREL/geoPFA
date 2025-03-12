@@ -148,7 +148,7 @@ select = [
   "COM", # flake8-commas
   # "D", # pydocstyle
   # "E", # pycodestyle
-  # "EM", # flake8-errmsg
+  "EM", # flake8-errmsg
   "F", # Pyflakes
   # "FURB", # refurb
   "FLY", #  flynt
@@ -169,12 +169,12 @@ select = [
   # "RET", # flake8-return
   "RSE", # flake8-raise
   # "RUF", # Ruff-specific rules
-  # "S", # flake8-bandit
+  "S", # flake8-bandit
   "SLF", # flake8-self
   # "SIM", # flake8-simplify
   "TID", # flake8-tidy-imports (absolute imports)
   # "TRY", # tryceratops
-  # "UP", # pyupgrade
+  "UP", # pyupgrade
   # "W", # Warning
   ]
 ignore = [
@@ -189,6 +189,8 @@ ignore = [
   "D205",  # 1 blank line required between summary line and description
   "D400",  # First line should end with a period
   "D401",  # First line should be in imperative mood
+  "D406",  # Section name should end with a newline
+  "D409",  # Section underline should match the length of its name
   "D410",  # Missing blank line after section
   "D411",  # Missing blank line before section
   "E226",  # Missing whitespace around arithmetic operator
@@ -196,11 +198,15 @@ ignore = [
   "E402",  # Module level import not at top of file
   "E501",  # Line too long
   "E702",  # Multiple statements on one line
-  "EM101",  # Exception must not use a string literal
+  "EM101", # Exception must not use a string literal
+  "EM102", # Exception must not use an f-string literal, assign to variable firs
   "F401",  # Unused import
   "F811",  # Redefinition of unused
   "F841",  # Unused variable
   "I001",  # isort found an import in the wrong position
+  "S101", # Use of assert
+  "UP009", # UTF-8 encoding declaration is unnecessary
+  "UP038", # Use `X | Y` in `isinstance` call instead of `(X, Y)`
 ]
 
 [tool.ruff.lint.pycodestyle]
