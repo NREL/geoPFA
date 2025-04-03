@@ -7,9 +7,9 @@ import geopandas as gpd
 import numpy as np
 import shapely
 
-from geopfa.transformation import normalize_gdf as _normalize_gdf
-from geopfa.tranformation import normalize_array as _normalize_array
-from geopfa.transformation import transform as _transform
+from geoPFA.transformation import normalize_gdf as _normalize_gdf
+from geoPFA.transformation import normalize_array as _normalize_array
+from geoPFA.transformation import transform as _transform
 
 
 class VoterVetoTransformation:

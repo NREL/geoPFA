@@ -74,6 +74,7 @@ test = [
   "pytest-profiling>=1.7.0,<2",
   "pytest-xdist>=3.0",
   "tox>=4.0",
+  "hypothesis>=6.0",
 ]
 
 [project.urls]
@@ -123,6 +124,7 @@ pykrige = ">=1.7.2,<2"
 [tool.pixi.feature.test.dependencies]
 pytest = ">=8.3.4,<9"
 pylint = ">=3.3.3,<4"
+hypothesis = ">=6.129.3,<7"
 
 [tool.pixi.feature.dev.dependencies]
 ipython = "==8.29.0"
