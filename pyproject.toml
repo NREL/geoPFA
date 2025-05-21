@@ -142,6 +142,7 @@ line-length = 79
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+exclude = ["geoPFA/geopfa2d/*", "geoPFA/geopfa3d/*"]
 
 [tool.ruff.lint]
 preview = true
@@ -153,36 +154,36 @@ select = [
   "C4", # flake8-comprehensions
   "C90", # mccabe
   "COM", # flake8-commas
-  # "D", # pydocstyle
-  # "E", # pycodestyle
+  "D", # pydocstyle
+  "E", # pycodestyle
   "EM", # flake8-errmsg
   "F", # Pyflakes
-  # "FURB", # refurb
+  "FURB", # refurb
   "FLY", #  flynt
   "G", # flake8-logging-format
   "I", # isort
   "INP", # flake8-no-pep420
   "ISC", # flake8-implicit-str-concat
   "LOG", # flake8-logging
-  # "N", # pep8-naming
+  "N", # pep8-naming
   "NPY", # numpy-specific
-  # "PD", # pandas-vet
-  # "PERF", # Perflint
+  "PD", # pandas-vet
+  "PERF", # Perflint
   "PIE", # flake8-pie
-  # "PL", # Pylint
-  # "PTH", # flake8-use-pathlib
+  "PL", # Pylint
+  "PTH", # flake8-use-pathlib
   "PYI", # flake8-pyi
-  # "Q", # flake8-quotes
-  # "RET", # flake8-return
+  "Q", # flake8-quotes
+  "RET", # flake8-return
   "RSE", # flake8-raise
-  # "RUF", # Ruff-specific rules
+  "RUF", # Ruff-specific rules
   "S", # flake8-bandit
   "SLF", # flake8-self
-  # "SIM", # flake8-simplify
+  "SIM", # flake8-simplify
   "TID", # flake8-tidy-imports (absolute imports)
-  # "TRY", # tryceratops
+  "TRY", # tryceratops
   "UP", # pyupgrade
-  # "W", # Warning
+  "W", # Warning
   ]
 ignore = [
   "A001", # Shadowing built-in
@@ -197,6 +198,10 @@ ignore = [
   "D400",  # First line should end with a period
   "D401",  # First line should be in imperative mood
   "D406",  # Section name should end with a newline
+  "D407",
+  "D202",
+  "D209",
+  "D210",
   "D409",  # Section underline should match the length of its name
   "D410",  # Missing blank line after section
   "D411",  # Missing blank line before section
@@ -211,10 +216,24 @@ ignore = [
   "F811",  # Redefinition of unused
   "F841",  # Unused variable
   "I001",  # isort found an import in the wrong position
+  "N803",
+  "N806",
+  "N805",
+  "N999",
+  "PTH103",
+  "PTH110",
+  "PTH120",
+  "RET504",
+  "Q000",  # Single quote
   "S101", # Use of assert
-  "UP009", # UTF-8 encoding declaration is unnecessary
+  "TRY003",
   "UP038", # Use `X | Y` in `isinstance` call instead of `(X, Y)`
+  "W505",  # Doc line too long
 ]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"geoPFA/geopfa3d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
+"geoPFA/geopfa2d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 72
