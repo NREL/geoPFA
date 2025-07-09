@@ -79,10 +79,8 @@ class GeospatialDataReaders:
             raise ValueError(
                 "Must specify both x_col and y_col, or a combined geometry column."
             )
-        if sum([(x_col is None), (y_col is None), (z_col is None)]) == 1:
-            raise ValueError(
-                "Cannot specify z_col without also specifying x_col and y_col."
-            )
+        if (z_col is not None) and (x_col is None or y_col is None):
+            raise ValueError("Cannot specify z_col without also specifying x_col and y_col.")
 
         # Validate CRS
         try:
