@@ -8,6 +8,7 @@ import pandas as pd
 import scipy
 import numpy as np
 import shapely
+from geoPFA.transformation import transform
 # from pygem import IDW 
 
 class Cleaners:
@@ -379,6 +380,11 @@ class Processing:
             # grid = idw(xv.flatten(), yv.flatten()).reshape(nx, ny)
         # else:
             # Otherwise, default to scipy interpolation
+
+        # Clean out any rows with NaNs before interpolation
+        valid = ~(x.isna() | y.isna() | values.isna())
+        x, y, values = x[valid], y[valid], values[valid]
+
         grid = scipy.interpolate.griddata((x, y), values, (xv, yv), method=interp_method)
 
         # Create a new GeoDataFrame with the interpolated values
@@ -622,11 +628,14 @@ class Processing:
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = f'binary ({polygon_value}=polygon, {buffer_value}=buffer, 1=outside)'
 
         return pfa
-
+    
     @staticmethod
     def distance_from_polygons(pfa, criteria, component, layer, extent, nx, ny):
-        """Calculate distances from polygons in pfa to points in a grid.
-        *** IS PROHIBATIVELY SLOW WHEN USING ON MANY POLYGONS **
+        """
+        Calculate the true distance from a grid of points to a set of polygons,
+        using Shapely’s .distance() method on the union of all polygons.
+        A point inside any polygon will get a distance of 0.
+
         Parameters
         ----------
         pfa : dict
@@ -639,7 +648,7 @@ class Processing:
         layer : str
             Layer associated with Polygon data to calculate distances from.
         extent : list
-            List of length 4 containing the extent [x_min, y_min, x_max, y_max].
+            [x_min, y_min, x_max, y_max] bounding box for the grid.
         nx : int
             Number of points in the x-direction.
         ny : int
@@ -648,49 +657,30 @@ class Processing:
         Returns
         -------
         pfa : dict
-            Updated pfa config which includes distances calculated.
+            Updated pfa config, with a new GeoDataFrame in
+            pfa['criteria'][criteria]['components'][component]['layers'][layer]['distance_map'] 
+            that contains the grid points plus a 'distance' column.
         """
-        # Extract GeoDataFrame containing polygons
         gdf_polygons = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
 
-        # Create a grid of points within the spatial extent
+        # Create a single geometry (union) from all polygons
+        polygons_union = gdf_polygons.geometry.unary_union
+
+        # Create a grid of points within the specified extent
         x_min, y_min, x_max, y_max = extent
         x_points = np.linspace(x_min, x_max, nx)
         y_points = np.linspace(y_min, y_max, ny)
         points = [shapely.geometry.Point(x, y) for x in x_points for y in y_points]
 
-        # Create GeoDataFrame from grid points
+        # Convert that list of points to a GeoDataFrame
         grid_gdf = gpd.GeoDataFrame(geometry=points, crs=gdf_polygons.crs)
 
-        # Calculate distances
-        distances = []
-        for poly in gdf_polygons.geometry:
-            if poly.geom_type == 'Polygon':
-                # For single Polygon
-                poly_distances = scipy.spatial.distance.cdist(
-                    np.array([point.coords[0] for point in grid_gdf.geometry]), 
-                    np.array(poly.exterior.coords)
-                )
-                distances.append(poly_distances.min(axis=1))
-            elif poly.geom_type == 'MultiPolygon':
-                # For MultiPolygon, iterate over each polygon within the MultiPolygon
-                for subpoly in poly.geoms:
-                    poly_distances = scipy.spatial.distance.cdist(
-                        np.array([point.coords[0] for point in grid_gdf.geometry]), 
-                        np.array(subpoly.exterior.coords)
-                    )
-                    distances.append(poly_distances.min(axis=1))
-            else:
-                raise ValueError(f"Unsupported geometry type: {poly.geom_type}")
-
-        # Minimum distances to polygons
-        min_distances = np.vstack(distances).min(axis=0)
-
-        # Create GeoDataFrame with the distances
+        # Compute distances and store in a new GeoDataFrame
+        distances = [pt.distance(polygons_union) for pt in grid_gdf.geometry]
         distance_gdf = grid_gdf.copy()
-        distance_gdf['distance'] = min_distances
+        distance_gdf['distance'] = distances
 
-        # Update pfa config with the distance GeoDataFrame
+        # Save the result in the pfa dictionary (under 'distance_map')
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['distance_map'] = distance_gdf
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
@@ -698,34 +688,36 @@ class Processing:
         return pfa
 
     @staticmethod
-    def distance_from_lines(pfa,criteria,component,layer,extent,nx,ny):
-        """Funtion to calculate distance from LineString objects.
+    def distance_from_lines(pfa, criteria, component, layer, extent, nx, ny):
+        """
+        Function to calculate the minimum distance from each point in a grid 
+        to any LineString in the specified GeoDataFrame. The result is stored 
+        in `pfa` as a new GeoDataFrame with a 'distance' column.
 
         Parameters
         ----------
         pfa : dict
-            Config specifying criteria, components, and data layers' relationship to one another.
-            Includes data layers' associated GeoDataFrames, particularly the gdf with LineString
-            geometry to calculate distances from.
+            Data structure specifying criteria, components, and layers (with
+            associated GeoDataFrames). Must include a 'data' GeoDataFrame 
+            containing LineString geometries.
         criteria : str
-            Criteria associated with LineString data to calculate distances from.
-        component : str 
-            Component associated with LineString data to calculate distances from.
+            Criteria name.
+        component : str
+            Component name.
         layer : str
-            Layer associated with LineString data to calculate distances from.
+            Layer name (which holds the GeoDataFrame to measure distance from).
         extent : list
-            List of length 4 containing the extent (i.e., bounding box) to use to produce the
-            distance map. Can be produced using get_extent() function below. Should be in
-            this order: [x_min, y_min, x_max, y_max]
+            [x_min, y_min, x_max, y_max] bounding box for the grid points.
         nx : int
-            Number of points in the x-direction
+            Number of points along the x-direction.
         ny : int
-            Number of points in the y-direction
+            Number of points along the y-direction.
 
         Returns
         -------
         pfa : dict
-            Updated pfa config which includes interpolation
+            Updated dictionary that now includes the distance map under:
+            pfa['criteria'][criteria]['components'][component]['layers'][layer]['map']
         """
         gdf_linestrings = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
 
@@ -735,21 +727,23 @@ class Processing:
         y_points = np.linspace(y_min, y_max, ny)
         points = [shapely.geometry.Point(x, y) for x in x_points for y in y_points]
 
-        # Create a GeoDataFrame from the generated points
+        # Create GeoDataFrame of the grid points
         gdf_points = gpd.GeoDataFrame(geometry=points, crs=gdf_linestrings.crs)
 
-        # Calculate distances between linestrings and generated points
-        distances = scipy.spatial.distance.cdist(
-            np.array([point.coords[0] for point in gdf_points.geometry]), 
-            np.array([point.interpolate(0.5, normalized=True).coords[0] \
-                for point in gdf_linestrings.geometry]))
-        # Store distances in a geodataframe
+        # Combine all LineString geometries into a single (multi-)geometry
+        lines_union = gdf_linestrings.geometry.unary_union
+
+        # Calculate distance from each point to the union of lines
+        distances = [pt.distance(lines_union) for pt in gdf_points.geometry]
+
+        # Create a new GeoDataFrame with distances
         gdf_distances = gdf_points.copy()
-        gdf_distances['distance'] = distances.min(axis=1)
-        
+        gdf_distances['distance'] = distances
+
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = gdf_distances
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
+
         return pfa
 
     @staticmethod
@@ -1033,6 +1027,156 @@ class Processing:
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
         
+        return pfa
+    
+    @staticmethod
+    def weighted_distance_from_points(
+        pfa, criteria, component, layer,
+        extent, nx, ny,
+        alpha=1000.0,
+        transform_method="none",
+        weight_points=True,
+        weight_min=1.0,
+        weight_max=2.0
+    ):
+        """
+        Compute a "weighted distance score" from a set of points,
+        where each point has a data value in `data_col`. That data
+        value is normalized/transformed to produce a point weight (0-1),
+        then each cell's score is sum_i [ w_i * exp(-dist_i / alpha ) ].
+
+        Parameters
+        ----------
+        pfa : dict
+            The PFA dictionary, which must contain:
+            pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+            ...a GeoDataFrame of points, each with a relevant 'data_col'.
+        criteria : str
+            E.g. 'geologic'
+        component : str
+            E.g. 'fluid'
+        layer : str
+            E.g. 'hot_springs'
+        extent : list of float
+            [x_min, y_min, x_max, y_max] bounding box for the grid
+        nx, ny : int
+            Number of points along x and y in the final grid
+        alpha : float, default=1000
+            Decay constant for distance (in meters).
+        transform_method: str, default="none"
+            How to transform point data into proximity favorability via transformation 
+            function (e.g."none", "negate", "inverse", etc.).
+        weight_points : bool, default=True
+            Whether to apply data-based point weighting or not.
+        weight_min : float, default=1.0
+            Minimum weight for a transformed point.
+        weight_max : float, default=2.0
+            Maximum weight for a transformed point.
+
+        Returns
+        -------
+        pfa : dict
+            The updated dictionary, storing a new GeoDataFrame with column
+            "weighted_point_score" in:
+            pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'].
+        """
+        def normalize_point_weights(values, out_min=1.0, out_max=5.0):
+            # Scale a 1D array of values to a user-defined positive range [out_min..out_max].
+            vals = values.copy()
+            valid_mask = ~np.isnan(vals)
+            valid_data = vals[valid_mask]    
+            if valid_data.size == 0:
+                scaled = np.full_like(vals, out_min)
+                return scaled   
+            vmin = valid_data.min()
+            vmax = valid_data.max()
+            rng = vmax - vmin   
+            if rng == 0:
+                midpoint = (out_min + out_max) / 2.0
+                scaled = np.full_like(vals, midpoint)
+                return scaled
+        
+            # Normal minmax to [0..1] then scale to [out_min..out_max]
+            mm = (valid_data - vmin) / rng
+            scaled_valid = mm * (out_max - out_min) + out_min
+        
+            scaled = np.full_like(vals, np.nan)
+            scaled[valid_mask] = scaled_valid
+            
+            return scaled
+
+        layer_dict = pfa['criteria'][criteria]['components'][component]['layers'][layer]
+        data_col = layer_dict.get('data_col', None)
+        gdf_points = layer_dict['data'].copy()
+
+        if data_col is None:
+            print("No data_col => defaulting all weights=1.0")
+            gdf_points['temp_val'] = 1.0
+            data_col = 'temp_val'
+
+        # Collect geometry + data
+        point_list, data_list = [], []
+        for geom, val in zip(gdf_points.geometry, gdf_points[data_col]):
+            if geom.geom_type == 'Point':
+                point_list.append(geom)
+                data_list.append(val)
+            elif geom.geom_type == 'MultiPoint':
+                for subg in geom.geoms:
+                    point_list.append(subg)
+                    data_list.append(val)
+            else:
+                raise ValueError(f"Unsupported geometry: {geom.geom_type}")
+
+        if not point_list:
+            print("No valid points found.")
+            return pfa
+
+        # Convert data_list to 1D NumPy
+        data_array_1d = np.array(data_list, dtype=float)
+
+        # Transform data values into weight
+        arr_2d = data_array_1d.reshape(-1,1)
+        arr_2d_trans = transform(arr_2d, transform_method)  # e.g. "negate"   
+        arr_2d_trans = np.nan_to_num(arr_2d_trans, nan=0)  # handle NaNs
+        trans_1d = arr_2d_trans.ravel()
+        
+        # scale them to [out_min..out_max]
+        if not weight_points:
+            print("User not weighting points. Defaulting all weights=1.0")
+            out_min = out_max = 1.0         # all points get equal weight
+        else:
+            out_min = weight_min
+            out_max = weight_max
+        
+        # Scale once with the chosen range
+        weights_1d = normalize_point_weights(
+            trans_1d,
+            out_min=out_min,
+            out_max=out_max,
+        )
+
+        # Create grid, compute distances 
+        x_min, y_min, x_max, y_max = extent
+        x_coords = np.linspace(x_min, x_max, nx)
+        y_coords = np.linspace(y_min, y_max, ny)
+        grid_points = [shapely.geometry.Point(x, y) for x in x_coords for y in y_coords]
+
+        gdf_grid = gpd.GeoDataFrame(geometry=grid_points, crs=gdf_points.crs)
+        point_coords = np.array([(p.x, p.y) for p in point_list])
+        grid_coords = np.array([(pt.x, pt.y) for pt in gdf_grid.geometry])
+
+        dist_matrix = scipy.spatial.distance.cdist(grid_coords, point_coords)  # shape=(nx*ny, n_points)
+
+        # Weighted sum => sum_i [ w_i * exp(-dist_ij / alpha) ]
+        decays = np.exp(-dist_matrix / alpha)
+        weighted = decays * weights_1d  # broadcasting => shape=(n_grid, n_points)
+        score_1d = np.sum(weighted, axis=1)
+
+        gdf_grid['weighted_point_score'] = score_1d
+        layer_dict['map'] = gdf_grid
+        layer_dict['map_data_col'] = 'weighted_point_score'
+        layer_dict['map_units'] = 'score (0-∞)'
+
         return pfa
 
     @staticmethod
@@ -1393,3 +1537,110 @@ class Processing:
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['data'] = fault_traces_gdf
         return pfa
 
+    def process_faults(
+        pfa, criteria, component, layer, extent, nx, ny,
+        alpha_fault=1000.0, alpha_intersection=500.0,
+        weight_fault=0.7, weight_intersection=0.3,
+        use_intersections=True
+    ):
+        """
+        Process faults by:
+        1) Computing distance from faults (via distance_from_lines).
+        2) (Optional) Finding fault intersections, computing distance to those intersections.
+        3) Applying exponential decays to fault distance and (optionally) intersection distance.
+        4) Combining via a weighted sum to produce a final favorability.
+
+        Parameters
+        ----------
+        pfa : dict
+            The PFA dictionary containing fault data in:
+            pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+            Must have valid line geometry for distance_from_lines to work.
+        criteria : str
+            E.g. 'geologic'
+        component : str
+            E.g. 'fluid'
+        layer : str
+            E.g. 'intersecting_faults'
+        extent : list
+            [x_min, y_min, x_max, y_max] bounding box
+        nx, ny : int
+            Grid dimensions in x and y directions
+        alpha_fault : float
+            Decay constant for fault distance
+        alpha_intersection : float
+            Decay constant for intersection distance
+        weight_fault : float
+            Weight for the fault distance favorability
+        weight_intersection : float
+            Weight for the intersection distance favorability
+        use_intersections : bool
+            If False, ignore intersection distances (treat them as zero).
+            If True, do the intersection calculation + decay.
+
+        Returns
+        -------
+        pfa : dict
+            Updated dictionary with a new 'map' containing 'favorability'
+            under pfa['criteria'][criteria]['components'][component]['layers'][layer].
+        """
+        # Compute distance from faults
+        pfa = Processing.distance_from_lines(pfa, criteria, component, layer, extent, nx, ny)
+        fault_layer_dict = pfa['criteria'][criteria]['components'][component]['layers'][layer]
+        fault_map_gdf = fault_layer_dict.get('map', None)
+        dist_col = fault_layer_dict.get('map_data_col', None)
+
+        if fault_map_gdf is None or dist_col != 'distance':
+            print("ERROR: distance_from_lines did not produce a valid 'map' with 'distance' column.")
+            return pfa
+
+        fault_dist_1d = fault_map_gdf['distance'].to_numpy()
+        try:
+            fault_dist_2d = fault_dist_1d.reshape((ny, nx))
+        except ValueError as e:
+            print("ERROR reshaping fault distance array:", e)
+            return pfa
+
+        # find fault intersections
+        gdf_lines = fault_layer_dict['data']
+        if not use_intersections or gdf_lines.empty:
+            # skip intersection logic
+            intersect_score_2d = np.zeros((ny, nx))
+            if not use_intersections:
+                print("use_intersections=False => intersection favorability is zero.")
+            else:
+                print("WARNING: No line geometry found, skipping intersections.")
+        else:
+            gdf_intersections = Processing.calculate_intersections(gdf_lines)
+            if gdf_intersections.empty:
+                print("No fault intersections found => intersection favorability is zero.")
+                intersect_favor_2d = np.zeros((ny, nx))
+            else:
+                intersections_union = gdf_intersections.geometry.union_all()
+                grid_points = Processing.generate_grid_points(extent, nx, ny, crs=gdf_lines.crs)
+                dist_intersect_1d = np.array([
+                    pt.distance(intersections_union) for pt in grid_points.geometry
+                ])
+                try:
+                    dist_intersect_2d = dist_intersect_1d.reshape((ny, nx))
+                except ValueError as e:
+                    print("ERROR reshaping intersection distances:", e)
+                    dist_intersect_2d = np.zeros((ny, nx))
+                # Exponential decay for intersection distance
+                intersect_score_2d = np.exp(-dist_intersect_2d / alpha_intersection)
+
+        # Exponential decay for fault distances
+        fault_score_2d = np.exp(-fault_dist_2d / alpha_fault)
+
+        # Combine with weights in a weighted sum
+        composite_2d = weight_fault * fault_score_2d + weight_intersection * intersect_score_2d
+
+        composite_1d = composite_2d.flatten()
+        fault_map_gdf = fault_map_gdf.copy()
+        fault_map_gdf['fault score'] = composite_1d
+
+        fault_layer_dict['map'] = fault_map_gdf
+        fault_layer_dict['map_data_col'] = 'fault score'
+        fault_layer_dict['map_units'] = 'fault score (0-1)'
+
+        return pfa

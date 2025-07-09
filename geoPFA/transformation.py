@@ -71,7 +71,7 @@ def normalize_array(rasterized_array, method):
 
     elif method == "mad":
         num = rasterized_array - np.nanmedian(rasterized_array)
-        den = 1.482 * np.nanmedian(num)
+        den = 1.482 * np.nanmedian(np.abs(num))
         normalized_array = num / den
 
         print("Normalized a layer using " + method + " >:(")
