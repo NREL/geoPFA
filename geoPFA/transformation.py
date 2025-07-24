@@ -116,4 +116,5 @@ def transform(array, method):
             "Transformation method ", method, " not yet implemented."
         )
     print("Transformed a layer using " + method)
+
     return transformed_array
