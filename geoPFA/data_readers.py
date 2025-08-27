@@ -210,28 +210,28 @@ class GeospatialDataReaders:
                 file_names = sorted(COMPONENT_DIR.iterdir())
                 if ".shp" in file_types:
                     shapefile_names = [
-                        x for x in file_names if (x.endswith(".shp"))
+                        x.name for x in file_names if (x.suffix == ".shp")
                     ]
                     for layer in pfa["criteria"][criteria]["components"][
                         component
                     ]["layers"]:
-                        if layer + ".shp" in shapefile_names:
+                        if f"{layer}.shp" in shapefile_names:
                             print("\t\t reading layer: " + layer)
                             pfa["criteria"][criteria]["components"][component][
                                 "layers"
                             ][layer][
                                 "data"
                             ] = GeospatialDataReaders.read_shapefile(
-                                COMPONENT_DIR / layer + ".shp"
+                                COMPONENT_DIR / f"{layer}.shp"
                             )
                 if ".csv" in file_types:
                     csv_file_names = [
-                        x for x in file_names if (x.endswith(".csv"))
+                        x.name for x in file_names if (x.suffix == ".csv")
                     ]
                     for layer in pfa["criteria"][criteria]["components"][
                         component
                     ]["layers"]:
-                        if layer + ".csv" in csv_file_names:
+                        if f"{layer}.csv" in csv_file_names:
                             print("\t\t reading layer: " + layer)
                             layer_config = pfa["criteria"][criteria][
                                 "components"
@@ -246,7 +246,7 @@ class GeospatialDataReaders:
                                 if "z_col" in layer_config:
                                     z_col = layer_config["z_col"]
                                     data = GeospatialDataReaders.read_csv(
-                                        COMPONENT_DIR / layer + ".csv",
+                                        COMPONENT_DIR / f"{layer}.csv",
                                         csv_crs,
                                         x_col,
                                         y_col,
@@ -254,21 +254,21 @@ class GeospatialDataReaders:
                                     )
                                 else:
                                     data = GeospatialDataReaders.read_csv(
-                                        COMPONENT_DIR / layer + ".csv",
+                                        COMPONENT_DIR / f"{layer}.csv",
                                         csv_crs,
                                         x_col,
                                         y_col,
                                     )
                             else:
                                 data = GeospatialDataReaders.read_csv(
-                                    COMPONENT_DIR / layer + ".csv",
+                                    COMPONENT_DIR / f"{layer}.csv",
                                     csv_crs,
                                 )
                             pfa["criteria"][criteria]["components"][component][
                                 "layers"
                             ][layer]["data"] = data
                 for file_type in file_types:
-                    if file_type not in set(".shp", ".csv"):
+                    if file_type not in {".shp", ".csv"}:
                         print(
                             f"Warning: file type: {file_type} "
                             " not currently compatible with geoPFA."
@@ -305,7 +305,7 @@ class GeospatialDataReaders:
                 COMPONENT_DIR = data_dir / criteria / component
                 file_names = sorted(COMPONENT_DIR.iterdir())
                 csv_file_names = [
-                    x for x in file_names if (x.endswith("_processed.csv"))
+                    x.name for x in file_names if x.name.endswith("_processed.csv")
                 ]
                 for layer in pfa["criteria"][criteria]["components"][
                     component
@@ -315,7 +315,7 @@ class GeospatialDataReaders:
                         pfa["criteria"][criteria]["components"][component][
                             "layers"
                         ][layer]["model"] = GeospatialDataReaders.read_csv(
-                            COMPONENT_DIR / layer + "_processed.csv",
+                            COMPONENT_DIR / f"{layer}_processed.csv",
                             crs,
                         )
         return pfa
@@ -375,7 +375,7 @@ class GeospatialDataReaders:
                 "layers"
             ]:
                 print("reading " + layer)
-                path = data_dir / "exclusion" / layer + ".shp"
+                path = data_dir / "exclusion" / f"{layer}.shp"
                 shp = GeospatialDataReaders.read_shapefile(path)
                 shp = shp[shp.DN > 0]
                 shp = shp.to_crs(target_crs)
