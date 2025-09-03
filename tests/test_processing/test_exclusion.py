@@ -94,7 +94,7 @@ def test_add_exclusions():
     assert "pr_excl" in output
     assert "favorability" in output["pr_excl"]
     assert np.allclose(
-        output["pr_excl"]["favorability"].astype('f'),
+        output["pr_excl"]["favorability"].astype("f"),
         [np.nan, 0],
-        equal_nan=True
+        equal_nan=True,
     )

@@ -2,14 +2,21 @@
 Set of interp_methods to process data from various formats into 2d images.
 """
 
+import time
+import warnings
+
 import geopandas as gpd
 import pandas as pd
 import scipy
 import numpy as np
 import shapely
+from shapely.geometry import box
+from shapely.geometry.polygon import Polygon
+from shapely.geometry import LineString, Point
 from pykrige.ok3d import OrdinaryKriging3D
 from scipy.interpolate import griddata
 from osgeo import osr
+
 
 class Cleaners:
     """Class of functions for use in processing data into 2D maps"""
@@ -34,12 +41,16 @@ class Cleaners:
             Config specifying criteria, components, and data layers' relationship to one another.
             Includes data layers' associated GeoDataFrames projected onto target_crs.
         """
-        for criteria in pfa['criteria']:
-            for component in pfa['criteria'][criteria]['components']:
-                for layer in pfa['criteria'][criteria]['components'][component]['layers']:
-                    pfa['criteria'][criteria]['components'][component]['layers'][layer]['data'] \
-                        = pfa['criteria'][criteria]['components'][component]['layers'][layer]\
-                            ['data'].to_crs(target_crs)
+        for criteria in pfa["criteria"]:
+            for component in pfa["criteria"][criteria]["components"]:
+                for layer in pfa["criteria"][criteria]["components"][
+                    component
+                ]["layers"]:
+                    pfa["criteria"][criteria]["components"][component][
+                        "layers"
+                    ][layer]["data"] = pfa["criteria"][criteria]["components"][
+                        component
+                    ]["layers"][layer]["data"].to_crs(target_crs)
         return pfa
 
     @staticmethod
@@ -57,23 +68,33 @@ class Cleaners:
         None
             The function modifies the GeoDataFrames in-place within the `pfa` dictionary.
         """
-        for criteria in pfa['criteria']:
+        for criteria in pfa["criteria"]:
             print(criteria)
-            for component in pfa['criteria'][criteria]['components']:
-                print('\t' + component)
-                for layer in pfa['criteria'][criteria]['components'][component]['layers']:
-                    print('\t\t' + layer)
+            for component in pfa["criteria"][criteria]["components"]:
+                print("\t" + component)
+                for layer in pfa["criteria"][criteria]["components"][
+                    component
+                ]["layers"]:
+                    print("\t\t" + layer)
 
                     # Access the GeoDataFrame
-                    gdf = pfa['criteria'][criteria]['components'][component]['layers'][layer]['model']
+                    gdf = pfa["criteria"][criteria]["components"][component][
+                        "layers"
+                    ][layer]["model"]
 
                     # Check if it is a GeoDataFrame and contains 'Unnamed:' columns
                     if isinstance(gdf, gpd.GeoDataFrame):
-                        unnamed_columns = [col for col in gdf.columns if col.startswith('Unnamed:')]
+                        unnamed_columns = [
+                            col
+                            for col in gdf.columns
+                            if col.startswith("Unnamed:")
+                        ]
 
                         if unnamed_columns:
-                            print(f"\t\t\tDropping columns: {', '.join(unnamed_columns)}")
-                            gdf.drop(columns=unnamed_columns, inplace=True)
+                            print(
+                                f"\t\t\tDropping columns: {', '.join(unnamed_columns)}"
+                            )
+                            gdf = gdf.drop(columns=unnamed_columns)
                         else:
                             print("\t\t\tNo 'Unnamed:' columns found.")
         return pfa
@@ -96,33 +117,35 @@ class Cleaners:
 
         # Set up source and target spatial references
         source_srs = osr.SpatialReference()
-        if z_meas.startswith('epsg:'):
-            print(z_meas,int(z_meas.split(':')[1]))
-            source_srs.ImportFromEPSG(int(z_meas.split(':')[1]))
-            print('successful import')
+        if z_meas.startswith("epsg:"):
+            print(z_meas, int(z_meas.split(":")[1]))
+            source_srs.ImportFromEPSG(int(z_meas.split(":")[1]))
+            print("successful import")
 
         target_srs = osr.SpatialReference()
-        if target_z_meas.startswith('epsg:'):
-            print(target_z_meas,int(target_z_meas.split(':')[1]))
-            target_srs.ImportFromEPSG(int(target_z_meas.split(':')[1]))
-            print('successful import')
+        if target_z_meas.startswith("epsg:"):
+            print(target_z_meas, int(target_z_meas.split(":")[1]))
+            target_srs.ImportFromEPSG(int(target_z_meas.split(":")[1]))
+            print("successful import")
 
         # Coordinate transformation
         transform = osr.CoordinateTransformation(source_srs, target_srs)
-        print('CoordinateTransformation created')
+        print("CoordinateTransformation created")
 
         # Function to update Z values based on input and target references
         def convert_z(geom):
             current_z = geom.z
             new_z = current_z
 
-            if z_meas == 'm-msl' and target_z_meas == 'ft-msl':
+            if z_meas == "m-msl" and target_z_meas == "ft-msl":
                 new_z = current_z * METERS_TO_FEET
-            elif z_meas == 'ft-msl' and target_z_meas == 'm-msl':
+            elif z_meas == "ft-msl" and target_z_meas == "m-msl":
                 new_z = current_z * FEET_TO_METERS
-            elif z_meas.startswith('epsg:') and target_z_meas.startswith('epsg:'):
-                print('transforming ',z_meas,' to ',target_z_meas)
-                x, y, z = transform.TransformPoint(geom.x, geom.y, current_z)
+            elif z_meas.startswith("epsg:") and target_z_meas.startswith(
+                "epsg:"
+            ):
+                print("transforming ", z_meas, " to ", target_z_meas)
+                _x, _y, z = transform.TransformPoint(geom.x, geom.y, current_z)
                 new_z = z  # Updated Z from the transformation
 
             return shapely.geometry.Point(geom.x, geom.y, new_z)
@@ -131,7 +154,6 @@ class Cleaners:
         gdf["geometry"] = gdf.geometry.apply(convert_z)
 
         return gdf
-
 
     @staticmethod
     def filter(data, quantile=0.9):
@@ -151,7 +173,7 @@ class Cleaners:
             that quantile.
         """
         q = data.quantile(quantile)
-        data.loc[data>q] = q
+        data.loc[data > q] = q
         return data
 
     @staticmethod
@@ -196,7 +218,9 @@ class Cleaners:
         if column in gdf.columns:
             gdf[column] = Cleaners.filter_series(gdf[column], quantile)
         else:
-            print(f"Column '{column}' could not be filtered because it is not in the dataframe.")
+            print(
+                f"Column '{column}' could not be filtered because it is not in the dataframe."
+            )
         return gdf
 
     @staticmethod
@@ -225,22 +249,30 @@ class Cleaners:
 
         # Ensure the GeoDataFrame contains 3D geometries
         if not gdf.geometry.iloc[0].has_z:
-            raise ValueError("The provided GeoDataFrame does not contain 3D geometries.")
+            raise ValueError(
+                "The provided GeoDataFrame does not contain 3D geometries."
+            )
 
         # Extract bounds
-        if gdf.geometry.iloc[0].geom_type == 'Point':
+        if gdf.geometry.iloc[0].geom_type == "Point":
             xmin = gdf.geometry.x.min()
             xmax = gdf.geometry.x.max()
             ymin = gdf.geometry.y.min()
             ymax = gdf.geometry.y.max()
             zmin = gdf.geometry.z.min()
             zmax = gdf.geometry.z.max()
-        elif gdf.geometry.iloc[0].geom_type in ['Polygon', 'LineString']:
+        elif gdf.geometry.iloc[0].geom_type in {"Polygon", "LineString"}:
             xmin, ymin, xmax, ymax = gdf.total_bounds
-            zmin = gdf.geometry.apply(lambda geom: min(coord[2] for coord in geom.coords)).min()
-            zmax = gdf.geometry.apply(lambda geom: max(coord[2] for coord in geom.coords)).max()
+            zmin = gdf.geometry.apply(
+                lambda geom: min(coord[2] for coord in geom.coords)
+            ).min()
+            zmax = gdf.geometry.apply(
+                lambda geom: max(coord[2] for coord in geom.coords)
+            ).max()
         else:
-            raise TypeError("Unsupported geometry type. The GeoDataFrame should contain Points, Polygons, or LineStrings.")
+            raise TypeError(
+                "Unsupported geometry type. The GeoDataFrame should contain Points, Polygons, or LineStrings."
+            )
 
         extent = [xmin, ymin, zmin, xmax, ymax, zmax]
         return extent
@@ -261,32 +293,29 @@ class Cleaners:
         geopandas.GeoDataFrame
             A new GeoDataFrame clipped to the specified 3D extent.
         """
-        from shapely.geometry import box
-        from shapely.geometry.polygon import Polygon
-        from shapely.geometry import LineString, Point
-
         # Create a 3D bounding box
         xmin, ymin, zmin, xmax, ymax, zmax = extent
-        bbox_3d = Polygon([
-            (xmin, ymin, zmin),
-            (xmax, ymin, zmin),
-            (xmax, ymax, zmin),
-            (xmin, ymax, zmin),
-            (xmin, ymin, zmax),
-            (xmax, ymin, zmax),
-            (xmax, ymax, zmax),
-            (xmin, ymax, zmax),
-            (xmin, ymin, zmin)  # Closing the loop
-        ])
+        bbox_3d = Polygon(
+            [
+                (xmin, ymin, zmin),
+                (xmax, ymin, zmin),
+                (xmax, ymax, zmin),
+                (xmin, ymax, zmin),
+                (xmin, ymin, zmax),
+                (xmax, ymin, zmax),
+                (xmax, ymax, zmax),
+                (xmin, ymax, zmax),
+                (xmin, ymin, zmin),  # Closing the loop
+            ]
+        )
 
         # Filter geometries that intersect the 3D bounding box
         clipped_geometries = []
         for geom in gdf.geometry:
             if geom.is_empty:
                 continue
-            if isinstance(geom, (Polygon, LineString, Point)):
-                if bbox_3d.intersects(geom):
-                    clipped_geometries.append(geom.intersection(bbox_3d))
+            if isinstance(geom, (Polygon, LineString, Point)) and bbox_3d.intersects(geom):
+                clipped_geometries.append(geom.intersection(bbox_3d))
 
         # Create a new GeoDataFrame
         gdf_clipped = gdf[gdf.geometry.isin(clipped_geometries)].copy()
@@ -294,10 +323,14 @@ class Cleaners:
 
         return gdf_clipped
 
+
 class Exclusions:
     """Class of functions to handle exclusion areas in a PFA area"""
+
     @staticmethod
-    def mask_exclusion_areas(gdf_points, gdf_exclusion_areas, value_col='value', set_to=0):
+    def mask_exclusion_areas(
+        gdf_points, gdf_exclusion_areas, value_col="value", set_to=0
+    ):
         """
         Mask points within exclusion areas by setting their values to zero.
 
@@ -320,7 +353,9 @@ class Exclusions:
             gdf_exclusion_areas = gdf_exclusion_areas.to_crs(gdf_points.crs)
 
         # Perform a spatial join to find points within exclusion areas
-        joined = gpd.sjoin(gdf_points, gdf_exclusion_areas, how="left", predicate="within")
+        joined = gpd.sjoin(
+            gdf_points, gdf_exclusion_areas, how="left", predicate="within"
+        )
 
         # Mask points within exclusion areas
         gdf_points.loc[~joined.index_right.isna(), value_col] = set_to
@@ -328,7 +363,7 @@ class Exclusions:
         return gdf_points
 
     @staticmethod
-    def add_exclusions(pfa, pr_label='pr'):
+    def add_exclusions(pfa, pr_label="pr"):
         """
         Masks exclusion areas by setting probability or favorability values to a specified value (e.g., zero)
         within those areas in the provided point data.
@@ -366,15 +401,21 @@ class Exclusions:
         should be set to inside the exclusion area.
         """
 
-        c=0
-        for exclusion_component in pfa['exclusions']['components']:
-            for layer in pfa['exclusions']['components'][exclusion_component]['layers']:
-                set_to = pfa['exclusions']['components'][exclusion_component]['set_to']
+        c = 0
+        for exclusion_component in pfa["exclusions"]["components"]:
+            for layer in pfa["exclusions"]["components"][exclusion_component][
+                "layers"
+            ]:
+                set_to = pfa["exclusions"]["components"][exclusion_component][
+                    "set_to"
+                ]
 
                 # Transition approach to be cleaned once model usage is consolidated.
-                shp = pfa['exclusions']['components'][exclusion_component]['layers'][layer]
+                shp = pfa["exclusions"]["components"][exclusion_component][
+                    "layers"
+                ][layer]
                 if "model" in shp:
-                    shp = shp['model']
+                    shp = shp["model"]
                 elif "map" in shp:
                     warnings.warn(
                         "Use of 'map' in layers is deprecated."
@@ -382,24 +423,28 @@ class Exclusions:
                         DeprecationWarning,
                         stacklevel=2,
                     )
-                    shp = shp['map']
+                    shp = shp["map"]
                 else:
-                    raise ValueError(f"Exclusion layer {layer} does not contain 'model' or 'map' key.")
+                    raise ValueError(
+                        f"Exclusion layer {layer} does not contain 'model' or 'map' key."
+                    )
 
-                value_col = 'favorability'
-                if c == 0:
-                    gdf_points = pfa[pr_label].copy()
-                else:
-                    gdf_points = pfa['pr_excl']
+                value_col = "favorability"
+                gdf_points = pfa[pr_label].copy() if c == 0 else pfa["pr_excl"]
 
-                pfa['pr_excl'] = Exclusions.mask_exclusion_areas(gdf_points=gdf_points,
-                                                                gdf_exclusion_areas=shp,
-                                                                value_col=value_col, set_to=set_to)
-                c+=1
+                pfa["pr_excl"] = Exclusions.mask_exclusion_areas(
+                    gdf_points=gdf_points,
+                    gdf_exclusion_areas=shp,
+                    value_col=value_col,
+                    set_to=set_to,
+                )
+                c += 1
         return pfa
 
     @staticmethod
-    def buffer_distance (gdf_points, gdf_exclusion_areas, buffer_distance, value_col='value'):
+    def buffer_distance(
+        gdf_points, gdf_exclusion_areas, buffer_distance, value_col="value"
+    ):
         """
         Mask points within exclusion areas (defined by buffers around points) by setting their values to zero.
 
@@ -425,38 +470,55 @@ class Exclusions:
 
         # Create buffers around exclusion points
         gdf_exclusion_buffers = gdf_exclusion_areas.copy()
-        gdf_exclusion_buffers['geometry'] = gdf_exclusion_areas.buffer(buffer_distance)
+        gdf_exclusion_buffers["geometry"] = gdf_exclusion_areas.buffer(
+            buffer_distance
+        )
 
         # Perform a spatial join to find points within exclusion buffers
-        joined = gpd.sjoin(gdf_points, gdf_exclusion_buffers, how="left", predicate="within")
+        joined = gpd.sjoin(
+            gdf_points, gdf_exclusion_buffers, how="left", predicate="within"
+        )
 
         # Ensure no duplicate indices in the joined DataFrame
-        joined = joined[~joined.index.duplicated(keep='first')]
+        joined = joined[~joined.index.duplicated(keep="first")]
 
         # Create a boolean index with the correct length
-        is_within = joined.index_right.notna().reindex(gdf_points.index, fill_value=False)
+        is_within = joined.index_right.notna().reindex(
+            gdf_points.index, fill_value=False
+        )
 
         # Mask points within exclusion buffers
         gdf_points.loc[is_within, value_col] = 0
 
         return gdf_points
 
+
 class Processing:
     """Class of functions for use in processing data into 2D maps"""
 
     @staticmethod
     def interpolate_points_3d(
-        pfa, criteria, component, layer, nx, ny, nz, extent=None, method='linear'
+        pfa,
+        criteria,
+        component,
+        layer,
+        nx,
+        ny,
+        nz,
+        extent=None,
+        method="linear",
     ):
         """Optimized 3D interpolation using Scipy's griddata."""
-        import time
-
         start_time = time.time()
 
-        gdf = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        data_col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data_col']
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        data_col = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data_col"]
 
-        if gdf.geometry.type.iloc[0] == 'Polygon':
+        if gdf.geometry.type.iloc[0] == "Polygon":
             print("Converting Polygons to Points using centroids.")
             gdf.geometry = gdf.geometry.centroid
 
@@ -477,35 +539,61 @@ class Processing:
         x_grid = np.linspace(x_min, x_max, nx)
         y_grid = np.linspace(y_min, y_max, ny)
         z_grid = np.linspace(z_min, z_max, nz)
-        xv, yv, zv = np.meshgrid(x_grid, y_grid, z_grid, indexing='ij')
+        xv, yv, zv = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
 
         print(f"Grid resolution: {nx} x {ny} x {nz}")
 
         # Perform interpolation
-        points = np.vstack((x.values, y.values, z.values)).T
+        points = np.vstack((x.to_numpy(), y.to_numpy(), z.to_numpy())).T
         start_interp = time.time()
-        grid_values = griddata(points, values.values, (xv, yv, zv), method=method)
-        print(f"Interpolation completed in {time.time() - start_interp} seconds")
+        grid_values = griddata(
+            points, values.values, (xv, yv, zv), method=method
+        )
+        print(
+            f"Interpolation completed in {time.time() - start_interp} seconds"
+        )
 
         # Create GeoDataFrame
         interpolated_points = np.vstack((xv.ravel(), yv.ravel(), zv.ravel())).T
         interpolated_gdf = gpd.GeoDataFrame(
-            {'value_interpolated': grid_values.ravel()},
-            geometry=gpd.points_from_xy(interpolated_points[:, 0], interpolated_points[:, 1], z=interpolated_points[:, 2]),
-            crs=gdf.crs
+            {"value_interpolated": grid_values.ravel()},
+            geometry=gpd.points_from_xy(
+                interpolated_points[:, 0],
+                interpolated_points[:, 1],
+                z=interpolated_points[:, 2],
+            ),
+            crs=gdf.crs,
         )
 
         # Update PFA
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = interpolated_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'value_interpolated'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = pfa['criteria'][criteria]['components'][component]['layers'][layer]['units']
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = interpolated_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "value_interpolated"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["units"]
 
-        print(f"Total time for interpolate_points_3d: {time.time() - start_time} seconds")
+        print(
+            f"Total time for interpolate_points_3d: {time.time() - start_time} seconds"
+        )
         return pfa
 
     @staticmethod
     def kriging_3d(
-        pfa, criteria, component, layer, nx, ny, nz, extent=None, variogram_model='linear'
+        pfa,
+        criteria,
+        component,
+        layer,
+        nx,
+        ny,
+        nz,
+        extent=None,
+        variogram_model="linear",
     ):
         """Function to interpolate 3D points to a 3D grid using PyKrige.
 
@@ -533,17 +621,25 @@ class Processing:
         pfa : dict
             Updated pfa config which includes interpolation results.
         """
-        gdf = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        data_col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data_col']
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        data_col = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data_col"]
 
-        if gdf.geometry.type.iloc[0] == 'Polygon':
-            print("Notice: interpolate_points_3d() received GeoDataFrame with geometry type 'Polygon.' Converting geometry to 'Point' geometry using centroids.")
+        if gdf.geometry.type.iloc[0] == "Polygon":
+            print(
+                "Notice: interpolate_points_3d() received GeoDataFrame with geometry type 'Polygon.' Converting geometry to 'Point' geometry using centroids."
+            )
             gdf.geometry = gdf.geometry.centroid
 
         # Extract coordinates and values from the GeoDataFrame
         x = gdf.geometry.x
         y = gdf.geometry.y
-        z = gdf.geometry.apply(lambda geom: geom.z)  # Extract z directly from the geometry
+        z = gdf.geometry.apply(
+            lambda geom: geom.z
+        )  # Extract z directly from the geometry
         values = gdf[data_col]
 
         # Define the 3D grid for interpolation
@@ -557,26 +653,42 @@ class Processing:
         x_grid = np.linspace(x_min, x_max, nx)
         y_grid = np.linspace(y_min, y_max, ny)
         z_grid = np.linspace(z_min, z_max, nz)
-        xv, yv, zv = np.meshgrid(x_grid, y_grid, z_grid, indexing='ij')
+        xv, yv, zv = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
 
         # Perform 3D Kriging interpolation
         kriging = OrdinaryKriging3D(
-            x.values, y.values, z.values, values.values, variogram_model=variogram_model
+            x.values,
+            y.values,
+            z.values,
+            values.values,
+            variogram_model=variogram_model,
         )
-        grid, _ = kriging.execute('grid', x_grid, y_grid, z_grid)
+        grid, _ = kriging.execute("grid", x_grid, y_grid, z_grid)
 
         # Create a new GeoDataFrame with the interpolated values
         interpolated_points = np.vstack((xv.ravel(), yv.ravel(), zv.ravel())).T
         interpolated_gdf = gpd.GeoDataFrame(
-            {'value_interpolated': grid.ravel()},
-            geometry=gpd.points_from_xy(interpolated_points[:, 0], interpolated_points[:, 1], z=interpolated_points[:, 2]),
-            crs=gdf.crs
+            {"value_interpolated": grid.ravel()},
+            geometry=gpd.points_from_xy(
+                interpolated_points[:, 0],
+                interpolated_points[:, 1],
+                z=interpolated_points[:, 2],
+            ),
+            crs=gdf.crs,
         )
 
         # Update the PFA dictionary with interpolation results
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = interpolated_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'value_interpolated'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = pfa['criteria'][criteria]['components'][component]['layers'][layer]['units']
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = interpolated_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "value_interpolated"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["units"]
         return pfa
 
     @staticmethod
@@ -607,8 +719,12 @@ class Processing:
             Updated pfa config which includes the aggregated polygon values as a point map.
         """
         # Extract GeoDataFrame containing polygons
-        gdf_polygons = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data_col']
+        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
+        col = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data_col"]
 
         # Define the extent
         x_min, y_min, x_max, y_max = extent
@@ -623,22 +739,29 @@ class Processing:
             for j in range(ny):
                 x_start = x_min + i * cell_size_x
                 y_start = y_min + j * cell_size_y
-                grid_cell = shapely.geometry.box(x_start, y_start, x_start + cell_size_x, y_start + cell_size_y)
+                grid_cell = shapely.geometry.box(
+                    x_start,
+                    y_start,
+                    x_start + cell_size_x,
+                    y_start + cell_size_y,
+                )
                 grid_cells.append(grid_cell)
 
         # Create GeoDataFrame from grid cells
         grid_gdf = gpd.GeoDataFrame(geometry=grid_cells, crs=gdf_polygons.crs)
 
         # Initialize columns to store the aggregated values
-        grid_gdf['sum'] = 0.0
-        grid_gdf['count'] = 0
+        grid_gdf["sum"] = 0.0
+        grid_gdf["count"] = 0
 
         # Use spatial indexing to speed up the intersection checks
         sindex = gdf_polygons.sindex
 
         # Iterate over each grid cell to calculate the aggregated values
         for grid_idx, grid_cell in grid_gdf.iterrows():
-            possible_matches_index = list(sindex.intersection(grid_cell.geometry.bounds))
+            possible_matches_index = list(
+                sindex.intersection(grid_cell.geometry.bounds)
+            )
             possible_matches = gdf_polygons.iloc[possible_matches_index]
 
             for _, polygon in possible_matches.iterrows():
@@ -647,29 +770,40 @@ class Processing:
                 if poly.intersects(grid_cell.geometry):
                     intersection = poly.intersection(grid_cell.geometry)
                     intersection_area = intersection.area
-                    grid_gdf.at[grid_idx, 'sum'] += value * intersection_area
-                    grid_gdf.at[grid_idx, 'count'] += intersection_area
+                    grid_gdf.at[grid_idx, "sum"] += value * intersection_area
+                    grid_gdf.at[grid_idx, "count"] += intersection_area
 
         # Calculate the center point of each grid cell
         points = []
         for _, row in grid_gdf.iterrows():
             centroid = row.geometry.centroid
-            if row['count'] > 0:
-                average_value = row['sum'] / row['count']
+            if row["count"] > 0:
+                average_value = row["sum"] / row["count"]
             else:
                 average_value = 0
             points.append((centroid, average_value))
 
         # Create a GeoDataFrame with point representation
-        point_geometries = [shapely.geometry.Point(xy[0].x, xy[0].y) for xy in points]
+        point_geometries = [
+            shapely.geometry.Point(xy[0].x, xy[0].y) for xy in points
+        ]
         values = [xy[1] for xy in points]
 
-        point_gdf = gpd.GeoDataFrame({'geometry': point_geometries, 'value': values}, crs=gdf_polygons.crs)
+        point_gdf = gpd.GeoDataFrame(
+            {"geometry": point_geometries, "value": values},
+            crs=gdf_polygons.crs,
+        )
 
         # Update the pfa dictionary with the new point representation map
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = point_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'value'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'aggregated value'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = point_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "value"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "aggregated value"
 
         return pfa
 
@@ -717,12 +851,26 @@ class Processing:
         for polygon, buffer in zip(polygons, buffers):
             if polygon.contains(point):  # Inside the polygon
                 return polygon_value
-            elif buffer.contains(point):  # Inside the buffer but outside the polygon
+            if buffer.contains(
+                point
+            ):  # Inside the buffer but outside the polygon
                 return buffer_value
         return 1.0  # Outside both polygon and buffer
 
     @staticmethod
-    def mark_buffer_areas(pfa, criteria, component, layer, extent, nx, ny, buffer_distance, polygon_value, buffer_value, background_value):
+    def mark_buffer_areas(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        buffer_distance,
+        polygon_value,
+        buffer_value,
+        background_value,
+    ):
         """
         Marks grid points within a spatial extent based on their location relative to polygons and buffer areas,
         using vectorized operations with GeoPandas for performance optimization.
@@ -777,7 +925,9 @@ class Processing:
         - The results are stored back in the `pfa` dictionary, with the classifications as part of the layer's map data.
         """
 
-        gdf_polygons = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Create a grid of points within the spatial extent
         x_min, y_min, x_max, y_max = extent
@@ -787,31 +937,53 @@ class Processing:
         points = np.c_[xv.ravel(), yv.ravel()]
 
         # Create a GeoDataFrame from the generated points
-        gdf_points = gpd.GeoDataFrame(geometry=[shapely.geometry.Point(p) for p in points], crs=gdf_polygons.crs)
+        gdf_points = gpd.GeoDataFrame(
+            geometry=[shapely.geometry.Point(p) for p in points],
+            crs=gdf_polygons.crs,
+        )
 
         # Create buffer areas around polygons
         buffers = gdf_polygons.buffer(buffer_distance)
 
         # Vectorized operations to classify points
-        gdf_points['inside_polygon'] = gdf_points.geometry.apply(lambda point: gdf_polygons.contains(point).any())
-        gdf_points['inside_buffer'] = gdf_points.geometry.apply(lambda point: buffers.contains(point).any())
+        gdf_points["inside_polygon"] = gdf_points.geometry.apply(
+            lambda point: gdf_polygons.contains(point).any()
+        )
+        gdf_points["inside_buffer"] = gdf_points.geometry.apply(
+            lambda point: buffers.contains(point).any()
+        )
 
         # Assign classifications based on the spatial relationship
-        gdf_points['classification'] = np.where(gdf_points['inside_polygon'], polygon_value,
-                                                np.where(gdf_points['inside_buffer'], buffer_value, background_value))
+        gdf_points["classification"] = np.where(
+            gdf_points["inside_polygon"],
+            polygon_value,
+            np.where(
+                gdf_points["inside_buffer"], buffer_value, background_value
+            ),
+        )
 
         # Drop the temporary columns
-        gdf_points = gdf_points.drop(columns=['inside_polygon', 'inside_buffer'])
+        gdf_points = gdf_points.drop(
+            columns=["inside_polygon", "inside_buffer"]
+        )
 
         # Update the pfa dictionary with the new map
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = gdf_points
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'classification'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = f'binary ({polygon_value}=polygon, {buffer_value}=buffer, 1=outside)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = gdf_points
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "classification"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = f"binary ({polygon_value}=polygon, {buffer_value}=buffer, 1=outside)"
 
         return pfa
 
     @staticmethod
-    def distance_from_polygons(pfa, criteria, component, layer, extent, nx, ny):
+    def distance_from_polygons(
+        pfa, criteria, component, layer, extent, nx, ny
+    ):
         """Calculate distances from polygons in pfa to points in a grid.
         *** IS PROHIBATIVELY SLOW WHEN USING ON MANY POLYGONS **
         Parameters
@@ -838,13 +1010,17 @@ class Processing:
             Updated pfa config which includes distances calculated.
         """
         # Extract GeoDataFrame containing polygons
-        gdf_polygons = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Create a grid of points within the spatial extent
         x_min, y_min, x_max, y_max = extent
         x_points = np.linspace(x_min, x_max, nx)
         y_points = np.linspace(y_min, y_max, ny)
-        points = [shapely.geometry.Point(x, y) for x in x_points for y in y_points]
+        points = [
+            shapely.geometry.Point(x, y) for x in x_points for y in y_points
+        ]
 
         # Create GeoDataFrame from grid points
         grid_gdf = gpd.GeoDataFrame(geometry=points, crs=gdf_polygons.crs)
@@ -852,35 +1028,45 @@ class Processing:
         # Calculate distances
         distances = []
         for poly in gdf_polygons.geometry:
-            if poly.geom_type == 'Polygon':
+            if poly.geom_type == "Polygon":
                 # For single Polygon
                 poly_distances = scipy.spatial.distance.cdist(
                     np.array([point.coords[0] for point in grid_gdf.geometry]),
-                    np.array(poly.exterior.coords)
+                    np.array(poly.exterior.coords),
                 )
                 distances.append(poly_distances.min(axis=1))
-            elif poly.geom_type == 'MultiPolygon':
+            elif poly.geom_type == "MultiPolygon":
                 # For MultiPolygon, iterate over each polygon within the MultiPolygon
                 for subpoly in poly.geoms:
                     poly_distances = scipy.spatial.distance.cdist(
-                        np.array([point.coords[0] for point in grid_gdf.geometry]),
-                        np.array(subpoly.exterior.coords)
+                        np.array(
+                            [point.coords[0] for point in grid_gdf.geometry]
+                        ),
+                        np.array(subpoly.exterior.coords),
                     )
                     distances.append(poly_distances.min(axis=1))
             else:
-                raise ValueError(f"Unsupported geometry type: {poly.geom_type}")
+                raise ValueError(
+                    f"Unsupported geometry type: {poly.geom_type}"
+                )
 
         # Minimum distances to polygons
         min_distances = np.vstack(distances).min(axis=0)
 
         # Create GeoDataFrame with the distances
         distance_gdf = grid_gdf.copy()
-        distance_gdf['distance'] = min_distances
+        distance_gdf["distance"] = min_distances
 
         # Update pfa config with the distance GeoDataFrame
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['distance_map'] = distance_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "distance_map"
+        ] = distance_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (m)"
 
         return pfa
 
@@ -912,7 +1098,9 @@ class Processing:
             # Create a surface (e.g., convex hull) for the fault
             try:
                 surface = shapely.geometry.MultiPoint(coords).convex_hull
-                fault_surfaces.append({'fault_number': fault_number, 'geometry': surface})
+                fault_surfaces.append(
+                    {"fault_number": fault_number, "geometry": surface}
+                )
             except Exception as e:
                 print(f"Error creating surface for fault {fault_number}: {e}")
 
@@ -923,7 +1111,9 @@ class Processing:
         return gdf_surfaces
 
     @staticmethod
-    def distance_from_lines_3d(pfa, criteria, component, layer, extent, nx, ny, nz):
+    def distance_from_lines_3d(
+        pfa, criteria, component, layer, extent, nx, ny, nz
+    ):
         """Function to calculate distance from LineString objects in 3D.
 
         Parameters
@@ -949,7 +1139,9 @@ class Processing:
         pfa : dict
             Updated pfa config which includes distances from LineString objects.
         """
-        gdf_linestrings = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_linestrings = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Define extent
         x_min, y_min, z_min, x_max, y_max, z_max = extent
@@ -966,20 +1158,24 @@ class Processing:
         ]
 
         # Create a GeoDataFrame for grid points
-        gdf_points = gpd.GeoDataFrame(geometry=grid_points, crs=gdf_linestrings.crs)
+        gdf_points = gpd.GeoDataFrame(
+            geometry=grid_points, crs=gdf_linestrings.crs
+        )
 
         # Convert LineString geometries to 3D if not already 3D
         def ensure_3d(geom):
             if geom.has_z:
                 return geom
-            return shapely.geometry.LineString([(x, y, 0) for x, y in geom.coords])
+            return shapely.geometry.LineString(
+                [(x, y, 0) for x, y in geom.coords]
+            )
 
-        gdf_linestrings['geometry'] = gdf_linestrings.geometry.apply(ensure_3d)
+        gdf_linestrings["geometry"] = gdf_linestrings.geometry.apply(ensure_3d)
 
         # Calculate 3D distances
         distances = []
         for point in gdf_points.geometry:
-            min_distance = float('inf')
+            min_distance = float("inf")
             for line in gdf_linestrings.geometry:
                 # Compute distance between the point and the LineString in 3D
                 distance = line.distance(point)
@@ -987,17 +1183,25 @@ class Processing:
             distances.append(min_distance)
 
         # Add distances to the points GeoDataFrame
-        gdf_points['distance'] = distances
+        gdf_points["distance"] = distances
 
         # Update the PFA dictionary with the distance results
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = gdf_points
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = gdf_points
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (m)"
 
         return pfa
 
     @staticmethod
-    def distance_from_surfaces_3d(pfa, criteria, component, layer, extent, nx, ny, nz):
+    def distance_from_surfaces_3d(
+        pfa, criteria, component, layer, extent, nx, ny, nz
+    ):
         """Function to calculate distance from surfaces (Polygon or MultiPolygon) in 3D.
 
         Parameters
@@ -1023,7 +1227,9 @@ class Processing:
         pfa : dict
             Updated pfa config which includes distances from surfaces.
         """
-        gdf_surfaces = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_surfaces = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Define extent
         x_min, y_min, z_min, x_max, y_max, z_max = extent
@@ -1040,20 +1246,26 @@ class Processing:
         ]
 
         # Create a GeoDataFrame for grid points
-        gdf_points = gpd.GeoDataFrame(geometry=grid_points, crs=gdf_surfaces.crs)
+        gdf_points = gpd.GeoDataFrame(
+            geometry=grid_points, crs=gdf_surfaces.crs
+        )
 
         # Convert surfaces to 3D if not already 3D
         def ensure_3d_surface(geom):
             if geom.has_z:
                 return geom
-            return shapely.geometry.Polygon([(x, y, 0) for x, y in geom.exterior.coords])
+            return shapely.geometry.Polygon(
+                [(x, y, 0) for x, y in geom.exterior.coords]
+            )
 
-        gdf_surfaces['geometry'] = gdf_surfaces.geometry.apply(ensure_3d_surface)
+        gdf_surfaces["geometry"] = gdf_surfaces.geometry.apply(
+            ensure_3d_surface
+        )
 
         # Calculate distances
         distances = []
         for point in gdf_points.geometry:
-            min_distance = float('inf')
+            min_distance = float("inf")
             for surface in gdf_surfaces.geometry:
                 # Compute distance between the point and the surface
                 distance = surface.distance(point)
@@ -1061,12 +1273,18 @@ class Processing:
             distances.append(min_distance)
 
         # Add distances to the points GeoDataFrame
-        gdf_points['distance'] = distances
+        gdf_points["distance"] = distances
 
         # Update the PFA dictionary with the distance results
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = gdf_points
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = gdf_points
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (m)"
 
         return pfa
 
@@ -1127,11 +1345,11 @@ class Processing:
         """
         intersections = []
         # Extract the geometries from the GeoDataFrame
-        lines = gdf_lines['geometry'].tolist()
+        lines = gdf_lines["geometry"].tolist()
 
         # Get all unique pairs of lines to check for intersections
         for i, line1 in enumerate(lines):
-            for line2 in lines[i+1:]:
+            for line2 in lines[i + 1 :]:
                 if line1.intersects(line2):
                     # Find the intersection point (could be a Point or a LineString if overlapping)
                     intersection = line1.intersection(line2)
@@ -1139,14 +1357,18 @@ class Processing:
                         intersections.append(intersection)
                     elif isinstance(intersection, shapely.geometry.LineString):
                         # If lines overlap, get the mid-point of the overlapping segment
-                        midpoint = shapely.geometry.Point(intersection.centroid)
+                        midpoint = shapely.geometry.Point(
+                            intersection.centroid
+                        )
                         intersections.append(midpoint)
 
         # Return a GeoDataFrame of intersection points
         return gpd.GeoDataFrame(geometry=intersections, crs=gdf_lines.crs)
 
     @staticmethod
-    def vectorized_distance_calculation(gdf_points, tree, intersection_tree=None):
+    def vectorized_distance_calculation(
+        gdf_points, tree, intersection_tree=None
+    ):
         """Calculates the nearest line and intersection distances for each point in a GeoDataFrame using vectorized operations
         and spatial indexing with STRtree.
 
@@ -1190,25 +1412,51 @@ class Processing:
             nearest_lines = tree.query(point)
             if nearest_lines:  # If lines are found
                 # Ensure nearest_lines are geometries, unpacking from STRtree structure if needed
-                nearest_line_geom = nearest_lines[0].geometry if hasattr(nearest_lines[0], 'geometry') else nearest_lines[0]
-                return point.distance(nearest_line_geom)  # Calculate distance between point and line
-            else:
-                return float('inf')  # If no lines are found, return infinity
+                nearest_line_geom = (
+                    nearest_lines[0].geometry
+                    if hasattr(nearest_lines[0], "geometry")
+                    else nearest_lines[0]
+                )
+                return point.distance(
+                    nearest_line_geom
+                )  # Calculate distance between point and line
+            return float("inf")  # If no lines are found, return infinity
 
         # Calculate the nearest line distance for each point in the GeoDataFrame
-        nearest_line_distances = gdf_points.geometry.apply(get_nearest_line_distance)
+        nearest_line_distances = gdf_points.geometry.apply(
+            get_nearest_line_distance
+        )
 
         # Handle intersections similarly (if available)
         if intersection_tree:
-            nearest_intersection_distances = gdf_points.geometry.apply(lambda point: min(
-                [point.distance(geom) for geom in intersection_tree.query(point)], default=float('inf')))
+            nearest_intersection_distances = gdf_points.geometry.apply(
+                lambda point: min(
+                    [
+                        point.distance(geom)
+                        for geom in intersection_tree.query(point)
+                    ],
+                    default=float("inf"),
+                )
+            )
         else:
-            nearest_intersection_distances = pd.Series([float('inf')] * len(gdf_points))
+            nearest_intersection_distances = pd.Series(
+                [float("inf")] * len(gdf_points)
+            )
 
         return nearest_line_distances, nearest_intersection_distances
 
     @staticmethod
-    def distance_from_lines_with_intersections(pfa, criteria, component, layer, extent, nx, ny, weight_line=1.0, weight_intersection=0.5):
+    def distance_from_lines_with_intersections(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        weight_line=1.0,
+        weight_intersection=0.5,
+    ):
         """
         TODO: Get this to work!!!
         Calculate the weighted distances from points to the nearest lines and intersections,
@@ -1247,7 +1495,9 @@ class Processing:
             The updated PFA dictionary with a new distance map stored in the specified layer.
         """
         # Extract lines and intersections from the PFA
-        gdf_lines = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']  # Lines data
+        gdf_lines = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]  # Lines data
         gdf_intersections = Processing.calculate_intersections(gdf_lines)
 
         # Define the CRS (Coordinate Reference System) to match the lines
@@ -1257,21 +1507,38 @@ class Processing:
 
         # Build spatial index using STRtree for lines and intersections
         tree = shapely.strtree.STRtree(gdf_lines.geometry)  # STRtree for lines
-        intersection_tree = shapely.strtree.STRtree(gdf_intersections.geometry) if gdf_intersections is not None else None  # STRtree for intersections
+        intersection_tree = (
+            shapely.strtree.STRtree(gdf_intersections.geometry)
+            if gdf_intersections is not None
+            else None
+        )  # STRtree for intersections
 
         # Perform vectorized distance calculations for both lines and intersections
-        line_distances, intersection_distances = Processing.vectorized_distance_calculation(gdf_points, tree, intersection_tree)
+        line_distances, intersection_distances = (
+            Processing.vectorized_distance_calculation(
+                gdf_points, tree, intersection_tree
+            )
+        )
 
         # Combine the distances with weights (line and intersection distances)
-        combined_distances = weight_line * line_distances + weight_intersection * intersection_distances
+        combined_distances = (
+            weight_line * line_distances
+            + weight_intersection * intersection_distances
+        )
 
         # Assign combined distances to the points
-        gdf_points['distance'] = combined_distances
+        gdf_points["distance"] = combined_distances
 
         # Update the PFA dictionary with the calculated distances
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = gdf_points
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (weighted by line and intersection proximity)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = gdf_points
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (weighted by line and intersection proximity)"
 
         return pfa
 
@@ -1305,20 +1572,26 @@ class Processing:
         pfa : dict
             Updated pfa config which includes interpolation
         """
-        gdf_points = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_points = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Ensure we have only simple Point geometries
         points = []
         for geom in gdf_points.geometry:
-            if geom.geom_type == 'Point':
+            if geom.geom_type == "Point":
                 points.append(geom)
-            elif geom.geom_type == 'MultiPoint':
+            elif geom.geom_type == "MultiPoint":
                 points.extend(geom.geoms)
             else:
-                raise ValueError(f"Unsupported geometry type: {geom.geom_type}")
+                raise ValueError(
+                    f"Unsupported geometry type: {geom.geom_type}"
+                )
 
         if not points:
-            raise ValueError("No valid Point geometries found in the GeoDataFrame")
+            raise ValueError(
+                "No valid Point geometries found in the GeoDataFrame"
+            )
 
         # Convert points to a numpy array of coordinates, ignoring the z-dimension if it exists
         points_coords = np.array([(point.x, point.y) for point in points])
@@ -1327,37 +1600,67 @@ class Processing:
         x_min, y_min, x_max, y_max = extent
         x_points = np.linspace(x_min, x_max, nx)
         y_points = np.linspace(y_min, y_max, ny)
-        grid_points = [shapely.geometry.Point(x, y) for x in x_points for y in y_points]
+        grid_points = [
+            shapely.geometry.Point(x, y) for x in x_points for y in y_points
+        ]
 
         # Create a GeoDataFrame from the generated points
-        gdf_grid_points = gpd.GeoDataFrame(geometry=grid_points, crs=gdf_points.crs)
+        gdf_grid_points = gpd.GeoDataFrame(
+            geometry=grid_points, crs=gdf_points.crs
+        )
 
         # Convert grid points to a numpy array of coordinates
-        grid_coords = np.array([(point.x, point.y) for point in gdf_grid_points.geometry])
+        grid_coords = np.array(
+            [(point.x, point.y) for point in gdf_grid_points.geometry]
+        )
 
         # Ensure both coordinate arrays have the same number of dimensions
-        assert points_coords.shape[1] == 2, "Points coordinates should have two columns (x, y)"
-        assert grid_coords.shape[1] == 2, "Grid coordinates should have two columns (x, y)"
+        assert points_coords.shape[1] == 2, (
+            "Points coordinates should have two columns (x, y)"
+        )
+        assert grid_coords.shape[1] == 2, (
+            "Grid coordinates should have two columns (x, y)"
+        )
 
         # Calculate distances between the grid points and the specified points
         distances = scipy.spatial.distance.cdist(grid_coords, points_coords)
 
         # Store minimum distances in a GeoDataFrame
         gdf_distances = gdf_grid_points.copy()
-        gdf_distances['distance'] = distances.min(axis=1)
+        gdf_distances["distance"] = distances.min(axis=1)
 
         # Update pfa dictionary with the distance map
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = gdf_distances
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = gdf_distances
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (m)"
 
         return pfa
 
     @staticmethod
-    def point_density_3d(pfa, criteria, component, layer, extent, cell_size_x, cell_size_y, cell_size_z, nx, ny, nz):
+    def point_density_3d(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        cell_size_x,
+        cell_size_y,
+        cell_size_z,
+        nx,
+        ny,
+        nz,
+    ):
         """Calculate point density within a specified 3D extent, aligned with grid-based models."""
         # Extract GeoDataFrame from pfa dictionary
-        gdf = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
 
         # Define the extent
         xmin, ymin, zmin, xmax, ymax, zmax = extent
@@ -1380,14 +1683,22 @@ class Processing:
 
             for point in points:
                 # Check if the point is within the extent
-                if (xmin <= point.x <= xmax) and (ymin <= point.y <= ymax) and (zmin <= point.z <= zmax):
+                if (
+                    (xmin <= point.x <= xmax)
+                    and (ymin <= point.y <= ymax)
+                    and (zmin <= point.z <= zmax)
+                ):
                     # Calculate indices
                     x_index = int((point.x - xmin) / cell_size_x)
                     y_index = int((point.y - ymin) / cell_size_y)
                     z_index = int((point.z - zmin) / cell_size_z)
 
                     # Ensure indices are within bounds
-                    if 0 <= x_index < x_cells and 0 <= y_index < y_cells and 0 <= z_index < z_cells:
+                    if (
+                        0 <= x_index < x_cells
+                        and 0 <= y_index < y_cells
+                        and 0 <= z_index < z_cells
+                    ):
                         density_grid[z_index, y_index, x_index] += 1
 
         # Create a uniform grid-based GeoDataFrame
@@ -1403,25 +1714,49 @@ class Processing:
                     z_coord = zmin + (z_idx + 0.5) * cell_size_z
 
                     # Append geometry and density
-                    points.append(shapely.geometry.Point(x_coord, y_coord, z_coord))
+                    points.append(
+                        shapely.geometry.Point(x_coord, y_coord, z_coord)
+                    )
                     densities.append(density_grid[z_idx, y_idx, x_idx])
 
         # Create the GeoDataFrame
-        density_gdf = gpd.GeoDataFrame({'geometry': points, 'density': densities})
+        density_gdf = gpd.GeoDataFrame(
+            {"geometry": points, "density": densities}
+        )
         density_gdf = density_gdf.set_crs(gdf.crs)
 
         # Update the pfa dictionary with the new layer
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = density_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'density'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = f'density per {cell_size_x}x{cell_size_y}x{cell_size_z} m^3'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = density_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "density"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = f"density per {cell_size_x}x{cell_size_y}x{cell_size_z} m^3"
 
         return pfa
 
     @staticmethod
-    def point_density_3d(pfa, criteria, component, layer, extent, cell_size_x, cell_size_y, cell_size_z, nx, ny, nz):
+    def point_density_3d(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        cell_size_x,
+        cell_size_y,
+        cell_size_z,
+        nx,
+        ny,
+        nz,
+    ):
         """Project a lower-resolution density model onto a higher-resolution block model."""
         # Extract GeoDataFrame from pfa dictionary
-        gdf = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
 
         # Define the extent
         xmin, ymin, zmin, xmax, ymax, zmax = extent
@@ -1445,14 +1780,22 @@ class Processing:
 
             for point in points:
                 # Check if the point is within the extent
-                if (xmin <= point.x <= xmax) and (ymin <= point.y <= ymax) and (zmin <= point.z <= zmax):
+                if (
+                    (xmin <= point.x <= xmax)
+                    and (ymin <= point.y <= ymax)
+                    and (zmin <= point.z <= zmax)
+                ):
                     # Calculate indices for the lower-resolution grid
                     x_index = int((point.x - xmin) / cell_size_x)
                     y_index = int((point.y - ymin) / cell_size_y)
                     z_index = int((point.z - zmin) / cell_size_z)
 
                     # Ensure indices are within bounds
-                    if 0 <= x_index < x_cells and 0 <= y_index < y_cells and 0 <= z_index < z_cells:
+                    if (
+                        0 <= x_index < x_cells
+                        and 0 <= y_index < y_cells
+                        and 0 <= z_index < z_cells
+                    ):
                         density_grid[z_index, y_index, x_index] += 1
 
         # Initialize higher-resolution grid
@@ -1479,24 +1822,41 @@ class Processing:
                     z_idx_lr = int((z_coord - zmin) / cell_size_z)
 
                     # Assign density from lower-resolution cell if within bounds
-                    if 0 <= x_idx_lr < x_cells and 0 <= y_idx_lr < y_cells and 0 <= z_idx_lr < z_cells:
+                    if (
+                        0 <= x_idx_lr < x_cells
+                        and 0 <= y_idx_lr < y_cells
+                        and 0 <= z_idx_lr < z_cells
+                    ):
                         density = density_grid[z_idx_lr, y_idx_lr, x_idx_lr]
                     else:
                         density = 0  # Assign zero if outside bounds
 
-                    higher_resolution_densities[z_idx_hr, y_idx_hr, x_idx_hr] = density
-                    higher_resolution_points.append(shapely.geometry.Point(x_coord, y_coord, z_coord))
+                    higher_resolution_densities[
+                        z_idx_hr, y_idx_hr, x_idx_hr
+                    ] = density
+                    higher_resolution_points.append(
+                        shapely.geometry.Point(x_coord, y_coord, z_coord)
+                    )
 
         # Create the GeoDataFrame with the higher-resolution grid
         density_gdf = gpd.GeoDataFrame(
-            {'geometry': higher_resolution_points, 'density': higher_resolution_densities.flatten()}
+            {
+                "geometry": higher_resolution_points,
+                "density": higher_resolution_densities.flatten(),
+            }
         )
         density_gdf = density_gdf.set_crs(gdf.crs)
 
         # Update the pfa dictionary with the new layer
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['model'] = density_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'density'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = f'density per {cell_size_x}x{cell_size_y}x{cell_size_z} m^3'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = density_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "density"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = f"density per {cell_size_x}x{cell_size_y}x{cell_size_z} m^3"
 
         return pfa
 
@@ -1539,12 +1899,18 @@ class Processing:
         - The units of the data are updated to reflect the aggregation performed.
         """
         # Extract GeoDataFrame containing 3D data
-        gdf_3d = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data_col']
-        units = pfa['criteria'][criteria]['components'][component]['layers'][layer]['units']
+        gdf_3d = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        col = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data_col"]
+        units = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["units"]
         crs = gdf_3d.crs
         # Ensure the geometry column is of Point type
-        if not gdf_3d.geometry.geom_type.isin(['Point']).all():
+        if not gdf_3d.geometry.geom_type.isin(["Point"]).all():
             raise ValueError("Geometry column must contain Point geometries.")
 
         # Filter out empty geometries
@@ -1552,34 +1918,46 @@ class Processing:
 
         # Sort geometries by X, Y, Z, handling empty points gracefully
         gdf_3d = gdf_3d.sort_values(
-            by=['geometry'],
+            by=["geometry"],
             key=lambda col: col.apply(
-                lambda geom: (geom.x, geom.y, geom.z) if not geom.is_empty else (float('nan'), float('nan'), float('nan'))
-            )
+                lambda geom: (geom.x, geom.y, geom.z)
+                if not geom.is_empty
+                else (float("nan"), float("nan"), float("nan"))
+            ),
         ).reset_index(drop=True)
 
         # Step 1: Aggregate by unique (X, Y, Z) points
         gdf_3d = gdf_3d.groupby(
-            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y, geom.z)), as_index=False
-        ).agg({
-            'geometry': 'first',  # Keep the representative geometry
-            col: 'sum',  # Sum the data column for unique (X, Y, Z)
-        })
-        gdf_3d = gdf_3d.set_geometry('geometry')
+            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y, geom.z)),
+            as_index=False,
+        ).agg(
+            {
+                "geometry": "first",  # Keep the representative geometry
+                col: "sum",  # Sum the data column for unique (X, Y, Z)
+            }
+        )
+        gdf_3d = gdf_3d.set_geometry("geometry")
         gdf_3d.set_crs(crs, inplace=True)
         # Step 2: Collapse Z dimension to (X, Y)
         gdf_2d = gdf_3d.groupby(
-            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y)), as_index=False
-        ).agg({
-            'geometry': 'first',  # Keep the representative geometry
-            col: 'sum',  # Sum across Z for unique (X, Y)
-        })
-        gdf_2d = gdf_2d.set_geometry('geometry')
+            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y)),
+            as_index=False,
+        ).agg(
+            {
+                "geometry": "first",  # Keep the representative geometry
+                col: "sum",  # Sum across Z for unique (X, Y)
+            }
+        )
+        gdf_2d = gdf_2d.set_geometry("geometry")
         gdf_2d.set_crs(crs, inplace=True)
 
         # Update the pfa dictionary with the new layer
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['data'] = gdf_2d
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['units'] = 'summed '+units
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "data"
+        ] = gdf_2d
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "units"
+        ] = "summed " + units
         return pfa
 
     def extract_fault_traces_top(pfa, criteria, component, layer):
@@ -1604,34 +1982,50 @@ class Processing:
         - The resulting GeoDataFrame is 2D (ignoring Z-coordinates in the output geometries).
         """
         # Extract GeoDataFrame containing 3D data
-        gdf_3d = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        fault_id_col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['id_col']
+        gdf_3d = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        fault_id_col = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["id_col"]
 
         # Check if the geometry is 3D
         if not gdf_3d.geometry.apply(lambda geom: geom.has_z).all():
-            raise ValueError("All geometries in the GeoDataFrame must have Z-coordinates.")
+            raise ValueError(
+                "All geometries in the GeoDataFrame must have Z-coordinates."
+            )
         # Extract Z-coordinates as a separate column
-        gdf_3d['z'] = gdf_3d.geometry.apply(lambda geom: geom.z)
+        gdf_3d["z"] = gdf_3d.geometry.apply(lambda geom: geom.z)
 
-       # Extract the top trace for each fault
+        # Extract the top trace for each fault
         fault_traces = []
         for fault_id, group in gdf_3d.groupby(fault_id_col):
             # Sort by Z to get the topmost points
-            top_points = group.sort_values(by='z', ascending=False)
+            top_points = group.sort_values(by="z", ascending=False)
 
             # Create a LineString from the topmost points
-            trace = shapely.geometry.LineString([(point.geometry.x, point.geometry.y) for _, point in top_points.iterrows()])
+            trace = shapely.geometry.LineString(
+                [
+                    (point.geometry.x, point.geometry.y)
+                    for _, point in top_points.iterrows()
+                ]
+            )
 
-            fault_traces.append({'fault_id': fault_id, 'geometry': trace})
+            fault_traces.append({"fault_id": fault_id, "geometry": trace})
 
         # Create a new GeoDataFrame with the 2D fault traces
-        gdf_2d = gpd.GeoDataFrame(fault_traces, geometry='geometry', crs=gdf_3d.crs)
+        gdf_2d = gpd.GeoDataFrame(
+            fault_traces, geometry="geometry", crs=gdf_3d.crs
+        )
 
-
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['data'] = gdf_2d
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "data"
+        ] = gdf_2d
         return pfa
 
-    def extract_fault_traces_bottom(pfa, criteria, component, layer, min_z = None, tolerance = 1e6):
+    def extract_fault_traces_bottom(
+        pfa, criteria, component, layer, min_z=None, tolerance=1e6
+    ):
         """
         Extracts a 2D representation of faults by taking a slice at the bottom of the model.
 
@@ -1651,11 +2045,15 @@ class Processing:
             A GeoDataFrame with LineString geometries representing the bottom traces of each fault.
         """
         # Extract GeoDataFrame containing 3D data
-        gdf_3d = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        fault_id_col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['id_col']
+        gdf_3d = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        fault_id_col = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["id_col"]
 
         # Ensure the geometry column contains 3D Points
-        if not all(gdf_3d.geometry.geom_type == 'Point'):
+        if not all(gdf_3d.geometry.geom_type == "Point"):
             raise ValueError("All geometries must be Point geometries.")
         if not all(gdf_3d.geometry.apply(lambda geom: geom.has_z)):
             raise ValueError("All geometries must be 3D (with Z-coordinates).")
@@ -1666,8 +2064,11 @@ class Processing:
             print(min_z)
 
         # Filter points at exactly min_z (or within a small tolerance)
-        bottom_points = gdf_3d[gdf_3d.geometry.apply(lambda geom: abs(geom.z - min_z) <= tolerance)]
-
+        bottom_points = gdf_3d[
+            gdf_3d.geometry.apply(
+                lambda geom: abs(geom.z - min_z) <= tolerance
+            )
+        ]
 
         # Extract fault traces (LineStrings) for each unique fault ID
         fault_traces = []
@@ -1675,16 +2076,28 @@ class Processing:
             # Ensure there are enough points to create a LineString
             if len(group) > 1:
                 # Sort points by X and Y for proper LineString creation
-                group = group.sort_values(by=['geometry'], key=lambda col: col.apply(lambda geom: (geom.x, geom.y)))
-                trace = shapely.geometry.LineString(group.geometry.apply(lambda geom: (geom.x, geom.y, geom.z)).tolist())
-                fault_traces.append({'fault_id': fault_id, 'geometry': trace})
+                group = group.sort_values(
+                    by=["geometry"],
+                    key=lambda col: col.apply(lambda geom: (geom.x, geom.y)),
+                )
+                trace = shapely.geometry.LineString(
+                    group.geometry.apply(
+                        lambda geom: (geom.x, geom.y, geom.z)
+                    ).tolist()
+                )
+                fault_traces.append({"fault_id": fault_id, "geometry": trace})
 
         if not fault_traces:
-            raise ValueError("No valid fault traces found at the minimum Z value.")
+            raise ValueError(
+                "No valid fault traces found at the minimum Z value."
+            )
 
         # Create a GeoDataFrame from the fault traces
-        fault_traces_gdf = gpd.GeoDataFrame(fault_traces, geometry='geometry', crs=gdf_3d.crs)
+        fault_traces_gdf = gpd.GeoDataFrame(
+            fault_traces, geometry="geometry", crs=gdf_3d.crs
+        )
 
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['data'] = fault_traces_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "data"
+        ] = fault_traces_gdf
         return pfa
-

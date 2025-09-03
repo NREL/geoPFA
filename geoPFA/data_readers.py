@@ -305,7 +305,9 @@ class GeospatialDataReaders:
                 COMPONENT_DIR = data_dir / criteria / component
                 file_names = sorted(COMPONENT_DIR.iterdir())
                 csv_file_names = [
-                    x.name for x in file_names if x.name.endswith("_processed.csv")
+                    x.name
+                    for x in file_names
+                    if x.name.endswith("_processed.csv")
                 ]
                 for layer in pfa["criteria"][criteria]["components"][
                     component
