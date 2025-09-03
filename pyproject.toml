@@ -121,6 +121,7 @@ scipy = "==1.14.1"
 seaborn = "==0.13.2"
 shapely = ">=2.1.0,<3"
 pykrige = ">=1.7.2,<2"
+gdal = ">=3.10.2,<4"
 
 [tool.pixi.feature.doc.dependencies]
 sphinx = ">=8.2.3,<9"

@@ -3,6 +3,8 @@
 Set of interp_methods to process data from various formats into 2d images.
 """
 
+import warnings
+
 import geopandas as gpd
 import pandas as pd
 import scipy
@@ -11,102 +13,27 @@ import shapely
 from geoPFA.transformation import transform
 # from pygem import IDW 
 
-class Cleaners:
-    """Class of functions for use in processing data into 2D maps"""
+import geoPFA.processing
 
-    @staticmethod
-    def set_crs(pfa, target_crs=3857):
-        """Function to project all data layers to the same desired CRS. Used to get all 
-        data layers on the same CRS.
 
-        Parameters
-        ----------
-        pfa : dict
-            Config specifying criteria, components, and data layers' relationship to one another.
-            Includes data layers' associated GeoDataFrames to convert CRS.
-        target_crs : int
-            Nubmber associated with the desired CRS of resulting interpolation. Defaults
-            to 3857, which is WGS84.
+class Cleaners(geoPFA.processing.Cleaners):
+    """Alias for geoPFA.processing.Cleaners
 
-        Returns
-        -------
-        pfa : dict
-            Config specifying criteria, components, and data layers' relationship to one another.
-            Includes data layers' associated GeoDataFrames projected onto target_crs.
-        """
-        for criteria in pfa['criteria']:
-            for component in pfa['criteria'][criteria]['components']:
-                for layer in pfa['criteria'][criteria]['components'][component]['layers']:
-                    pfa['criteria'][criteria]['components'][component]['layers'][layer]['data'] \
-                        = pfa['criteria'][criteria]['components'][component]['layers'][layer]\
-                            ['data'].to_crs(target_crs)
-        return pfa
-    
-    @staticmethod
-    def filter(data, quantile=0.9):
-        """Filter out data values above a specified quantile by setting them to that quantile.
+    .. deprecated:: 0.1.0
+       :class:`~geoPFA.processing.Cleaners` instead.
+    """
 
-        Parameters
-        ----------
-        data : Pandas Series
-            Series of data values to filter
-        quantile : int
-            Number representing the quantile, which when exceeded, produces an outlier.
+    def __init__(self, *args, **kwargs):
+        """Initialize the Cleaners class"""
+        warnings.warn(
+            "The geopfa3d.processing.Cleaners class is deprecated"
+            " and will be removed in a future version."
+           " Please use the geoPFA.processing module instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
-        Returns
-        -------
-        data : Pandas Series
-            Filtered version of the input data, with values above specified quantile set to 
-            that quantile.
-        """
-        q = data.quantile(quantile)
-        data.loc[data>q] = q
-        return data
-
-    @staticmethod
-    def filter_series(series, quantile=0.9):
-        """Filter out data values above a specified quantile by setting them to that quantile.
-
-        Parameters
-        ----------
-        series : Pandas Series
-            Series of data values to filter.
-        quantile : float
-            Number representing the quantile, which when exceeded, produces an outlier.
-
-        Returns
-        -------
-        series : Pandas Series
-            Filtered version of the input data, with values above the specified quantile set to 
-            that quantile.
-        """
-        q = series.quantile(quantile)
-        series.loc[series > q] = q
-        return series
-
-    @staticmethod
-    def filter_geodataframe(gdf, column, quantile=0.9):
-        """Apply the filter function to specified columns in a GeoDataFrame.
-
-        Parameters
-        ----------
-        gdf : GeoDataFrame
-            GeoDataFrame containing the data to filter.
-        column : list of str
-            Column name to apply the filter to.
-        quantile : float
-            Number representing the quantile, which when exceeded, produces an outlier.
-
-        Returns
-        -------
-        gdf_filtered : GeoDataFrame
-            GeoDataFrame with the specified columns filtered.
-        """
-        if column in gdf.columns:
-            gdf[column] = Cleaners.filter_series(gdf[column], quantile)
-        else:
-            print(f"Column '{column}' could not be filtered because it is not in the dataframe.")
-        return gdf
 
     @staticmethod
     def get_extent(gdf: gpd.GeoDataFrame):
@@ -165,137 +92,25 @@ class Cleaners:
         gdf_clipped = gdf.clip(bbox)
         return gdf_clipped
 
-class Exclusions:
-    """Class of functions to handle exclusion areas in a PFA area"""
-    @staticmethod
-    def mask_exclusion_areas(gdf_points, gdf_exclusion_areas, value_col='value', set_to=0):
-        """
-        Mask points within exclusion areas by setting their values to zero.
 
-        Parameters
-        ----------
-        gdf_points : GeoDataFrame
-            GeoDataFrame containing point geometries and values.
-        gdf_exclusion_areas : GeoDataFrame
-            GeoDataFrame containing polygon geometries representing exclusion areas.
-        value_col : str, optional
-            The column name in gdf_points that contains the values to be masked, by default 'value'.
+class Exclusions(geoPFA.processing.Exclusions):
+    """Alias for geoPFA.processing.Exclusions
 
-        Returns
-        -------
-        GeoDataFrame
-            Updated GeoDataFrame with points within exclusion areas masked to zero.
-        """
-        # Ensure both GeoDataFrames have the same CRS
-        if gdf_points.crs != gdf_exclusion_areas.crs:
-            gdf_exclusion_areas = gdf_exclusion_areas.to_crs(gdf_points.crs)
-        
-        # Perform a spatial join to find points within exclusion areas
-        joined = gpd.sjoin(gdf_points, gdf_exclusion_areas, how="left", predicate="within")
-        
-        # Mask points within exclusion areas
-        gdf_points.loc[~joined.index_right.isna(), value_col] = set_to
+    .. deprecated:: 0.1.0
+       :class:`~geoPFA.processing.Exclusions` instead.
+    """
 
-        return gdf_points
+    def __init__(self, *args, **kwargs):
+        """Initialize the Exclusions class"""
+        warnings.warn(
+            "The geopfa3d.processing.Exclusions class is deprecated"
+            " and will be removed in a future version."
+           " Please use the geoPFA.processing module instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
-    @staticmethod
-    def add_exclusions(pfa, pr_label='pr'):
-        """
-        Masks exclusion areas by setting probability or favorability values to a specified value (e.g., zero)
-        within those areas in the provided point data.
-
-        This function iterates through the exclusion components in the provided `pfa` object and updates 
-        the probability/favorability (`pr`) values by applying exclusion masks. The exclusion areas are 
-        defined by geometries stored in the `pfa['exclusions']` dictionary, and the function sets the 
-        `pr_excl` attribute in `pfa` to store the modified probability values.
-
-        Parameters:
-        ----------
-        pfa : dict
-            A dictionary containing the exclusion components and point data, including:
-            - 'exclusions': Contains the exclusion areas and the value to which `pr` should be set within 
-            these areas.
-            - pr_label : str, optional
-            The label of the probability/favorability column (default is 'pr').
-            
-        pr_label : str, optional
-            The label of the probability or favorability data in the `pfa` dictionary to be updated. 
-            Defaults to 'pr'.
-
-        Returns:
-        -------
-        dict
-            The updated `pfa` dictionary, where `pfa['pr_excl']` contains the probability/favorability 
-            values after exclusion masks have been applied.
-
-        Notes:
-        ------
-        - The exclusion areas are applied sequentially, with each subsequent exclusion potentially 
-        modifying the previously excluded points.
-        - The exclusion areas are stored in shapefiles within the `pfa['exclusions']` structure, 
-        and each area is associated with a `set_to` value indicating what the probability/favorability 
-        should be set to inside the exclusion area.
-        """
-
-        c=0
-        for exclusion_component in pfa['exclusions']['components']:
-            for layer in pfa['exclusions']['components'][exclusion_component]['layers']:
-                set_to = pfa['exclusions']['components'][exclusion_component]['set_to']
-                shp = pfa['exclusions']['components'][exclusion_component]['layers'][layer]['map']
-                value_col = 'favorability'
-                if c == 0:
-                    gdf_points = pfa[pr_label].copy()
-                else:
-                    gdf_points = pfa['pr_excl']
-                
-                pfa['pr_excl'] = Exclusions.mask_exclusion_areas(gdf_points=gdf_points, 
-                                                                gdf_exclusion_areas=shp, 
-                                                                value_col=value_col, set_to=set_to)
-                c+=1
-        return pfa
-    
-    @staticmethod
-    def buffer_distance (gdf_points, gdf_exclusion_areas, buffer_distance, value_col='value'):
-        """
-        Mask points within exclusion areas (defined by buffers around points) by setting their values to zero.
-
-        Parameters
-        ----------
-        gdf_points : GeoDataFrame
-            GeoDataFrame containing point geometries and values.
-        gdf_exclusion_areas : GeoDataFrame
-            GeoDataFrame containing point geometries representing exclusion areas.
-        buffer_distance : float
-            The distance to buffer around exclusion points.
-        value_col : str, optional
-            The column name in gdf_points that contains the values to be masked, by default 'value'.
-
-        Returns
-        -------
-        GeoDataFrame
-            Updated GeoDataFrame with points within exclusion areas masked to zero.
-        """
-        # Ensure both GeoDataFrames have the same CRS
-        if gdf_points.crs != gdf_exclusion_areas.crs:
-            gdf_exclusion_areas = gdf_exclusion_areas.to_crs(gdf_points.crs)
-        
-        # Create buffers around exclusion points
-        gdf_exclusion_buffers = gdf_exclusion_areas.copy()
-        gdf_exclusion_buffers['geometry'] = gdf_exclusion_areas.buffer(buffer_distance)
-        
-        # Perform a spatial join to find points within exclusion buffers
-        joined = gpd.sjoin(gdf_points, gdf_exclusion_buffers, how="left", predicate="within")
-        
-        # Ensure no duplicate indices in the joined DataFrame
-        joined = joined[~joined.index.duplicated(keep='first')]
-        
-        # Create a boolean index with the correct length
-        is_within = joined.index_right.notna().reindex(gdf_points.index, fill_value=False)
-        
-        # Mask points within exclusion buffers
-        gdf_points.loc[is_within, value_col] = 0
-
-        return gdf_points
 
 class Processing:
     """Class of functions for use in processing data into 2D maps"""
@@ -397,149 +212,8 @@ class Processing:
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'value_interpolated'
         pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = pfa['criteria'][criteria]['components'][component]['layers'][layer]['units']
         return pfa
-    
-    @staticmethod
-    def polygons_to_points(pfa, criteria, component, layer, extent, nx, ny):
-        """Calculate aggregated polygon values (sum or average) within a specified grid.
 
-        Parameters
-        ----------
-        pfa : dict
-            Configuration dictionary specifying relationships between criteria, components,
-            and data layers.
-        criteria : str
-            Criteria associated with Polygon data.
-        component : str 
-            Component associated with Polygon data.
-        layer : str
-            Layer associated with Polygon data.
-        extent : list
-            List of length 4 containing the extent [x_min, y_min, x_max, y_max].
-        nx : int
-            Number of grid cells in the x direction.
-        ny : int
-            Number of grid cells in the y direction.
 
-        Returns
-        -------
-        pfa : dict
-            Updated pfa config which includes the aggregated polygon values as a point map.
-        """
-        # Extract GeoDataFrame containing polygons
-        gdf_polygons = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data_col']
-
-        # Define the extent
-        x_min, y_min, x_max, y_max = extent
-
-        # Calculate cell size from nx and ny
-        cell_size_x = (x_max - x_min) / nx
-        cell_size_y = (y_max - y_min) / ny
-
-        # Create a grid over the specified extent
-        grid_cells = []
-        for i in range(nx):
-            for j in range(ny):
-                x_start = x_min + i * cell_size_x
-                y_start = y_min + j * cell_size_y
-                grid_cell = shapely.geometry.box(x_start, y_start, x_start + cell_size_x, y_start + cell_size_y)
-                grid_cells.append(grid_cell)
-        
-        # Create GeoDataFrame from grid cells
-        grid_gdf = gpd.GeoDataFrame(geometry=grid_cells, crs=gdf_polygons.crs)
-
-        # Initialize columns to store the aggregated values
-        grid_gdf['sum'] = 0.0
-        grid_gdf['count'] = 0
-
-        # Use spatial indexing to speed up the intersection checks
-        sindex = gdf_polygons.sindex
-
-        # Iterate over each grid cell to calculate the aggregated values
-        for grid_idx, grid_cell in grid_gdf.iterrows():
-            possible_matches_index = list(sindex.intersection(grid_cell.geometry.bounds))
-            possible_matches = gdf_polygons.iloc[possible_matches_index]
-
-            for _, polygon in possible_matches.iterrows():
-                poly = polygon.geometry
-                value = polygon[col]
-                if poly.intersects(grid_cell.geometry):
-                    intersection = poly.intersection(grid_cell.geometry)
-                    intersection_area = intersection.area
-                    grid_gdf.at[grid_idx, 'sum'] += value * intersection_area
-                    grid_gdf.at[grid_idx, 'count'] += intersection_area
-
-        # Calculate the center point of each grid cell
-        points = []
-        for _, row in grid_gdf.iterrows():
-            centroid = row.geometry.centroid
-            if row['count'] > 0:
-                average_value = row['sum'] / row['count']
-            else:
-                average_value = 0
-            points.append((centroid, average_value))
-
-        # Create a GeoDataFrame with point representation
-        point_geometries = [shapely.geometry.Point(xy[0].x, xy[0].y) for xy in points]
-        values = [xy[1] for xy in points]
-
-        point_gdf = gpd.GeoDataFrame({'geometry': point_geometries, 'value': values}, crs=gdf_polygons.crs)
-
-        # Update the pfa dictionary with the new point representation map
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = point_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'value'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'aggregated value'
-
-        return pfa
-    
-    # Define a helper function to classify each point
-    @staticmethod
-    def classify_point(args):
-        """
-        Classifies a point based on its location relative to a series of polygons and their corresponding buffers.
-
-        This function checks if a point is inside a polygon or within the buffer surrounding the polygon.
-        - If the point is inside the polygon, it returns the `polygon_value`.
-        - If the point is not inside the polygon but is within the buffer area, it returns the `buffer_value`.
-        - If the point is outside both the polygon and buffer, it returns a default value of 1.0.
-
-        Parameters:
-        ----------
-        args : tuple
-            A tuple containing the following elements:
-            - point : shapely.geometry.Point
-                The point to be classified.
-            - polygons : list of shapely.geometry.Polygon
-                A list of polygons to check for point containment.
-            - buffers : list of shapely.geometry.Polygon
-                A list of buffer polygons corresponding to each polygon in `polygons`.
-            - polygon_value : float
-                The value to return if the point is inside a polygon.
-            - buffer_value : float
-                The value to return if the point is inside a buffer but outside the polygon.
-        
-        Returns:
-        -------
-        float
-            The classification value based on the point's location:
-            - `polygon_value` if the point is inside a polygon.
-            - `buffer_value` if the point is inside a buffer but outside the polygon.
-            - 1.0 if the point is outside both the polygon and buffer.
-
-        Notes:
-        ------
-        - The function assumes that the `polygons` and `buffers` lists are of the same length and that each buffer corresponds to the polygon at the same index.
-        - It stops and returns a value as soon as the point is classified within a polygon or buffer.
-        """
-
-        point, polygons, buffers, polygon_value, buffer_value = args
-        for polygon, buffer in zip(polygons, buffers):
-            if polygon.contains(point):  # Inside the polygon
-                return polygon_value
-            elif buffer.contains(point):  # Inside the buffer but outside the polygon
-                return buffer_value
-        return 1.0  # Outside both polygon and buffer
-    
     @staticmethod
     def mark_buffer_areas(pfa, criteria, component, layer, extent, nx, ny, buffer_distance, polygon_value, buffer_value, background_value):
         """
