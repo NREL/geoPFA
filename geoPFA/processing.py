@@ -1777,7 +1777,7 @@ class Processing:
         zs = np.linspace(zmin, zmax, nz)
         grid_xyz = np.array([(x, y, z) for z in zs for y in ys for x in xs])  # (n_grid, 3)
 
-        # distances & decays 
+        # distances & decays
         pt_xyz = np.array([(p.x, p.y, p.z) for p in pts])
         dmat = scipy.spatial.distance.cdist(grid_xyz, pt_xyz)               # (n_grid, n_pts)
         decays = np.exp(-dmat / alpha)
