@@ -14,8 +14,7 @@ exposure.
 The framework is fully customizable, enabling users to define criteria,
 components, and indicators for any geothermal resource type—from
 low-temperature and conventional hydrothermal to superhot systems—and to extend
-the methodology to other subsurface applications such as geologic hydrogen
-exploration and critical mineral prospecting. geoPFA supports multiple data
+the methodology to other subsurface applications if desired. geoPFA supports multiple data
 processing approaches, including interpolation, density mapping, distance-based
 scoring, extrapolation, and thermal modeling, while allowing integration of
 expert-derived weightings or analytical hierarchy methods. 
@@ -27,8 +26,9 @@ conditions and guided scenario-based development strategies (Taverna et al.,
 with greater emphasis on surface constraints (Davalos-Elizondo et al., 2024;
 in work). By making advanced exploration workflows reproducible, transparent,
 and openly accessible, geoPFA enables research teams, developers, and agencies
-to make better-informed decisions, reduce costly drilling failures, and
-accelerate responsible development of subsurface resources worldwide.
+to make better-informed decisions through reducing time required for developing 
+workflows, allowing more time to be spent on feature engineering and interpretation 
+of results.
 
 # NOTICE
 
