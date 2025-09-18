@@ -6,7 +6,7 @@ requires = [
 build-backend = 'setuptools.build_meta'
 
 [project]
-name = "geoPFA"
+name = "NREL-geoPFA"
 dynamic = ["version"]
 description = "Geothermal Play Fairway Analysis"
 readme = "README.md"
@@ -109,7 +109,7 @@ doc = { features = ["doc"], solve-group = "default" }
 test = { features = ["test"], solve-group = "default" }
 
 [tool.pixi.pypi-dependencies]
-geoPFA = { path = ".", editable = true }
+NREL-geoPFA = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
 contextily = "==1.6.2"
