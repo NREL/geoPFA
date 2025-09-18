@@ -1311,7 +1311,7 @@ class Processing:
         nx: int, ny: int, nz: int
     ):
         """
-        Compute a 3D distance field to the 3D Polygon geometries whose vertices have 
+        Compute a 3D distance field to the 3D Polygon geometries whose vertices have
         z-coordinates.
 
         For each horizontal slice:
