@@ -16,6 +16,7 @@ from pykrige.ok3d import OrdinaryKriging3D
 from scipy.interpolate import griddata
 from osgeo import osr
 from geoPFA.transformation import transform
+from itertools import starmap
 
 
 class Cleaners:
@@ -310,9 +311,9 @@ class Cleaners:
             if isinstance(geom, Point):
                 z = geom.z if geom.has_z else 0
                 if (
-                    xmin <= geom.x <= xmax and
-                    ymin <= geom.y <= ymax and
-                    zmin <= z <= zmax
+                    xmin <= geom.x <= xmax
+                    and ymin <= geom.y <= ymax
+                    and zmin <= z <= zmax
                 ):
                     clipped_geometries.append(geom)
                     indices.append(idx)
@@ -323,10 +324,10 @@ class Cleaners:
                     xmin_geom, ymin_geom, xmax_geom, ymax_geom = geom.bounds
 
                     inside_xy = (
-                        xmin_geom >= xmin and
-                        xmax_geom <= xmax and
-                        ymin_geom >= ymin and
-                        ymax_geom <= ymax
+                        xmin_geom >= xmin
+                        and xmax_geom <= xmax
+                        and ymin_geom >= ymin
+                        and ymax_geom <= ymax
                     )
                 except:
                     inside_xy = False
@@ -344,7 +345,9 @@ class Cleaners:
                         try:
                             for part in geom.geoms:
                                 try:
-                                    zs.extend([c[2] for c in part.exterior.coords])
+                                    zs.extend(
+                                        [c[2] for c in part.exterior.coords]
+                                    )
                                 except AttributeError:
                                     zs.extend([c[2] for c in part.coords])
                         except AttributeError:
@@ -1037,13 +1040,14 @@ class Processing:
 
     @staticmethod
     def extrude_2d_to_3d(
-        pfa, *,
+        pfa,
+        *,
         criteria: str,
         component: str,
         layer: str,
         z_min: float,
         z_max: float,
-        nz: int
+        nz: int,
     ):
         """
         Extrude 2D geometries in a layer into 3D solid geometries between specified vertical bounds.
@@ -1079,52 +1083,60 @@ class Processing:
         pfa : dict
             Updated PFA dictionary with extruded geometries.
         """
-        layer_dict = pfa['criteria'][criteria]['components'][component]['layers'][layer]
-        gdf2 = layer_dict['data']
+        layer_dict = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]
+        gdf2 = layer_dict["data"]
         # backup
-        layer_dict['old_data'] = gdf2.copy()
+        layer_dict["old_data"] = gdf2.copy()
 
         geoms3 = []
         for geom in gdf2.geometry:
             if geom.is_empty:
                 continue
-            if geom.geom_type in {"LineString","MultiLineString"}:
+            if geom.geom_type in {"LineString", "MultiLineString"}:
                 # build one wall per Linestring part
-                parts = geom.geoms if geom.geom_type == "MultiLineString" else [geom]
+                parts = (
+                    geom.geoms
+                    if geom.geom_type == "MultiLineString"
+                    else [geom]
+                )
                 for line in parts:
                     coords = list(line.coords)
-                    top = [(x,y,z_max) for x,y in coords]
-                    bot = [(x,y,z_min) for x,y in reversed(coords)]
+                    top = [(x, y, z_max) for x, y in coords]
+                    bot = [(x, y, z_min) for x, y in reversed(coords)]
                     # side-wall ring
                     ring = top + bot
                     geoms3.append(Polygon(ring))
-            elif geom.geom_type in {"Polygon","MultiPolygon"}:
-                polys = geom.geoms if geom.geom_type == "MultiPolygon" else [geom]
+            elif geom.geom_type in {"Polygon", "MultiPolygon"}:
+                polys = (
+                    geom.geoms if geom.geom_type == "MultiPolygon" else [geom]
+                )
                 for poly in polys:
                     ext = list(poly.exterior.coords)
-                    top = [(x,y,z_max) for x,y in ext]
-                    bot = [(x,y,z_min) for x,y in reversed(ext)]
+                    top = [(x, y, z_max) for x, y in ext]
+                    bot = [(x, y, z_min) for x, y in reversed(ext)]
                     holes3 = []
                     for hole in poly.interiors:
                         hc = list(hole.coords)
-                        top_h = [(x,y,z_max) for x,y in hc]
-                        bot_h = [(x,y,z_min) for x,y in reversed(hc)]
-                        holes3.append(top_h+bot_h)
-                    geoms3.append(Polygon(top+bot, holes=holes3))
+                        top_h = [(x, y, z_max) for x, y in hc]
+                        bot_h = [(x, y, z_min) for x, y in reversed(hc)]
+                        holes3.append(top_h + bot_h)
+                    geoms3.append(Polygon(top + bot, holes=holes3))
             else:
                 # skip Points, etc.
                 continue
 
         gdf3 = gpd.GeoDataFrame(geometry=geoms3, crs=gdf2.crs)
         # mark how it was extruded
-        gdf3.attrs['extruded'] = True
-        gdf3.attrs['z_min'], gdf3.attrs['z_max'] = z_min, z_max
-        gdf3.attrs['nz'] = nz
+        gdf3.attrs["extruded"] = True
+        gdf3.attrs["z_min"], gdf3.attrs["z_max"] = z_min, z_max
+        gdf3.attrs["nz"] = nz
 
         # replace
-        layer_dict['data'] = gdf3
-        layer_dict['data_col'] = 'None'
-        layer_dict['units'] = ''
+        layer_dict["data"] = gdf3
+        layer_dict["data_col"] = "None"
+        layer_dict["units"] = ""
 
         return pfa
 
@@ -1279,7 +1291,7 @@ class Processing:
         shapely geometry or None
             2D Polygon or LineString footprint at elevation z, or None if outside range.
         """
-        if not hasattr(geom3d, 'exterior'):
+        if not hasattr(geom3d, "exterior"):
             return None
         coords3 = list(geom3d.exterior.coords)
         zs = [c[2] for c in coords3]
@@ -1295,22 +1307,25 @@ class Processing:
             fp = LineString(xy)
 
         # convert zero-area or invalid polygons to boundary
-        if fp.geom_type == 'Polygon' and (fp.area == 0 or not fp.is_valid):
+        if fp.geom_type == "Polygon" and (fp.area == 0 or not fp.is_valid):
             fp = fp.boundary
 
         return fp
 
     @staticmethod
     def distance_from_3d_solids(
-        pfa, *,
+        pfa,
+        *,
         criteria: str,
         component: str,
         layer: str,
         extent: tuple,
-        nx: int, ny: int, nz: int
+        nx: int,
+        ny: int,
+        nz: int,
     ):
         """
-        Compute a 3D distance field to the 3D Polygon geometries whose vertices have 
+        Compute a 3D distance field to the 3D Polygon geometries whose vertices have
         z-coordinates.
 
         For each horizontal slice:
@@ -1346,8 +1361,10 @@ class Processing:
         pfa : dict
             Updated PFA dictionary with distance model.
         """
-        layer_dict = pfa['criteria'][criteria]['components'][component]['layers'][layer]
-        gdf3 = layer_dict['data']
+        layer_dict = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]
+        gdf3 = layer_dict["data"]
 
         xmin, ymin, zmin, xmax, ymax, zmax = extent
         xs = np.linspace(xmin, xmax, nx)
@@ -1392,11 +1409,13 @@ class Processing:
                     all_pts.append(Point(xs[ix], ys[iy], zs[iz]))
                     all_d.append(D[iz, iy, ix])
 
-        gdf_out = gpd.GeoDataFrame({'distance': all_d}, geometry=all_pts, crs=gdf3.crs)
+        gdf_out = gpd.GeoDataFrame(
+            {"distance": all_d}, geometry=all_pts, crs=gdf3.crs
+        )
 
-        layer_dict['model'] = gdf_out
-        layer_dict['map_data_col'] = 'distance'
-        layer_dict['map_units'] = 'm'
+        layer_dict["model"] = gdf_out
+        layer_dict["map_data_col"] = "distance"
+        layer_dict["map_units"] = "m"
         return pfa
 
     @staticmethod
@@ -1655,8 +1674,14 @@ class Processing:
 
     @staticmethod
     def weighted_distance_from_points_3d(
-        pfa, criteria, component, layer,
-        extent, nx, ny, nz,
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        nz,
         alpha=1000.0,
         transform_method="none",
         weight_points=True,
@@ -1734,6 +1759,7 @@ class Processing:
         pfa : dict
             Updated PFA dictionary with weighted influence model.
         """
+
         # helper
         def normalize(vals, lo=1.0, hi=5.0):
             a = vals.astype(float)
@@ -1746,17 +1772,22 @@ class Processing:
             a[mask] = (a[mask] - vmin) / (vmax - vmin) * (hi - lo) + lo
             return a
 
-        layer_dict = pfa['criteria'][criteria]['components'][component]['layers'][layer]
-        gdf_pts = layer_dict['data']
-        data_col = layer_dict.get('data_col')
+        layer_dict = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]
+        gdf_pts = layer_dict["data"]
+        data_col = layer_dict.get("data_col")
 
         # collect points and values
         pts, vals = [], []
-        for geom, val in zip(gdf_pts.geometry, gdf_pts[data_col] if data_col else np.ones(len(gdf_pts))):
-            if geom.geom_type == 'Point':
+        for geom, val in zip(
+            gdf_pts.geometry,
+            gdf_pts[data_col] if data_col else np.ones(len(gdf_pts)),
+        ):
+            if geom.geom_type == "Point":
                 pts.append(geom)
                 vals.append(val if data_col else 1.0)
-            elif geom.geom_type == 'MultiPoint':
+            elif geom.geom_type == "MultiPoint":
                 for sub in geom.geoms:
                     pts.append(sub)
                     vals.append(val if data_col else 1.0)
@@ -1766,19 +1797,29 @@ class Processing:
             return pfa
 
         arr_vals = np.nan_to_num(np.asarray(vals, dtype=float))
-        arr_trans = transform(arr_vals.reshape(-1, 1), transform_method).ravel()
-        weights = normalize(arr_trans, weight_min, weight_max) if weight_points else np.ones_like(arr_trans)
+        arr_trans = transform(
+            arr_vals.reshape(-1, 1), transform_method
+        ).ravel()
+        weights = (
+            normalize(arr_trans, weight_min, weight_max)
+            if weight_points
+            else np.ones_like(arr_trans)
+        )
 
         # build grid
         xmin, ymin, zmin, xmax, ymax, zmax = extent
         xs = np.linspace(xmin, xmax, nx)
         ys = np.linspace(ymin, ymax, ny)
         zs = np.linspace(zmin, zmax, nz)
-        grid_xyz = np.array([(x, y, z) for z in zs for y in ys for x in xs])  # (n_grid, 3)
+        grid_xyz = np.array(
+            [(x, y, z) for z in zs for y in ys for x in xs]
+        )  # (n_grid, 3)
 
-        # distances & decays 
+        # distances & decays
         pt_xyz = np.array([(p.x, p.y, p.z) for p in pts])
-        dmat = scipy.spatial.distance.cdist(grid_xyz, pt_xyz)               # (n_grid, n_pts)
+        dmat = scipy.spatial.distance.cdist(
+            grid_xyz, pt_xyz
+        )  # (n_grid, n_pts)
         decays = np.exp(-dmat / alpha)
 
         # aggregation modes
@@ -1790,22 +1831,26 @@ class Processing:
             if k_nearest is None:
                 raise ValueError("k_nearest must be set for mode='knearest'")
             idx = np.argpartition(dmat, k_nearest, axis=1)[:, :k_nearest]
-            rows = np.repeat(np.arange(dmat.shape[0])[:, None], k_nearest, axis=1)
+            rows = np.repeat(
+                np.arange(dmat.shape[0])[:, None], k_nearest, axis=1
+            )
             dk = dmat[rows, idx]
             wk = weights[idx]
             score = np.sum(np.exp(-dk / alpha) * wk, axis=1)
         else:
-            raise ValueError("mode must be one of ['mean','sum','max','knearest']")
+            raise ValueError(
+                "mode must be one of ['mean','sum','max','knearest']"
+            )
 
         # store results
         gdf_grid = gpd.GeoDataFrame(
-            geometry=[Point(x, y, z) for x, y, z in grid_xyz],
-            data={'weighted_point_score': score},
+            geometry=list(starmap(Point, grid_xyz)),
+            data={"weighted_point_score": score},
             crs=gdf_pts.crs,
         )
-        layer_dict['model'] = gdf_grid
-        layer_dict['map_data_col'] = 'weighted_point_score'
-        layer_dict['map_units'] = 'score (0-inf)'
+        layer_dict["model"] = gdf_grid
+        layer_dict["map_data_col"] = "weighted_point_score"
+        layer_dict["map_units"] = "score (0-inf)"
 
         return pfa
 
@@ -1818,7 +1863,7 @@ class Processing:
         extent,
         cell_size_x,
         cell_size_y,
-        cell_size_z
+        cell_size_z,
     ):
         """Compute point density on a 3D voxel grid.
 

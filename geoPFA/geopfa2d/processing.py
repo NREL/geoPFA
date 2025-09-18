@@ -11,7 +11,7 @@ import scipy
 import numpy as np
 import shapely
 from geoPFA.transformation import transform
-# from pygem import IDW 
+# from pygem import IDW
 
 import geoPFA.processing
 
@@ -28,12 +28,11 @@ class Cleaners(geoPFA.processing.Cleaners):
         warnings.warn(
             "The geopfa3d.processing.Cleaners class is deprecated"
             " and will be removed in a future version."
-           " Please use the geoPFA.processing module instead.",
+            " Please use the geoPFA.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
         super().__init__(*args, **kwargs)
-
 
     @staticmethod
     def get_extent(gdf: gpd.GeoDataFrame):
@@ -57,21 +56,23 @@ class Cleaners(geoPFA.processing.Cleaners):
         - If the geometry type is Point, the function uses the coordinates of the points.
         """
 
-        if gdf.geometry.iloc[0].geom_type == 'Point':
+        if gdf.geometry.iloc[0].geom_type == "Point":
             xmin = gdf.geometry.x.min()
             xmax = gdf.geometry.x.max()
             ymin = gdf.geometry.y.min()
             ymax = gdf.geometry.y.max()
-        elif gdf.geometry.iloc[0].geom_type == 'Polygon':
+        elif gdf.geometry.iloc[0].geom_type == "Polygon":
             xmin, ymin, xmax, ymax = gdf.total_bounds
         else:
-            raise TypeError("Unsupported geometry type. The GeoDataFrame should contain Points or Polygons.")
+            raise TypeError(
+                "Unsupported geometry type. The GeoDataFrame should contain Points or Polygons."
+            )
 
         extent = [xmin, ymin, xmax, ymax]
         return extent
-    
+
     @staticmethod
-    def set_extent(gdf,extent):
+    def set_extent(gdf, extent):
         """Clip a GeoPandas DataFrame to a specified extent.
 
         Parameters
@@ -105,7 +106,7 @@ class Exclusions(geoPFA.processing.Exclusions):
         warnings.warn(
             "The geopfa3d.processing.Exclusions class is deprecated"
             " and will be removed in a future version."
-           " Please use the geoPFA.processing module instead.",
+            " Please use the geoPFA.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -114,11 +115,11 @@ class Exclusions(geoPFA.processing.Exclusions):
 
 class Processing:
     """Class of functions for use in processing data into 2D maps"""
+
     @staticmethod
     def interpolate_points(
-        pfa,criteria,component,layer,interp_method,nx,ny,
-        extent=None): 
-        
+        pfa, criteria, component, layer, interp_method, nx, ny, extent=None
+    ):
         """Funtion to interpolate, or go from points to a 2D image.
 
         Parameters
@@ -128,7 +129,7 @@ class Processing:
             Includes data layers' associated GeoDataFrames.
         criteria : str
             Criteria associated with data to interpolate.
-        component : str 
+        component : str
             Component associated with data to interpolate.
         layer : str
             Layer associated with data to interpolate.
@@ -140,26 +141,32 @@ class Processing:
         ny : int
             Number of points in the y-direction
         extent : list
-            List of length 4 containing the extent (i.e., bounding box) of the gdf, 
+            List of length 4 containing the extent (i.e., bounding box) of the gdf,
             in this order: [x_min, y_min, x_max, y_max]
         power: int
-            Determines how the distance between data points affects the interpolation result. 
-            *Specifically, it defines the rate at which the influence of a data point decreases 
+            Determines how the distance between data points affects the interpolation result.
+            *Specifically, it defines the rate at which the influence of a data point decreases
             as the distance from the interpolation location increases.
-            *Adjust power parameter accordingly to change how strongly the distance influences the 
+            *Adjust power parameter accordingly to change how strongly the distance influences the
             interpolation (default is 2).
 
 
         Returns
-        ------- 
+        -------
         pfa : dict
             Updated pfa config which includes interpolation
         """
-        gdf = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        data_col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data_col']
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        data_col = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data_col"]
 
-        if gdf.geometry.type.iloc[0] == 'Polygon':
-            print("Notice: interpolate_points() function recieved GeoDataFrame with geometry type 'Polygon.' Converting geometry to 'Point' geometry using centroids.")
+        if gdf.geometry.type.iloc[0] == "Polygon":
+            print(
+                "Notice: interpolate_points() function recieved GeoDataFrame with geometry type 'Polygon.' Converting geometry to 'Point' geometry using centroids."
+            )
             gdf.geometry = gdf.geometry.centroid
 
         # Extract coordinates and values from the GeoDataFrame
@@ -169,13 +176,15 @@ class Processing:
 
         # Define the grid for interpolation
         if extent is None:
-            x_min = min(x); x_max = max(x)
-            y_min = min(y); y_max = max(y)
+            x_min = min(x)
+            x_max = max(x)
+            y_min = min(y)
+            y_max = max(y)
         else:
             x_min, y_min, x_max, y_max = extent
         x_grid = np.linspace(x_min, x_max, nx)
         y_grid = np.linspace(y_min, y_max, ny)
-        xv,yv = np.meshgrid(x_grid, y_grid)
+        xv, yv = np.meshgrid(x_grid, y_grid)
 
         ## TODO: Properly implement IDW. The commented out code below does not work
         # Choose interpolation method
@@ -188,36 +197,57 @@ class Processing:
         #     grid = np.sum(weighted_values, axis=0) / np.sum(weights, axis=0)
         # pygem IDW option
         # if interp_method == 'idw':
-            # mesh_points = np.array([x.values, y.values, values.values])
-            # idw = IDW(power)
-            # idw.read_parameters('tests/test_datasets/parameters_idw_cube.prm')
-            # new_mesh_points = idw(mesh_points.T)
-            # grid = idw(xv.flatten(), yv.flatten()).reshape(nx, ny)
+        # mesh_points = np.array([x.values, y.values, values.values])
+        # idw = IDW(power)
+        # idw.read_parameters('tests/test_datasets/parameters_idw_cube.prm')
+        # new_mesh_points = idw(mesh_points.T)
+        # grid = idw(xv.flatten(), yv.flatten()).reshape(nx, ny)
         # else:
-            # Otherwise, default to scipy interpolation
+        # Otherwise, default to scipy interpolation
 
         # Clean out any rows with NaNs before interpolation
         valid = ~(x.isna() | y.isna() | values.isna())
         x, y, values = x[valid], y[valid], values[valid]
 
-        grid = scipy.interpolate.griddata((x, y), values, (xv, yv), method=interp_method)
+        grid = scipy.interpolate.griddata(
+            (x, y), values, (xv, yv), method=interp_method
+        )
 
         # Create a new GeoDataFrame with the interpolated values
         interpolated_gdf = gpd.GeoDataFrame(
-            {'value_interpolated': grid.flatten()},
+            {"value_interpolated": grid.flatten()},
             geometry=gpd.points_from_xy(xv.flatten(), yv.flatten()),
-            crs=gdf.crs
+            crs=gdf.crs,
         )
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = interpolated_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'value_interpolated'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = pfa['criteria'][criteria]['components'][component]['layers'][layer]['units']
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map"
+        ] = interpolated_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "value_interpolated"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["units"]
         return pfa
 
-
     @staticmethod
-    def mark_buffer_areas(pfa, criteria, component, layer, extent, nx, ny, buffer_distance, polygon_value, buffer_value, background_value):
+    def mark_buffer_areas(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        buffer_distance,
+        polygon_value,
+        buffer_value,
+        background_value,
+    ):
         """
-        Marks grid points within a spatial extent based on their location relative to polygons and buffer areas, 
+        Marks grid points within a spatial extent based on their location relative to polygons and buffer areas,
         using vectorized operations with GeoPandas for performance optimization.
 
         This function creates a grid of points within a given spatial extent and classifies each point as either:
@@ -257,20 +287,22 @@ class Processing:
         Returns:
         -------
         dict
-            The updated `pfa` dictionary, where the specified layer's grid points are classified based on their 
-            spatial relationship to the polygons and buffers. The classification is stored in the `map` attribute 
+            The updated `pfa` dictionary, where the specified layer's grid points are classified based on their
+            spatial relationship to the polygons and buffers. The classification is stored in the `map` attribute
             of the layer, with the 'classification' column representing the assigned values.
-        
+
         Notes:
         ------
-        - The function generates a grid of points within the provided extent using `numpy` and classifies the 
+        - The function generates a grid of points within the provided extent using `numpy` and classifies the
         points based on spatial relationships to the polygons and buffers.
-        - The polygon geometries and their buffers are extracted from the `pfa` dictionary and processed with 
+        - The polygon geometries and their buffers are extracted from the `pfa` dictionary and processed with
         vectorized GeoPandas operations for performance optimization.
         - The results are stored back in the `pfa` dictionary, with the classifications as part of the layer's map data.
         """
 
-        gdf_polygons = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Create a grid of points within the spatial extent
         x_min, y_min, x_max, y_max = extent
@@ -280,31 +312,53 @@ class Processing:
         points = np.c_[xv.ravel(), yv.ravel()]
 
         # Create a GeoDataFrame from the generated points
-        gdf_points = gpd.GeoDataFrame(geometry=[shapely.geometry.Point(p) for p in points], crs=gdf_polygons.crs)
+        gdf_points = gpd.GeoDataFrame(
+            geometry=[shapely.geometry.Point(p) for p in points],
+            crs=gdf_polygons.crs,
+        )
 
         # Create buffer areas around polygons
         buffers = gdf_polygons.buffer(buffer_distance)
 
         # Vectorized operations to classify points
-        gdf_points['inside_polygon'] = gdf_points.geometry.apply(lambda point: gdf_polygons.contains(point).any())
-        gdf_points['inside_buffer'] = gdf_points.geometry.apply(lambda point: buffers.contains(point).any())
+        gdf_points["inside_polygon"] = gdf_points.geometry.apply(
+            lambda point: gdf_polygons.contains(point).any()
+        )
+        gdf_points["inside_buffer"] = gdf_points.geometry.apply(
+            lambda point: buffers.contains(point).any()
+        )
 
         # Assign classifications based on the spatial relationship
-        gdf_points['classification'] = np.where(gdf_points['inside_polygon'], polygon_value,
-                                                np.where(gdf_points['inside_buffer'], buffer_value, background_value))
+        gdf_points["classification"] = np.where(
+            gdf_points["inside_polygon"],
+            polygon_value,
+            np.where(
+                gdf_points["inside_buffer"], buffer_value, background_value
+            ),
+        )
 
         # Drop the temporary columns
-        gdf_points = gdf_points.drop(columns=['inside_polygon', 'inside_buffer'])
+        gdf_points = gdf_points.drop(
+            columns=["inside_polygon", "inside_buffer"]
+        )
 
         # Update the pfa dictionary with the new map
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = gdf_points
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'classification'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = f'binary ({polygon_value}=polygon, {buffer_value}=buffer, 1=outside)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map"
+        ] = gdf_points
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "classification"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = f"binary ({polygon_value}=polygon, {buffer_value}=buffer, 1=outside)"
 
         return pfa
-    
+
     @staticmethod
-    def distance_from_polygons(pfa, criteria, component, layer, extent, nx, ny):
+    def distance_from_polygons(
+        pfa, criteria, component, layer, extent, nx, ny
+    ):
         """
         Calculate the true distance from a grid of points to a set of polygons,
         using Shapely’s .distance() method on the union of all polygons.
@@ -317,7 +371,7 @@ class Processing:
             and data layers.
         criteria : str
             Criteria associated with Polygon data to calculate distances from.
-        component : str 
+        component : str
             Component associated with Polygon data to calculate distances from.
         layer : str
             Layer associated with Polygon data to calculate distances from.
@@ -332,10 +386,12 @@ class Processing:
         -------
         pfa : dict
             Updated pfa config, with a new GeoDataFrame in
-            pfa['criteria'][criteria]['components'][component]['layers'][layer]['distance_map'] 
+            pfa['criteria'][criteria]['components'][component]['layers'][layer]['distance_map']
             that contains the grid points plus a 'distance' column.
         """
-        gdf_polygons = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Create a single geometry (union) from all polygons
         polygons_union = gdf_polygons.geometry.unary_union
@@ -344,7 +400,9 @@ class Processing:
         x_min, y_min, x_max, y_max = extent
         x_points = np.linspace(x_min, x_max, nx)
         y_points = np.linspace(y_min, y_max, ny)
-        points = [shapely.geometry.Point(x, y) for x in x_points for y in y_points]
+        points = [
+            shapely.geometry.Point(x, y) for x in x_points for y in y_points
+        ]
 
         # Convert that list of points to a GeoDataFrame
         grid_gdf = gpd.GeoDataFrame(geometry=points, crs=gdf_polygons.crs)
@@ -352,27 +410,33 @@ class Processing:
         # Compute distances and store in a new GeoDataFrame
         distances = [pt.distance(polygons_union) for pt in grid_gdf.geometry]
         distance_gdf = grid_gdf.copy()
-        distance_gdf['distance'] = distances
+        distance_gdf["distance"] = distances
 
         # Save the result in the pfa dictionary (under 'distance_map')
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['distance_map'] = distance_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "distance_map"
+        ] = distance_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (m)"
 
         return pfa
 
     @staticmethod
     def distance_from_lines(pfa, criteria, component, layer, extent, nx, ny):
         """
-        Function to calculate the minimum distance from each point in a grid 
-        to any LineString in the specified GeoDataFrame. The result is stored 
+        Function to calculate the minimum distance from each point in a grid
+        to any LineString in the specified GeoDataFrame. The result is stored
         in `pfa` as a new GeoDataFrame with a 'distance' column.
 
         Parameters
         ----------
         pfa : dict
             Data structure specifying criteria, components, and layers (with
-            associated GeoDataFrames). Must include a 'data' GeoDataFrame 
+            associated GeoDataFrames). Must include a 'data' GeoDataFrame
             containing LineString geometries.
         criteria : str
             Criteria name.
@@ -393,13 +457,17 @@ class Processing:
             Updated dictionary that now includes the distance map under:
             pfa['criteria'][criteria]['components'][component]['layers'][layer]['map']
         """
-        gdf_linestrings = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_linestrings = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Create a grid of points within the spatial extent
         x_min, y_min, x_max, y_max = extent
         x_points = np.linspace(x_min, x_max, nx)
         y_points = np.linspace(y_min, y_max, ny)
-        points = [shapely.geometry.Point(x, y) for x in x_points for y in y_points]
+        points = [
+            shapely.geometry.Point(x, y) for x in x_points for y in y_points
+        ]
 
         # Create GeoDataFrame of the grid points
         gdf_points = gpd.GeoDataFrame(geometry=points, crs=gdf_linestrings.crs)
@@ -412,11 +480,17 @@ class Processing:
 
         # Create a new GeoDataFrame with distances
         gdf_distances = gdf_points.copy()
-        gdf_distances['distance'] = distances
+        gdf_distances["distance"] = distances
 
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = gdf_distances
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map"
+        ] = gdf_distances
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (m)"
 
         return pfa
 
@@ -430,7 +504,7 @@ class Processing:
             nx (int): Number of grid cells in the x direction.
             ny (int): Number of grid cells in the y direction.
             crs: Coordinate reference system for the GeoDataFrame.
-        
+
         Returns:
             GeoDataFrame containing centroids of the grid cells.
         """
@@ -450,15 +524,15 @@ class Processing:
         gdf_points = gpd.GeoDataFrame(geometry=centroids, crs=crs)
 
         return gdf_points
-    
+
     @staticmethod
     def calculate_intersections(gdf_lines):
         """
         Calculate intersection points between line geometries in a GeoDataFrame.
 
-        This function takes a GeoDataFrame of lines (such as faults or other linear features) 
-        and calculates the intersection points between them. If two lines overlap (instead 
-        of intersecting at a single point), the midpoint of the overlapping segment is taken 
+        This function takes a GeoDataFrame of lines (such as faults or other linear features)
+        and calculates the intersection points between them. If two lines overlap (instead
+        of intersecting at a single point), the midpoint of the overlapping segment is taken
         as the intersection point.
 
         Parameters:
@@ -472,16 +546,16 @@ class Processing:
         gdf_intersections : geopandas.GeoDataFrame
             A GeoDataFrame containing the points where the input lines intersect.
             If lines overlap, the midpoint of the overlapping segment is included.
-            The returned GeoDataFrame will use the same CRS (coordinate reference system) 
+            The returned GeoDataFrame will use the same CRS (coordinate reference system)
             as the input GeoDataFrame.
         """
         intersections = []
         # Extract the geometries from the GeoDataFrame
-        lines = gdf_lines['geometry'].tolist()
-        
+        lines = gdf_lines["geometry"].tolist()
+
         # Get all unique pairs of lines to check for intersections
         for i, line1 in enumerate(lines):
-            for line2 in lines[i+1:]:
+            for line2 in lines[i + 1 :]:
                 if line1.intersects(line2):
                     # Find the intersection point (could be a Point or a LineString if overlapping)
                     intersection = line1.intersection(line2)
@@ -489,19 +563,23 @@ class Processing:
                         intersections.append(intersection)
                     elif isinstance(intersection, shapely.geometry.LineString):
                         # If lines overlap, get the mid-point of the overlapping segment
-                        midpoint = shapely.geometry.Point(intersection.centroid)
+                        midpoint = shapely.geometry.Point(
+                            intersection.centroid
+                        )
                         intersections.append(midpoint)
-        
+
         # Return a GeoDataFrame of intersection points
         return gpd.GeoDataFrame(geometry=intersections, crs=gdf_lines.crs)
 
     @staticmethod
-    def vectorized_distance_calculation(gdf_points, tree, intersection_tree=None):
-        """Calculates the nearest line and intersection distances for each point in a GeoDataFrame using vectorized operations 
+    def vectorized_distance_calculation(
+        gdf_points, tree, intersection_tree=None
+    ):
+        """Calculates the nearest line and intersection distances for each point in a GeoDataFrame using vectorized operations
         and spatial indexing with STRtree.
 
-        This function computes the shortest distance from each point in the `gdf_points` GeoDataFrame to the nearest line 
-        in the `tree` (a spatial index of line geometries). Optionally, it can also compute the nearest distance to intersections 
+        This function computes the shortest distance from each point in the `gdf_points` GeoDataFrame to the nearest line
+        in the `tree` (a spatial index of line geometries). Optionally, it can also compute the nearest distance to intersections
         (if an `intersection_tree` is provided).
 
         Parameters:
@@ -509,10 +587,10 @@ class Processing:
         gdf_points : GeoDataFrame
             A GeoDataFrame containing point geometries for which distances will be calculated.
         tree : STRtree
-            A spatial index (STRtree) containing line geometries. This allows for efficient querying of the nearest line 
-            for each point.        
+            A spatial index (STRtree) containing line geometries. This allows for efficient querying of the nearest line
+            for each point.
         intersection_tree : STRtree, optional
-            An optional spatial index (STRtree) containing intersection geometries. If provided, the function calculates 
+            An optional spatial index (STRtree) containing intersection geometries. If provided, the function calculates
             the nearest distance to intersections as well. If not provided, the intersection distances are set to infinity.
 
         Returns:
@@ -520,16 +598,16 @@ class Processing:
         tuple
             A tuple containing two pandas Series:
             - nearest_line_distances: The nearest distance from each point to the nearest line.
-            - nearest_intersection_distances: The nearest distance from each point to the nearest intersection (or infinity 
+            - nearest_intersection_distances: The nearest distance from each point to the nearest intersection (or infinity
             if no intersection tree is provided).
-        
+
         Notes:
         ------
-        - The function uses an inner helper `get_nearest_line_distance` to query the spatial index (`tree`) and calculate the 
+        - The function uses an inner helper `get_nearest_line_distance` to query the spatial index (`tree`) and calculate the
         distance between a point and its nearest line.
         - If no line is found for a point, the distance is set to infinity (`float('inf')`).
         - When an `intersection_tree` is provided, it computes the minimum distance between a point and the intersection geometries.
-        - The function returns `float('inf')` for intersection distances if no intersections are found or if the `intersection_tree` 
+        - The function returns `float('inf')` for intersection distances if no intersections are found or if the `intersection_tree`
         is not provided.
 
         """
@@ -540,39 +618,66 @@ class Processing:
             nearest_lines = tree.query(point)
             if nearest_lines:  # If lines are found
                 # Ensure nearest_lines are geometries, unpacking from STRtree structure if needed
-                nearest_line_geom = nearest_lines[0].geometry if hasattr(nearest_lines[0], 'geometry') else nearest_lines[0]
-                return point.distance(nearest_line_geom)  # Calculate distance between point and line
+                nearest_line_geom = (
+                    nearest_lines[0].geometry
+                    if hasattr(nearest_lines[0], "geometry")
+                    else nearest_lines[0]
+                )
+                return point.distance(
+                    nearest_line_geom
+                )  # Calculate distance between point and line
             else:
-                return float('inf')  # If no lines are found, return infinity
+                return float("inf")  # If no lines are found, return infinity
 
         # Calculate the nearest line distance for each point in the GeoDataFrame
-        nearest_line_distances = gdf_points.geometry.apply(get_nearest_line_distance)
+        nearest_line_distances = gdf_points.geometry.apply(
+            get_nearest_line_distance
+        )
 
         # Handle intersections similarly (if available)
         if intersection_tree:
-            nearest_intersection_distances = gdf_points.geometry.apply(lambda point: min(
-                [point.distance(geom) for geom in intersection_tree.query(point)], default=float('inf')))
+            nearest_intersection_distances = gdf_points.geometry.apply(
+                lambda point: min(
+                    [
+                        point.distance(geom)
+                        for geom in intersection_tree.query(point)
+                    ],
+                    default=float("inf"),
+                )
+            )
         else:
-            nearest_intersection_distances = pd.Series([float('inf')] * len(gdf_points))
+            nearest_intersection_distances = pd.Series(
+                [float("inf")] * len(gdf_points)
+            )
 
         return nearest_line_distances, nearest_intersection_distances
 
     @staticmethod
-    def distance_from_lines_with_intersections(pfa, criteria, component, layer, extent, nx, ny, weight_line=1.0, weight_intersection=0.5):
+    def distance_from_lines_with_intersections(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        weight_line=1.0,
+        weight_intersection=0.5,
+    ):
         """
         TODO: Get this to work!!!
-        Calculate the weighted distances from points to the nearest lines and intersections, 
+        Calculate the weighted distances from points to the nearest lines and intersections,
         and update the provided PFA (Potential Field Analysis) dictionary with the computed distance map.
 
-        This function creates a grid of points over a specified spatial extent, computes the distance 
-        from each point to the nearest line and nearest line intersection, and then combines the distances 
-        using specified weights. The result is stored in the 'pfa' dictionary under the specified criteria, 
+        This function creates a grid of points over a specified spatial extent, computes the distance
+        from each point to the nearest line and nearest line intersection, and then combines the distances
+        using specified weights. The result is stored in the 'pfa' dictionary under the specified criteria,
         component, and layer.
 
         Parameters:
         ----------
         pfa : dict
-            The PFA (Potential Field Analysis) dictionary that contains geospatial data for various criteria, 
+            The PFA (Potential Field Analysis) dictionary that contains geospatial data for various criteria,
             components, and layers.
         criteria : str
             The criteria key within the PFA dictionary to access the desired data.
@@ -590,14 +695,16 @@ class Processing:
             The weight assigned to the distance from the nearest line.
         weight_intersection : float, optional (default=0.3)
             The weight assigned to the distance from the nearest line intersection.
-        
+
         Returns:
         -------
         pfa : dict
             The updated PFA dictionary with a new distance map stored in the specified layer.
         """
         # Extract lines and intersections from the PFA
-        gdf_lines = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']  # Lines data
+        gdf_lines = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]  # Lines data
         gdf_intersections = Processing.calculate_intersections(gdf_lines)
 
         # Define the CRS (Coordinate Reference System) to match the lines
@@ -607,26 +714,43 @@ class Processing:
 
         # Build spatial index using STRtree for lines and intersections
         tree = shapely.strtree.STRtree(gdf_lines.geometry)  # STRtree for lines
-        intersection_tree = shapely.strtree.STRtree(gdf_intersections.geometry) if gdf_intersections is not None else None  # STRtree for intersections
+        intersection_tree = (
+            shapely.strtree.STRtree(gdf_intersections.geometry)
+            if gdf_intersections is not None
+            else None
+        )  # STRtree for intersections
 
         # Perform vectorized distance calculations for both lines and intersections
-        line_distances, intersection_distances = Processing.vectorized_distance_calculation(gdf_points, tree, intersection_tree)
+        line_distances, intersection_distances = (
+            Processing.vectorized_distance_calculation(
+                gdf_points, tree, intersection_tree
+            )
+        )
 
         # Combine the distances with weights (line and intersection distances)
-        combined_distances = weight_line * line_distances + weight_intersection * intersection_distances
+        combined_distances = (
+            weight_line * line_distances
+            + weight_intersection * intersection_distances
+        )
 
         # Assign combined distances to the points
-        gdf_points['distance'] = combined_distances
+        gdf_points["distance"] = combined_distances
 
         # Update the PFA dictionary with the calculated distances
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = gdf_points
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (weighted by line and intersection proximity)'
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map"
+        ] = gdf_points
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (weighted by line and intersection proximity)"
 
         return pfa
-    
+
     @staticmethod
-    def distance_from_points(pfa, criteria, component, layer, extent, nx, ny): 
+    def distance_from_points(pfa, criteria, component, layer, extent, nx, ny):
         """Function to calculate distance from Point objects.
 
         Parameters
@@ -637,7 +761,7 @@ class Processing:
             geometry to calculate distances from.
         criteria : str
             Criteria associated with Point data to calculate distances from.
-        component : str 
+        component : str
             Component associated with Point data to calculate distances from.
         layer : str
             Layer associated with Point data to calculate distances from.
@@ -655,20 +779,26 @@ class Processing:
         pfa : dict
             Updated pfa config which includes interpolation
         """
-        gdf_points = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_points = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Ensure we have only simple Point geometries
         points = []
         for geom in gdf_points.geometry:
-            if geom.geom_type == 'Point':
+            if geom.geom_type == "Point":
                 points.append(geom)
-            elif geom.geom_type == 'MultiPoint':
+            elif geom.geom_type == "MultiPoint":
                 points.extend(geom.geoms)
             else:
-                raise ValueError(f"Unsupported geometry type: {geom.geom_type}")
+                raise ValueError(
+                    f"Unsupported geometry type: {geom.geom_type}"
+                )
 
         if not points:
-            raise ValueError("No valid Point geometries found in the GeoDataFrame")
+            raise ValueError(
+                "No valid Point geometries found in the GeoDataFrame"
+            )
 
         # Convert points to a numpy array of coordinates, ignoring the z-dimension if it exists
         points_coords = np.array([(point.x, point.y) for point in points])
@@ -677,41 +807,62 @@ class Processing:
         x_min, y_min, x_max, y_max = extent
         x_points = np.linspace(x_min, x_max, nx)
         y_points = np.linspace(y_min, y_max, ny)
-        grid_points = [shapely.geometry.Point(x, y) for x in x_points for y in y_points]
+        grid_points = [
+            shapely.geometry.Point(x, y) for x in x_points for y in y_points
+        ]
 
         # Create a GeoDataFrame from the generated points
-        gdf_grid_points = gpd.GeoDataFrame(geometry=grid_points, crs=gdf_points.crs)
+        gdf_grid_points = gpd.GeoDataFrame(
+            geometry=grid_points, crs=gdf_points.crs
+        )
 
         # Convert grid points to a numpy array of coordinates
-        grid_coords = np.array([(point.x, point.y) for point in gdf_grid_points.geometry])
+        grid_coords = np.array(
+            [(point.x, point.y) for point in gdf_grid_points.geometry]
+        )
 
         # Ensure both coordinate arrays have the same number of dimensions
-        assert points_coords.shape[1] == 2, "Points coordinates should have two columns (x, y)"
-        assert grid_coords.shape[1] == 2, "Grid coordinates should have two columns (x, y)"
+        assert points_coords.shape[1] == 2, (
+            "Points coordinates should have two columns (x, y)"
+        )
+        assert grid_coords.shape[1] == 2, (
+            "Grid coordinates should have two columns (x, y)"
+        )
 
         # Calculate distances between the grid points and the specified points
         distances = scipy.spatial.distance.cdist(grid_coords, points_coords)
 
         # Store minimum distances in a GeoDataFrame
         gdf_distances = gdf_grid_points.copy()
-        gdf_distances['distance'] = distances.min(axis=1)
+        gdf_distances["distance"] = distances.min(axis=1)
 
         # Update pfa dictionary with the distance map
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = gdf_distances
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'distance'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'distance (m)'
-        
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map"
+        ] = gdf_distances
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "distance (m)"
+
         return pfa
-    
+
     @staticmethod
     def weighted_distance_from_points(
-        pfa, criteria, component, layer,
-        extent, nx, ny,
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
         alpha=1000.0,
         transform_method="none",
         weight_points=True,
         weight_min=1.0,
-        weight_max=2.0
+        weight_max=2.0,
     ):
         """
         Compute a "weighted distance score" from a set of points,
@@ -738,7 +889,7 @@ class Processing:
         alpha : float, default=1000
             Decay constant for distance (in meters).
         transform_method: str, default="none"
-            How to transform point data into proximity favorability via transformation 
+            How to transform point data into proximity favorability via transformation
             function (e.g."none", "negate", "inverse", etc.).
         weight_points : bool, default=True
             Whether to apply data-based point weighting or not.
@@ -754,47 +905,50 @@ class Processing:
             "weighted_point_score" in:
             pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'].
         """
+
         def normalize_point_weights(values, out_min=1.0, out_max=5.0):
             # Scale a 1D array of values to a user-defined positive range [out_min..out_max].
             vals = values.copy()
             valid_mask = ~np.isnan(vals)
-            valid_data = vals[valid_mask]    
+            valid_data = vals[valid_mask]
             if valid_data.size == 0:
                 scaled = np.full_like(vals, out_min)
-                return scaled   
+                return scaled
             vmin = valid_data.min()
             vmax = valid_data.max()
-            rng = vmax - vmin   
+            rng = vmax - vmin
             if rng == 0:
                 midpoint = (out_min + out_max) / 2.0
                 scaled = np.full_like(vals, midpoint)
                 return scaled
-        
+
             # Normal minmax to [0..1] then scale to [out_min..out_max]
             mm = (valid_data - vmin) / rng
             scaled_valid = mm * (out_max - out_min) + out_min
-        
+
             scaled = np.full_like(vals, np.nan)
             scaled[valid_mask] = scaled_valid
-            
+
             return scaled
 
-        layer_dict = pfa['criteria'][criteria]['components'][component]['layers'][layer]
-        data_col = layer_dict.get('data_col', None)
-        gdf_points = layer_dict['data'].copy()
+        layer_dict = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]
+        data_col = layer_dict.get("data_col", None)
+        gdf_points = layer_dict["data"].copy()
 
         if data_col is None:
             print("No data_col => defaulting all weights=1.0")
-            gdf_points['temp_val'] = 1.0
-            data_col = 'temp_val'
+            gdf_points["temp_val"] = 1.0
+            data_col = "temp_val"
 
         # Collect geometry + data
         point_list, data_list = [], []
         for geom, val in zip(gdf_points.geometry, gdf_points[data_col]):
-            if geom.geom_type == 'Point':
+            if geom.geom_type == "Point":
                 point_list.append(geom)
                 data_list.append(val)
-            elif geom.geom_type == 'MultiPoint':
+            elif geom.geom_type == "MultiPoint":
                 for subg in geom.geoms:
                     point_list.append(subg)
                     data_list.append(val)
@@ -809,19 +963,19 @@ class Processing:
         data_array_1d = np.array(data_list, dtype=float)
 
         # Transform data values into weight
-        arr_2d = data_array_1d.reshape(-1,1)
-        arr_2d_trans = transform(arr_2d, transform_method)  # e.g. "negate"   
+        arr_2d = data_array_1d.reshape(-1, 1)
+        arr_2d_trans = transform(arr_2d, transform_method)  # e.g. "negate"
         arr_2d_trans = np.nan_to_num(arr_2d_trans, nan=0)  # handle NaNs
         trans_1d = arr_2d_trans.ravel()
-        
+
         # scale them to [out_min..out_max]
         if not weight_points:
             print("User not weighting points. Defaulting all weights=1.0")
-            out_min = out_max = 1.0         # all points get equal weight
+            out_min = out_max = 1.0  # all points get equal weight
         else:
             out_min = weight_min
             out_max = weight_max
-        
+
         # Scale once with the chosen range
         weights_1d = normalize_point_weights(
             trans_1d,
@@ -829,32 +983,40 @@ class Processing:
             out_max=out_max,
         )
 
-        # Create grid, compute distances 
+        # Create grid, compute distances
         x_min, y_min, x_max, y_max = extent
         x_coords = np.linspace(x_min, x_max, nx)
         y_coords = np.linspace(y_min, y_max, ny)
-        grid_points = [shapely.geometry.Point(x, y) for x in x_coords for y in y_coords]
+        grid_points = [
+            shapely.geometry.Point(x, y) for x in x_coords for y in y_coords
+        ]
 
         gdf_grid = gpd.GeoDataFrame(geometry=grid_points, crs=gdf_points.crs)
         point_coords = np.array([(p.x, p.y) for p in point_list])
         grid_coords = np.array([(pt.x, pt.y) for pt in gdf_grid.geometry])
 
-        dist_matrix = scipy.spatial.distance.cdist(grid_coords, point_coords)  # shape=(nx*ny, n_points)
+        dist_matrix = scipy.spatial.distance.cdist(
+            grid_coords, point_coords
+        )  # shape=(nx*ny, n_points)
 
         # Weighted sum => sum_i [ w_i * exp(-dist_ij / alpha) ]
         decays = np.exp(-dist_matrix / alpha)
-        weighted = decays * weights_1d  # broadcasting => shape=(n_grid, n_points)
+        weighted = (
+            decays * weights_1d
+        )  # broadcasting => shape=(n_grid, n_points)
         score_1d = np.sum(weighted, axis=1)
 
-        gdf_grid['weighted_point_score'] = score_1d
-        layer_dict['map'] = gdf_grid
-        layer_dict['map_data_col'] = 'weighted_point_score'
-        layer_dict['map_units'] = 'score (0-∞)'
+        gdf_grid["weighted_point_score"] = score_1d
+        layer_dict["map"] = gdf_grid
+        layer_dict["map_data_col"] = "weighted_point_score"
+        layer_dict["map_units"] = "score (0-∞)"
 
         return pfa
 
     @staticmethod
-    def point_density(pfa, criteria, component, layer, extent, cell_size, nx, ny):
+    def point_density(
+        pfa, criteria, component, layer, extent, cell_size, nx, ny
+    ):
         """Calculate point density within a specified extent and return as a GeoDataFrame.
 
         Parameters
@@ -865,7 +1027,7 @@ class Processing:
             geometry to calculate distances from.
         criteria : str
             Criteria associated with Point data to calculate distances from.
-        component : str 
+        component : str
             Component associated with Point data to calculate distances from.
         layer : str
             Layer associated with Point data to calculate distances from.
@@ -883,16 +1045,18 @@ class Processing:
             Number of cells in the x direction for the output grid.
         ny : int
             Number of cells in the y direction for the output grid.
-        
+
         Returns
         -------
         density_gdf : GeoDataFrame
-            GeoDataFrame populated with point density within the specified extent, with 
+            GeoDataFrame populated with point density within the specified extent, with
             point geometry.
         """
-        
+
         # Extract GeoDataFrame from pfa dictionary
-        gdf = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
 
         # Define the extent
         xmin, ymin, xmax, ymax = extent
@@ -900,9 +1064,9 @@ class Processing:
         # Create grid for density calculation using cell_size
         x_cells = int((xmax - xmin) / cell_size)
         y_cells = int((ymax - ymin) / cell_size)
-        
+
         density_grid = np.zeros((y_cells, x_cells))
-    
+
         for geom in gdf.geometry:
             # Check if geometry is Point or MultiPoint
             if isinstance(geom, shapely.geometry.Point):
@@ -918,7 +1082,7 @@ class Processing:
                 if (xmin <= point.x <= xmax) and (ymin <= point.y <= ymax):
                     x_index = int((point.x - xmin) / cell_size)
                     y_index = int((point.y - ymin) / cell_size)
-                    if (x_index > x_cells-1) | (y_index > y_cells-1):
+                    if (x_index > x_cells - 1) | (y_index > y_cells - 1):
                         continue
                     density_grid[y_index, x_index] += 1
 
@@ -942,31 +1106,43 @@ class Processing:
         # Create points for the high-resolution grid
         points = [
             shapely.geometry.Point(
-                xmin + (i + 0.5) * x_step,
-                ymin + (j + 0.5) * y_step
+                xmin + (i + 0.5) * x_step, ymin + (j + 0.5) * y_step
             )
-            for j in range(ny) for i in range(nx)
+            for j in range(ny)
+            for i in range(nx)
         ]
 
         # Flatten the high-resolution density grid to match the points
         densities = high_res_density.flatten()
 
         # Ensure the lengths match
-        assert len(points) == len(densities), f"Points length {len(points)} and densities length {len(densities)} do not match."
+        assert len(points) == len(densities), (
+            f"Points length {len(points)} and densities length {len(densities)} do not match."
+        )
 
         # Create the GeoDataFrame
-        density_gdf = gpd.GeoDataFrame({'geometry': points, 'density': densities})
+        density_gdf = gpd.GeoDataFrame(
+            {"geometry": points, "density": densities}
+        )
         density_gdf = density_gdf.set_crs(gdf.crs)
 
         # Update the pfa dictionary with the new layer
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = density_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'density'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'density per'+str(cell_size)+' m^2'
-        
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map"
+        ] = density_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "density"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "density per" + str(cell_size) + " m^2"
+
         return pfa
 
     @staticmethod
-    def polygon_density(pfa, criteria, component, layer, extent, cell_size, nx, ny):
+    def polygon_density(
+        pfa, criteria, component, layer, extent, cell_size, nx, ny
+    ):
         """Calculate polygon density within a specified extent and return as a GeoDataFrame.
 
         Parameters
@@ -975,7 +1151,7 @@ class Processing:
             Configuration specifying criteria, components, and data layers' relationship.
         criteria : str
             Criteria associated with Polygon data to calculate density from.
-        component : str 
+        component : str
             Component associated with Polygon data to calculate density from.
         layer : str
             Layer associated with Polygon data to calculate density from.
@@ -994,7 +1170,9 @@ class Processing:
             Updated pfa config which includes polygon density as a GeoDataFrame.
         """
         # Extract GeoDataFrame containing polygons
-        gdf_polygons = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
+        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
 
         # Define the extent
         xmin, ymin, xmax, ymax = extent
@@ -1002,9 +1180,9 @@ class Processing:
         # Create grid for density calculation using cell_size
         x_cells = int((xmax - xmin) / cell_size)
         y_cells = int((ymax - ymin) / cell_size)
-        
+
         density_grid = np.zeros((y_cells, x_cells))
-        
+
         for geom in gdf_polygons.geometry:
             # Check if geometry is Polygon or MultiPolygon
             if isinstance(geom, shapely.geometry.Polygon):
@@ -1049,35 +1227,45 @@ class Processing:
         # Create points for the high-resolution grid
         points = [
             shapely.geometry.Point(
-                xmin + (i + 0.5) * x_step,
-                ymin + (j + 0.5) * y_step
+                xmin + (i + 0.5) * x_step, ymin + (j + 0.5) * y_step
             )
-            for j in range(ny) for i in range(nx)
+            for j in range(ny)
+            for i in range(nx)
         ]
 
         # Flatten the high-resolution density grid to match the points
         densities = high_res_density.flatten()
 
         # Ensure the lengths match
-        assert len(points) == len(densities), f"Points length {len(points)} and densities length {len(densities)} do not match."
+        assert len(points) == len(densities), (
+            f"Points length {len(points)} and densities length {len(densities)} do not match."
+        )
 
         # Create the GeoDataFrame
-        density_gdf = gpd.GeoDataFrame({'geometry': points, 'density': densities})
+        density_gdf = gpd.GeoDataFrame(
+            {"geometry": points, "density": densities}
+        )
         density_gdf = density_gdf.set_crs(gdf_polygons.crs)
 
         # Update the pfa dictionary with the new layer
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map'] = density_gdf
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col'] = 'density'
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_units'] = 'density per '+str(cell_size)+' m^2'
-        
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map"
+        ] = density_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_data_col"
+        ] = "density"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "map_units"
+        ] = "density per " + str(cell_size) + " m^2"
+
         return pfa
 
     def convert_3d_to_2d(pfa, criteria, component, layer):
         """
         Convert a 3D GeoDataFrame layer to a 2D representation by collapsing along the Z-dimension.
-        
-        This function processes a 3D layer stored in the `pfa` dictionary structure, filtering out empty geometries, 
-        sorting the data by X, Y, and Z coordinates, and aggregating data by grouping on X and Y. The resulting 
+
+        This function processes a 3D layer stored in the `pfa` dictionary structure, filtering out empty geometries,
+        sorting the data by X, Y, and Z coordinates, and aggregating data by grouping on X and Y. The resulting
         2D GeoDataFrame replaces the original 3D data in the `pfa` dictionary.
 
         Parameters:
@@ -1095,7 +1283,7 @@ class Processing:
         Returns:
         -------
         dict
-            The updated `pfa` dictionary with the 3D layer converted to a 2D representation. The resulting 2D GeoDataFrame 
+            The updated `pfa` dictionary with the 3D layer converted to a 2D representation. The resulting 2D GeoDataFrame
             is stored in `pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']`.
 
         Raises:
@@ -1111,12 +1299,18 @@ class Processing:
         - The units of the data are updated to reflect the aggregation performed.
         """
         # Extract GeoDataFrame containing 3D data
-        gdf_3d = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data_col']
-        units = pfa['criteria'][criteria]['components'][component]['layers'][layer]['units']
+        gdf_3d = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        col = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data_col"]
+        units = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["units"]
         crs = gdf_3d.crs
         # Ensure the geometry column is of Point type
-        if not gdf_3d.geometry.geom_type.isin(['Point']).all():
+        if not gdf_3d.geometry.geom_type.isin(["Point"]).all():
             raise ValueError("Geometry column must contain Point geometries.")
 
         # Filter out empty geometries
@@ -1124,37 +1318,51 @@ class Processing:
 
         # Sort geometries by X, Y, Z, handling empty points gracefully
         gdf_3d = gdf_3d.sort_values(
-            by=['geometry'],
+            by=["geometry"],
             key=lambda col: col.apply(
-                lambda geom: (geom.x, geom.y, geom.z) if not geom.is_empty else (float('nan'), float('nan'), float('nan'))
-            )
+                lambda geom: (geom.x, geom.y, geom.z)
+                if not geom.is_empty
+                else (float("nan"), float("nan"), float("nan"))
+            ),
         ).reset_index(drop=True)
-        
+
         # Step 1: Aggregate by unique (X, Y, Z) points
         gdf_3d = gdf_3d.groupby(
-            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y, geom.z)), as_index=False
-        ).agg({
-            'geometry': 'first',  # Keep the representative geometry
-            col: 'sum',  # Sum the data column for unique (X, Y, Z)
-        })
-        gdf_3d = gdf_3d.set_geometry('geometry')
+            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y, geom.z)),
+            as_index=False,
+        ).agg(
+            {
+                "geometry": "first",  # Keep the representative geometry
+                col: "sum",  # Sum the data column for unique (X, Y, Z)
+            }
+        )
+        gdf_3d = gdf_3d.set_geometry("geometry")
         gdf_3d.set_crs(crs, inplace=True)
         # Step 2: Collapse Z dimension to (X, Y)
         gdf_2d = gdf_3d.groupby(
-            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y)), as_index=False
-        ).agg({
-            'geometry': 'first',  # Keep the representative geometry
-            col: 'sum',  # Sum across Z for unique (X, Y)
-        })
-        gdf_2d = gdf_2d.set_geometry('geometry')
+            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y)),
+            as_index=False,
+        ).agg(
+            {
+                "geometry": "first",  # Keep the representative geometry
+                col: "sum",  # Sum across Z for unique (X, Y)
+            }
+        )
+        gdf_2d = gdf_2d.set_geometry("geometry")
         gdf_2d.set_crs(crs, inplace=True)
 
         # Update the pfa dictionary with the new layer
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['data'] = gdf_2d
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['units'] = 'summed '+units
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "data"
+        ] = gdf_2d
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "units"
+        ] = "summed " + units
         return pfa
 
-    def extract_fault_traces_slice(pfa, criteria, component, layer, min_z = None, tolerance = 1e6):
+    def extract_fault_traces_slice(
+        pfa, criteria, component, layer, min_z=None, tolerance=1e6
+    ):
         """
         Extracts a 2D representation of faults by taking a slice at the bottom of the model.
 
@@ -1174,11 +1382,15 @@ class Processing:
             A GeoDataFrame with LineString geometries representing the bottom traces of each fault.
         """
         # Extract GeoDataFrame containing 3D data
-        gdf_3d = pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']
-        fault_id_col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['id_col']
-        
+        gdf_3d = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        fault_id_col = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["id_col"]
+
         # Ensure the geometry column contains 3D Points
-        if not all(gdf_3d.geometry.geom_type == 'Point'):
+        if not all(gdf_3d.geometry.geom_type == "Point"):
             raise ValueError("All geometries must be Point geometries.")
         if not all(gdf_3d.geometry.apply(lambda geom: geom.has_z)):
             raise ValueError("All geometries must be 3D (with Z-coordinates).")
@@ -1189,33 +1401,57 @@ class Processing:
             print(min_z)
 
         # Filter points at exactly min_z (or within a small tolerance)
-        bottom_points = gdf_3d[gdf_3d.geometry.apply(lambda geom: abs(geom.z - min_z) <= tolerance)]
+        bottom_points = gdf_3d[
+            gdf_3d.geometry.apply(
+                lambda geom: abs(geom.z - min_z) <= tolerance
+            )
+        ]
 
-        
         # Extract fault traces (LineStrings) for each unique fault ID
         fault_traces = []
         for fault_id, group in bottom_points.groupby(fault_id_col):
             # Ensure there are enough points to create a LineString
             if len(group) > 1:
                 # Sort points by X and Y for proper LineString creation
-                group = group.sort_values(by=['geometry'], key=lambda col: col.apply(lambda geom: (geom.x, geom.y)))
-                trace = shapely.geometry.LineString(group.geometry.apply(lambda geom: (geom.x, geom.y, geom.z)).tolist())
-                fault_traces.append({'fault_id': fault_id, 'geometry': trace})
+                group = group.sort_values(
+                    by=["geometry"],
+                    key=lambda col: col.apply(lambda geom: (geom.x, geom.y)),
+                )
+                trace = shapely.geometry.LineString(
+                    group.geometry.apply(
+                        lambda geom: (geom.x, geom.y, geom.z)
+                    ).tolist()
+                )
+                fault_traces.append({"fault_id": fault_id, "geometry": trace})
 
         if not fault_traces:
-            raise ValueError("No valid fault traces found at the minimum Z value.")
+            raise ValueError(
+                "No valid fault traces found at the minimum Z value."
+            )
 
         # Create a GeoDataFrame from the fault traces
-        fault_traces_gdf = gpd.GeoDataFrame(fault_traces, geometry='geometry', crs=gdf_3d.crs)
-        
-        pfa['criteria'][criteria]['components'][component]['layers'][layer]['data'] = fault_traces_gdf
+        fault_traces_gdf = gpd.GeoDataFrame(
+            fault_traces, geometry="geometry", crs=gdf_3d.crs
+        )
+
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "data"
+        ] = fault_traces_gdf
         return pfa
 
     def process_faults(
-        pfa, criteria, component, layer, extent, nx, ny,
-        alpha_fault=1000.0, alpha_intersection=500.0,
-        weight_fault=0.7, weight_intersection=0.3,
-        use_intersections=True
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        alpha_fault=1000.0,
+        alpha_intersection=500.0,
+        weight_fault=0.7,
+        weight_intersection=0.3,
+        use_intersections=True,
     ):
         """
         Process faults by:
@@ -1259,16 +1495,22 @@ class Processing:
             under pfa['criteria'][criteria]['components'][component]['layers'][layer].
         """
         # Compute distance from faults
-        pfa = Processing.distance_from_lines(pfa, criteria, component, layer, extent, nx, ny)
-        fault_layer_dict = pfa['criteria'][criteria]['components'][component]['layers'][layer]
-        fault_map_gdf = fault_layer_dict.get('map', None)
-        dist_col = fault_layer_dict.get('map_data_col', None)
+        pfa = Processing.distance_from_lines(
+            pfa, criteria, component, layer, extent, nx, ny
+        )
+        fault_layer_dict = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]
+        fault_map_gdf = fault_layer_dict.get("map", None)
+        dist_col = fault_layer_dict.get("map_data_col", None)
 
-        if fault_map_gdf is None or dist_col != 'distance':
-            print("ERROR: distance_from_lines did not produce a valid 'map' with 'distance' column.")
+        if fault_map_gdf is None or dist_col != "distance":
+            print(
+                "ERROR: distance_from_lines did not produce a valid 'map' with 'distance' column."
+            )
             return pfa
 
-        fault_dist_1d = fault_map_gdf['distance'].to_numpy()
+        fault_dist_1d = fault_map_gdf["distance"].to_numpy()
         try:
             fault_dist_2d = fault_dist_1d.reshape((ny, nx))
         except ValueError as e:
@@ -1276,45 +1518,61 @@ class Processing:
             return pfa
 
         # find fault intersections
-        gdf_lines = fault_layer_dict['data']
+        gdf_lines = fault_layer_dict["data"]
         if not use_intersections or gdf_lines.empty:
             # skip intersection logic
             intersect_score_2d = np.zeros((ny, nx))
             if not use_intersections:
-                print("use_intersections=False => intersection favorability is zero.")
+                print(
+                    "use_intersections=False => intersection favorability is zero."
+                )
             else:
-                print("WARNING: No line geometry found, skipping intersections.")
+                print(
+                    "WARNING: No line geometry found, skipping intersections."
+                )
         else:
             gdf_intersections = Processing.calculate_intersections(gdf_lines)
             if gdf_intersections.empty:
-                print("No fault intersections found => intersection favorability is zero.")
+                print(
+                    "No fault intersections found => intersection favorability is zero."
+                )
                 intersect_favor_2d = np.zeros((ny, nx))
             else:
                 intersections_union = gdf_intersections.geometry.union_all()
-                grid_points = Processing.generate_grid_points(extent, nx, ny, crs=gdf_lines.crs)
-                dist_intersect_1d = np.array([
-                    pt.distance(intersections_union) for pt in grid_points.geometry
-                ])
+                grid_points = Processing.generate_grid_points(
+                    extent, nx, ny, crs=gdf_lines.crs
+                )
+                dist_intersect_1d = np.array(
+                    [
+                        pt.distance(intersections_union)
+                        for pt in grid_points.geometry
+                    ]
+                )
                 try:
                     dist_intersect_2d = dist_intersect_1d.reshape((ny, nx))
                 except ValueError as e:
                     print("ERROR reshaping intersection distances:", e)
                     dist_intersect_2d = np.zeros((ny, nx))
                 # Exponential decay for intersection distance
-                intersect_score_2d = np.exp(-dist_intersect_2d / alpha_intersection)
+                intersect_score_2d = np.exp(
+                    -dist_intersect_2d / alpha_intersection
+                )
 
         # Exponential decay for fault distances
         fault_score_2d = np.exp(-fault_dist_2d / alpha_fault)
 
         # Combine with weights in a weighted sum
-        composite_2d = weight_fault * fault_score_2d + weight_intersection * intersect_score_2d
+        composite_2d = (
+            weight_fault * fault_score_2d
+            + weight_intersection * intersect_score_2d
+        )
 
         composite_1d = composite_2d.flatten()
         fault_map_gdf = fault_map_gdf.copy()
-        fault_map_gdf['fault score'] = composite_1d
+        fault_map_gdf["fault score"] = composite_1d
 
-        fault_layer_dict['map'] = fault_map_gdf
-        fault_layer_dict['map_data_col'] = 'fault score'
-        fault_layer_dict['map_units'] = 'fault score (0-1)'
+        fault_layer_dict["map"] = fault_map_gdf
+        fault_layer_dict["map_data_col"] = "fault score"
+        fault_layer_dict["map_units"] = "fault score (0-1)"
 
         return pfa

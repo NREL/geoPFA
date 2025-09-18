@@ -235,6 +235,18 @@ ignore = [
 [tool.ruff.lint.extend-per-file-ignores]
 "geoPFA/geopfa3d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
 "geoPFA/geopfa2d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
+"geoPFA/processing.py" = [
+  "E722", # bare except
+  "PD008", # Use `.loc` instead of `.at`.
+  "PERF203", # `try`-`except` within a loop incurs performance overhead
+  "PERF401", # Use `list.extend` to create a transformed list
+  "PLR0912", # too-many-branches
+  "PLR0913", # too-many-arguments
+  "PLR0914", # too-many-locals
+  "PLR0917", # too-many-positional-arguments
+  "PLR1702", # too-many-nested-blocks
+  "PLW2901", # `for` loop variable `group` overwritten by assignment target
+  ]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 72
