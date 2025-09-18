@@ -16,6 +16,7 @@ from pykrige.ok3d import OrdinaryKriging3D
 from scipy.interpolate import griddata
 from osgeo import osr
 from geoPFA.transformation import transform
+from itertools import starmap
 
 
 class Cleaners:
@@ -1799,7 +1800,7 @@ class Processing:
 
         # store results
         gdf_grid = gpd.GeoDataFrame(
-            geometry=[Point(x, y, z) for x, y, z in grid_xyz],
+            geometry=list(starmap(Point, grid_xyz)),
             data={'weighted_point_score': score},
             crs=gdf_pts.crs,
         )
