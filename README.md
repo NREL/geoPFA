@@ -1,6 +1,34 @@
 # Geothermal PFA
 
-Tools for conducting geothermal play fairway analysis (pfa)
+geoPFA is an open-source Python library for conducting Play Fairway Analysis
+(PFA) in 2D and 3D, designed to reduce exploration risk by integrating surface
+and subsurface considerations into a single, transparent workflow. Built around
+NREL’s Geothermal PFA Best Practices and aligned with FAIR software principles,
+geoPFA provides modular, extensible tools for cleaning, processing, weighting,
+and combining diverse datasets into quantitative favorability maps. These
+datasets can include geological, geophysical, geochemical, and
+thermo-hydro-mechanical-chemical simulation results, as well as surface-level
+factors such as energy demand, transmission access, and natural hazard
+exposure.
+
+The framework is fully customizable, enabling users to define criteria,
+components, and indicators for any geothermal resource type—from
+low-temperature and conventional hydrothermal to superhot systems—and to extend
+the methodology to other subsurface applications if desired. geoPFA supports multiple data
+processing approaches, including interpolation, density mapping, distance-based
+scoring, extrapolation, and thermal modeling, while allowing integration of
+expert-derived weightings or analytical hierarchy methods. 
+
+geoPFA has been successfully demonstrated in diverse contexts: a 3D PFA for
+the Nesjavellir field in Iceland, where results aligned with known subsurface
+conditions and guided scenario-based development strategies (Taverna et al.,
+2025); and 2D PFAs of the Denver Basin and Alaska for lower-enthalpy geothermal
+with greater emphasis on surface constraints (Davalos-Elizondo et al., 2024;
+in work). By making advanced exploration workflows reproducible, transparent,
+and openly accessible, geoPFA enables research teams, developers, and agencies
+to make better-informed decisions through reducing time required for developing 
+workflows, allowing more time to be spent on feature engineering and interpretation 
+of results.
 
 # NOTICE
 
