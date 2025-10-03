@@ -85,9 +85,9 @@ test = [
 ]
 
 [project.urls]
-homepage = "https://https://github.com/GeothermalExplorationTools/geopfa2d"
-documentation = "https://https://github.com/GeothermalExplorationTools/geopfa2d"
-repository = "https://https://github.com/GeothermalExplorationTools/geopfa2d"
+homepage = "https://github.com/NREL/geoPFA"
+documentation = "https://github.com/NREL/geoPFA"
+repository = "https://github.com/NREL/geoPFA"
 
 [tool.setuptools]
 packages = ["geoPFA"]
