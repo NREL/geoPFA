@@ -11,10 +11,15 @@ dynamic = ["version"]
 description = "Geothermal Play Fairway Analysis"
 readme = "README.md"
 authors = [
-  {name = "Nicole Taverna", email = "nicole.taverna@nrel.gov"}
+  {name = "Nicole Taverna", email = "Nicole.Taverna@nrel.gov"},
+  {name = "Scott Mello", email = "Scott.Mello@nrel.gov"},
+  {name = "Guilherme Castelao", email = "gpimenta@nrel.gov"},
+  {name = "Dylan Hettinger", email = "Dylan.Hettinger@nrel.gov"},
+  {name = "Karthik Menon", email = "Karthik.Menon@nrel.gov"},
+  {name = "Emily Holt", email = "Emily.Holt@nrel.gov"}
   ]
 maintainers = [
-  {name = "Nicole Taverna", email = "nicole.taverna@nrel.gov"}
+  {name = "Nicole Taverna", email = "Nicole.Taverna@nrel.gov"}
   ]
 keywords=["geothermal", "pfa"]
 requires-python = ">= 3.10"
