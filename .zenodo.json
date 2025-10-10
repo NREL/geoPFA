@@ -1,0 +1,38 @@
+{
+  "title": "NREL's Geothermal Play Fairway Analysis",
+  "license": "BSD-3-Clause",
+  "creators": [
+    {
+      "name": "Taverna, Nicole",
+      "affiliation": "National Renewable Energy Laboratory",
+      "orcid": "0000-0001-7776-2028"
+    },
+    {
+      "name": "Mello, Scott",
+      "affiliation": "National Renewable Energy Laboratory"
+    },
+    {
+      "name": "Castelao, Guilherme",
+      "affiliation": "National Renewable Energy Laboratory",
+      "orcid": "0000-0002-6765-0708"
+    },
+    {
+      "name": "Hettinger, Dylan",
+      "affiliation": "National Renewable Energy Laboratory"
+    },
+    {
+      "name": "Menon, Karthik",
+      "affiliation": "National Renewable Energy Laboratory"
+    },
+    {
+      "name": "Holt, Emily",
+      "affiliation": "National Renewable Energy Laboratory"
+    }
+  ],
+  "contributors": [
+    {
+      "type": "Sponsor",
+      "name": "EERE: DOE Geothermal Technologies Office (GTO)"
+    }
+  ]
+}
