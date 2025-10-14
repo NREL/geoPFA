@@ -54,7 +54,7 @@ class GeospatialDataPlotters:
 
         """
         fig, ax = plt.subplots(figsize=figsize)
-        if col == "None":
+        if col is None or str(col).lower() == "none":
             gdf.plot(ax=ax)
         else:
             if vmin is None:
@@ -104,7 +104,7 @@ class GeospatialDataPlotters:
         gdf_copy = gdf.copy()
 
         # Normalize color data
-        if col != "None":
+        if col is not None and str(col).lower() != "none":
             if vmin is None:
                 vmin = gdf_copy[col].min()
             if vmax is None:
@@ -136,7 +136,7 @@ class GeospatialDataPlotters:
             return
 
         # Update colors for filtered data
-        if col != "None":
+        if col is not None and str(col).lower() != "none":
             filtered_colors = cmap(norm(gdf_filtered[col]))
         else:
             filtered_colors = colors
@@ -144,7 +144,13 @@ class GeospatialDataPlotters:
         # Extract 3D coordinates from filtered geometry
         if gdf_filtered.geometry.iloc[0].geom_type == 'Point':
             xs, ys, zs = zip(*[geom.coords[0] for geom in gdf_filtered.geometry])
-            ax.scatter(xs, ys, zs, c=filtered_colors if col != "None" else None, s=markersize)
+            ax.scatter(
+                xs,
+                ys,
+                zs,
+                c=filtered_colors if (col is not None and str(col).lower() != "none") else None,
+                s=markersize,
+            )
 
         # Plot polygons as filled surfaces
         elif gdf_filtered.geometry.iloc[0].geom_type in ['Polygon', 'MultiPolygon']:
@@ -160,7 +166,7 @@ class GeospatialDataPlotters:
                     ax.add_collection3d(poly)
 
         # Add colorbar if a column is specified
-        if col != "None":
+        if col is not None and str(col).lower() != "none":
             sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
             cbar = fig.colorbar(sm, ax=ax, pad=0.1)
             cbar.set_label(units)
@@ -225,7 +231,7 @@ class GeospatialDataPlotters:
         """Method to plot zoomed in version of geopfa maps, using xlim and ylim to determine the extent. 
         Also adds a basemap."""
         fig, ax = plt.subplots(figsize=figsize)
-        if col == "None":
+        if col is None or str(col).lower() == "none":
             gdf.plot(ax=ax)
         else:
             gdf.plot(ax=ax, marker='s', markersize=markersize,
