@@ -18,8 +18,8 @@
                             "z_meas": "m-msl",
                             "transformation_method": "negate",
                             "processing_method": "interpolate",
-                            "map_data_col": "value_interpolated",
-                            "map_units": "summed g/cc"
+                            "model_data_col": "value_interpolated",
+                            "model_units": "summed g/cc"
                         },
                         "mt_resistivity_joint_inv": {
                             "weight": 0.112,
@@ -33,8 +33,8 @@
                             "z_meas": "m-msl",
                             "transformation_method": "negate",
                             "processing_method": "interpolate",
-                            "map_data_col": "value_interpolated",
-                            "map_units": "summed ohm-m"
+                            "model_data_col": "value_interpolated",
+                            "model_units": "summed ohm-m"
                         },
                         "temperature_model_500m": {
                             "weight": 0.204,
@@ -48,8 +48,8 @@
                             "z_meas": "epsg:26910",
                             "transformation_method": "None",
                             "processing_method": "interpolate",
-                            "map_data_col": "value_interpolated",
-                            "map_units": "summed degC"
+                            "model_data_col": "value_interpolated",
+                            "model_units": "summed degC"
                         },
                         "earthquakes": {
                             "weight": 0.085,
@@ -64,8 +64,8 @@
                             "z_meas": "epsg:26910",
                             "transformation_method": "negate",
                             "processing_method": "density",
-                            "map_data_col": "density",
-                            "map_units": "density per1000 m^2"
+                            "model_data_col": "density",
+                            "model_units": "density per1000 m^2"
                         }
                     },
                     "pr0": 0.4
@@ -85,8 +85,8 @@
                             "z_meas": "m-msl",
                             "transformation_method": "none",
                             "processing_method": "interpolate",
-                            "map_data_col": "value_interpolated",
-                            "map_units": "summed g/cc"
+                            "model_data_col": "value_interpolated",
+                            "model_units": "summed g/cc"
                         },
                         "mt_resistivity_joint_inv": {
                             "weight": 0.044,
@@ -100,8 +100,8 @@
                             "z_meas": "m-msl",
                             "transformation_method": "none",
                             "processing_method": "interpolate",
-                            "map_data_col": "value_interpolated",
-                            "map_units": "summed ohm-m"
+                            "model_data_col": "value_interpolated",
+                            "model_units": "summed ohm-m"
                         },
                         "earthquakes": {
                             "weight": 0.179,
@@ -116,8 +116,8 @@
                             "z_meas": "epsg:26910",
                             "transformation_method": "none",
                             "processing_method": "density",
-                            "map_data_col": "density",
-                            "map_units": "density per1000 m^2"
+                            "model_data_col": "density",
+                            "model_units": "density per1000 m^2"
                         },
                         "faults_3d": {
                             "weight": 0.249,
@@ -133,8 +133,8 @@
                             "z_meas": "epsg:26910",
                             "transformation_method": "negate",
                             "processing_method": "distance",
-                            "map_data_col": "distance",
-                            "map_units": "distance (m)"
+                            "model_data_col": "distance",
+                            "model_units": "distance (m)"
                         }
                     },
                     "pr0": 0.6
@@ -154,8 +154,8 @@
                             "z_meas": "m-msl",
                             "transformation_method": "None",
                             "processing_method": "interpolate",
-                            "map_data_col": "value_interpolated",
-                            "map_units": "summed g/cc"
+                            "model_data_col": "value_interpolated",
+                            "model_units": "summed g/cc"
                         },
                         "mt_resistivity_joint_inv": {
                             "weight": 0.071,
@@ -169,8 +169,8 @@
                             "z_meas": "m-msl",
                             "transformation_method": "None",
                             "processing_method": "interpolate",
-                            "map_data_col": "value_interpolated",
-                            "map_units": "summed ohm-m"
+                            "model_data_col": "value_interpolated",
+                            "model_units": "summed ohm-m"
                         },
                         "earthquakes": {
                             "weight": 0.049,
@@ -185,8 +185,8 @@
                             "z_meas": "epsg:26910",
                             "transformation_method": "negate",
                             "processing_method": "density",
-                            "map_data_col": "density",
-                            "map_units": "density per1000 m^2"
+                            "model_data_col": "density",
+                            "model_units": "density per1000 m^2"
                         }
                     },
                     "pr0": 0.8
