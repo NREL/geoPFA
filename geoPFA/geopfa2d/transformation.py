@@ -34,20 +34,20 @@ class VoterVetoTransformation:
         return _transform(array, method)
 
     @staticmethod
-    def rasterize_map(gdf, col):
+    def rasterize_model(gdf, col):
         """Function to go from a geodataframe to a rasterized 2D numpy array representation for 
         use in linear algebra functions. Maintains the resolution of the geodataframe
 
         Parameters
         ----------
         gdf : geodataframe
-            GeoDataFrame with point geometry containing map to rasterize
+            GeoDataFrame with point geometry containing model to rasterize
         col : str
             Name of column in gdf where data values are stored
 
         Returns
         -------
-        rasterized_map : np.ndarray
+        rasterized_model : np.ndarray
             Numpy array containing 2D rasterized version of gdf
         """
         if len(gdf) == 0:
@@ -69,8 +69,8 @@ class VoterVetoTransformation:
         num_cols = len(unique_x)
         num_rows = len(unique_y)
 
-        # Create an empty 2D NumPy array representing the rasterized map
-        rasterized_map = np.zeros((num_rows, num_cols), dtype=np.float32)  # Use float32 to support non-integer values
+        # Create an empty 2D NumPy array representing the rasterized model
+        rasterized_model = np.zeros((num_rows, num_cols), dtype=np.float32)  # Use float32 to support non-integer values
 
         # Invert the y-coordinates
         min_y = gdf.geometry.y.min()
@@ -83,7 +83,7 @@ class VoterVetoTransformation:
         # Tolerance for floating point comparisons
         tolerance = 1e-6
 
-        # Iterate over each point in the GeoDataFrame and rasterize onto the map
+        # Iterate over each point in the GeoDataFrame and rasterize onto the model
         for _, row in gdf.iterrows():
             # Extract the associated value or column at the point
             value = row[col]
@@ -103,18 +103,18 @@ class VoterVetoTransformation:
             row_idx = row_idx[0]
 
             # Update the pixel value with the associated value
-            rasterized_map[row_idx, col_idx] = value
+            rasterized_model[row_idx, col_idx] = value
 
-        return rasterized_map
+        return rasterized_model
 
     @staticmethod
-    def derasterize_map(rasterized_map, gdf_geom):
+    def derasterize_model(rasterized_model, gdf_geom):
         """Function to go from a rasterized 2D numpy array representation back to a geodataframe.
         Retains geometry of the original geodataframe that was rasterized.
 
         Parameters
         ----------
-        rasterized_map : np.ndarray
+        rasterized_model : np.ndarray
             Numpy array containing 2D rasterized version of gdf
         gdf_geom : Pandas GeoSeries
             GeoSeries representing geomtry from original GeoDataFrame to use to transform 
@@ -123,7 +123,7 @@ class VoterVetoTransformation:
         Returns
         -------
         gdf : geodataframe
-            GeoDataFrame with point geometry containing map to rasterize
+            GeoDataFrame with point geometry containing model to rasterize
         """
         if len(gdf_geom) == 0:
             raise ValueError("GeoDataFrame 'gdf_geom' is empty.")
@@ -139,9 +139,9 @@ class VoterVetoTransformation:
 
         # Create an empty list to store Point geometries
         geometries = []
-        rasterized_map = np.flipud(rasterized_map)
+        rasterized_model = np.flipud(rasterized_model)
 
-        # Iterate over each row and column in the rasterized map
+        # Iterate over each row and column in the rasterized model
         for row_idx in range(num_rows):
             for col_idx in range(num_cols):
                 # Calculate the x and y coordinates of the raster cell
@@ -156,7 +156,7 @@ class VoterVetoTransformation:
 
         # Create a GeoDataFrame from the geometries and rasterized values
         gdf = gpd.GeoDataFrame(geometry=geometries, crs=crs)
-        # Assign the values from the rasterized map to the 'col' column of the GeoDataFrame
-        gdf['favorability'] = rasterized_map.flatten()
+        # Assign the values from the rasterized model to the 'col' column of the GeoDataFrame
+        gdf['favorability'] = rasterized_model.flatten()
         return gdf
 
