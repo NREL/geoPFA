@@ -20,7 +20,7 @@ from itertools import starmap
 
 
 class Cleaners:
-    """Class of functions for use in processing data into 2D maps"""
+    """Class of functions for use in processing data into models"""
 
     @staticmethod
     def set_crs(pfa, target_crs=3857):
@@ -474,17 +474,9 @@ class Exclusions:
                 ][layer]
                 if "model" in shp:
                     shp = shp["model"]
-                elif "map" in shp:
-                    warnings.warn(
-                        "Use of 'map' in layers is deprecated."
-                        "Please migrate it to 'model'.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
-                    shp = shp["map"]
                 else:
                     raise ValueError(
-                        f"Exclusion layer {layer} does not contain 'model' or 'map' key."
+                        f"Exclusion layer {layer} does not contain 'model' key."
                     )
 
                 value_col = "favorability"
@@ -552,7 +544,7 @@ class Exclusions:
 
 
 class Processing:
-    """Class of functions for use in processing data into 2D maps"""
+    """Class of functions for use in processing data into models"""
 
     @staticmethod
     def interpolate_points_3d(
@@ -628,10 +620,10 @@ class Processing:
             "model"
         ] = interpolated_gdf
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_data_col"
+            "model_data_col"
         ] = "value_interpolated"
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_units"
+            "model_units"
         ] = pfa["criteria"][criteria]["components"][component]["layers"][
             layer
         ]["units"]
@@ -740,10 +732,10 @@ class Processing:
             "model"
         ] = interpolated_gdf
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_data_col"
+            "model_data_col"
         ] = "value_interpolated"
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_units"
+            "model_units"
         ] = pfa["criteria"][criteria]["components"][component]["layers"][
             layer
         ]["units"]
@@ -774,7 +766,7 @@ class Processing:
         Returns
         -------
         pfa : dict
-            Updated pfa config which includes the aggregated polygon values as a point map.
+            Updated pfa config which includes the aggregated polygon values as a point model.
         """
         # Extract GeoDataFrame containing polygons
         gdf_polygons = pfa["criteria"][criteria]["components"][component][
@@ -852,15 +844,15 @@ class Processing:
             crs=gdf_polygons.crs,
         )
 
-        # Update the pfa dictionary with the new point representation map
+        # Update the pfa dictionary with the new point representation model
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
             "model"
         ] = point_gdf
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_data_col"
+            "model_data_col"
         ] = "value"
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_units"
+            "model_units"
         ] = "aggregated value"
 
         return pfa
@@ -971,7 +963,7 @@ class Processing:
         -------
         dict
             The updated `pfa` dictionary, where the specified layer's grid points are classified based on their
-            spatial relationship to the polygons and buffers. The classification is stored in the `map` attribute
+            spatial relationship to the polygons and buffers. The classification is stored in the `model` attribute
             of the layer, with the 'classification' column representing the assigned values.
 
         Notes:
@@ -980,7 +972,7 @@ class Processing:
         points based on spatial relationships to the polygons and buffers.
         - The polygon geometries and their buffers are extracted from the `pfa` dictionary and processed with
         vectorized GeoPandas operations for performance optimization.
-        - The results are stored back in the `pfa` dictionary, with the classifications as part of the layer's map data.
+        - The results are stored back in the `pfa` dictionary, with the classifications as part of the layer's model data.
         """
 
         gdf_polygons = pfa["criteria"][criteria]["components"][component][
@@ -1025,15 +1017,15 @@ class Processing:
             columns=["inside_polygon", "inside_buffer"]
         )
 
-        # Update the pfa dictionary with the new map
+        # Update the pfa dictionary with the new model
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
             "model"
         ] = gdf_points
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_data_col"
+            "model_data_col"
         ] = "classification"
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_units"
+            "model_units"
         ] = f"binary ({polygon_value}=polygon, {buffer_value}=buffer, 1=outside)"
 
         return pfa
@@ -1200,7 +1192,7 @@ class Processing:
             Layer associated with LineString data to calculate distances from.
         extent : list
             List of length 6 containing the 3D extent (i.e., bounding box) to use to produce the
-            distance map. Order: [x_min, y_min, z_min, x_max, y_max, z_max].
+            distance model. Order: [x_min, y_min, z_min, x_max, y_max, z_max].
         nx, ny, nz : int
             Number of points in the x, y, and z directions.
 
@@ -1260,10 +1252,10 @@ class Processing:
             "model"
         ] = gdf_points
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_data_col"
+            "model_data_col"
         ] = "distance"
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_units"
+            "model_units"
         ] = "distance (m)"
 
         return pfa
@@ -1414,8 +1406,8 @@ class Processing:
         )
 
         layer_dict["model"] = gdf_out
-        layer_dict["map_data_col"] = "distance"
-        layer_dict["map_units"] = "m"
+        layer_dict["model_data_col"] = "distance"
+        layer_dict["model_units"] = "m"
         return pfa
 
     @staticmethod
@@ -1590,7 +1582,7 @@ class Processing:
         """
         TODO: Get this to work!!!
         Calculate the weighted distances from points to the nearest lines and intersections,
-        and update the provided PFA (Potential Field Analysis) dictionary with the computed distance map.
+        and update the provided PFA (Potential Field Analysis) dictionary with the computed distance model.
 
         This function creates a grid of points over a specified spatial extent, computes the distance
         from each point to the nearest line and nearest line intersection, and then combines the distances
@@ -1622,7 +1614,7 @@ class Processing:
         Returns:
         -------
         pfa : dict
-            The updated PFA dictionary with a new distance map stored in the specified layer.
+            The updated PFA dictionary with a new distance model stored in the specified layer.
         """
         # Extract lines and intersections from the PFA
         gdf_lines = pfa["criteria"][criteria]["components"][component][
@@ -1664,10 +1656,10 @@ class Processing:
             "model"
         ] = gdf_points
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_data_col"
+            "model_data_col"
         ] = "distance"
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_units"
+            "model_units"
         ] = "distance (weighted by line and intersection proximity)"
 
         return pfa
@@ -1849,8 +1841,8 @@ class Processing:
             crs=gdf_pts.crs,
         )
         layer_dict["model"] = gdf_grid
-        layer_dict["map_data_col"] = "weighted_point_score"
-        layer_dict["map_units"] = "score (0-inf)"
+        layer_dict["model_data_col"] = "weighted_point_score"
+        layer_dict["model_units"] = "score (0-inf)"
 
         return pfa
 
@@ -1944,10 +1936,10 @@ class Processing:
             "model"
         ] = density_gdf
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_data_col"
+            "model_data_col"
         ] = "density"
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_units"
+            "model_units"
         ] = f"density per {cell_size_x}x{cell_size_y}x{cell_size_z} m^3"
 
         return pfa
@@ -2072,10 +2064,10 @@ class Processing:
             "model"
         ] = density_gdf
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_data_col"
+            "model_data_col"
         ] = "density"
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "map_units"
+            "model_units"
         ] = f"density per {cell_size_x}x{cell_size_y}x{cell_size_z} m^3"
 
         return pfa
