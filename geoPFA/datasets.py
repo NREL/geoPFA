@@ -49,6 +49,22 @@ def _get_dataset(filename: str, dataset: str) -> pd.DataFrame:
 def fetch_heat(dataset: str) -> pd.DataFrame:
     """Fetch heat sample dataset.
 
+    Currently available:
+    - density_joint_inv_processed
+    - density_joint_inv
+    - earthquakes_processed
+    - earthquakes
+    - mt_resistivity_joint_inv_processed
+    - mt_resistivity_joint_inv
+    - temperature_model_500m_processed
+    - temperature_model_500m
+    - velocity_model_vp_processed
+    - velocity_model_vp
+    - velocity_model_vpvs_processed
+    - velocity_model_vpvs
+    - velocity_model_vs_processed
+    - velocity_model_vs
+
     Parameters
     ----------
     dataset : str
@@ -70,6 +86,16 @@ def fetch_heat(dataset: str) -> pd.DataFrame:
 def fetch_insulation(dataset: str) -> pd.DataFrame:
     """Fetch insulation sample dataset.
 
+    Currently available:
+    - density_joint_inv_processed
+    - density_joint_inv
+    - earthquakes_processed
+    - earthquakes
+    - mt_resistivity_joint_inv_processed
+    - mt_resistivity_joint_inv
+    - velocity_model_vp_processed
+    - velocity_model_vp
+
     Parameters
     ----------
     dataset : str
@@ -90,6 +116,23 @@ def fetch_insulation(dataset: str) -> pd.DataFrame:
 
 def fetch_producibility(dataset: str) -> pd.DataFrame:
     """Fetch producibility sample dataset.
+
+    Currently available:
+    - density_joint_inv_processed
+    - density_joint_inv
+    - earthquakes_processed
+    - earthquakes
+    - faults_3d_processed
+    - faults_3d
+    - geology
+    - mt_resistivity_joint_inv_processed
+    - mt_resistivity_joint_inv
+    - velocity_model_vp_processed
+    - velocity_model_vp
+    - velocity_model_vpvs_processed
+    - velocity_model_vpvs
+    - velocity_model_vs_processed
+    - velocity_model_vs
 
     Parameters
     ----------
