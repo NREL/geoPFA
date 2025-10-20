@@ -44,6 +44,8 @@ dependencies = [
   "pandas>=1.0",
   "psutil>=6.1.0",
   "pytest>=5.2",
+  "pyarrow>=21.0.0,<22",
+  "pooch>=1.8.2,<2",
   "seaborn>=0.13.2",
   "geopandas>=1.0.1",
   "rasterio>=1.4.2",
@@ -111,6 +113,7 @@ geoPFA = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
 contextily = "==1.6.2"
+gdal = ">=3.10.2,<4"
 geopandas = "==1.0.1"
 joblib = "==1.4.2"
 jupyterlab = ">=4.3.4,<5"
@@ -120,13 +123,15 @@ matplotlib = "==3.9.2"
 numpy = "==2.1.3"
 pandas = "==2.2.3"
 pathos = "==0.3.3"
+pyarrow = ">=21.0.0,<22"
+pykrige = ">=1.7.2,<2"
+pooch = ">=1.8.2,<2"
 psutil = "==6.1.0"
 rasterio = "==1.4.2"
 scipy = "==1.14.1"
 seaborn = "==0.13.2"
 shapely = ">=2.1.0,<3"
-pykrige = ">=1.7.2,<2"
-gdal = ">=3.10.2,<4"
+tqdm = ">=4.67.1,<5"
 
 [tool.pixi.feature.doc.dependencies]
 sphinx = ">=8.2.3,<9"
