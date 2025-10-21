@@ -36,7 +36,7 @@ class VoterVetoTransformation3D:
         return _transform(array, method)
 
     @staticmethod
-    def rasterize_map_3d(gdf, col):
+    def rasterize_model_3d(gdf, col):
         """
         Rasterize a GeoDataFrame with 3D geometries into a 3D NumPy array.
         """
@@ -51,7 +51,7 @@ class VoterVetoTransformation3D:
         num_rows = len(unique_y)
         num_depths = len(unique_z)
 
-        rasterized_map = np.zeros((num_depths, num_rows, num_cols), dtype=np.float32)
+        rasterized_model = np.zeros((num_depths, num_rows, num_cols), dtype=np.float32)
 
         tolerance = 1e-6
 
@@ -66,12 +66,12 @@ class VoterVetoTransformation3D:
                 continue
 
             col_idx, row_idx, depth_idx = col_idx[0], row_idx[0], depth_idx[0]
-            rasterized_map[depth_idx, row_idx, col_idx] = value
+            rasterized_model[depth_idx, row_idx, col_idx] = value
 
-        return rasterized_map
+        return rasterized_model
 
     @staticmethod
-    def derasterize_map_3d(rasterized_map, gdf_geom):
+    def derasterize_model_3d(rasterized_model, gdf_geom):
         """
         Convert a 3D rasterized NumPy array back to a GeoDataFrame with 3D points.
         """
@@ -96,7 +96,7 @@ class VoterVetoTransformation3D:
                     x_coord = unique_x[col_idx]
                     y_coord = unique_y[row_idx]
                     z_coord = unique_z[depth_idx]
-                    value = rasterized_map[depth_idx, row_idx, col_idx]
+                    value = rasterized_model[depth_idx, row_idx, col_idx]
 
                     point = Point(x_coord, y_coord, z_coord)
                     geometries.append(point)

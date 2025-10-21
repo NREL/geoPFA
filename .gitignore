@@ -152,12 +152,5 @@ superhot/newberry/outputs/
 .pixi
 *.egg-info
 
-# Keep data folder but ignore all its contents
-examples/Newberry/3D/data/*
-
-# Re-allow the folder itselfs
-!examples/Newberry/3D/data/.gitkeep
-
-# Track config and notebooks
-!examples/Newberry/3D/config/**
-!examples/Newberry/3D/notebooks/**
+examples/Newberry/2D/data/
+examples/Newberry/3D/data/

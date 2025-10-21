@@ -51,7 +51,7 @@ class GeospatialDataPlotters:
 
         """
         fig, ax = plt.subplots(figsize=figsize)
-        if col == "None":
+        if col is None or str(col).lower() == "none":
             gdf.plot(ax=ax)
         else:
             if vmin is None:
@@ -92,7 +92,7 @@ class GeospatialDataPlotters:
         """Method to plot zoomed in version of geopfa maps, using xlim and ylim to determine the extent. 
         Also adds a basemap."""
         fig, ax = plt.subplots(figsize=figsize)
-        if col == "None":
+        if col is None or str(col).lower() == "none":
             gdf.plot(ax=ax)
         else:
             gdf.plot(ax=ax, marker='s', markersize=markersize,

@@ -48,7 +48,7 @@ class WeightsOfEvidence:
     @classmethod
     def do_weights_of_evidence(cls):
         """
-        Combine individual data layers into a resource 'favorability' map,
+        Combine individual data layers into a resource 'favorability' model,
         using WoE.
 
         Parameters

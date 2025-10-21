@@ -48,7 +48,7 @@ class VoterVeto:
     @staticmethod
     def veto(PrXs):
         """
-        Combine component 'favorability' grids into a resource 'favorability' map,
+        Combine component 'favorability' grids into a resource 'favorability' model,
         vetoing areas where any one component is not present.
 
         Parameters
@@ -69,7 +69,7 @@ class VoterVeto:
     @staticmethod
     def modified_veto(PrXs, w, veto=True):
         """
-        Combine component 'favorability' grids into a resource 'favorability' map,
+        Combine component 'favorability' grids into a resource 'favorability' model,
         optionally vetoing areas where any one component is not present.
 
         Parameters
@@ -102,7 +102,7 @@ class VoterVeto:
     @classmethod
     def do_voter_veto(cls, pfa, normalize_method, component_veto=False, criteria_veto=True, normalize=True, norm_to=5):
         """
-        Combine individual data layers into a resource 'favorability' map, 
+        Combine individual data layers into a resource 'favorability' model, 
         vetoing areas where any one component is not present (0% 'favorability').
 
         Parameters
@@ -115,7 +115,7 @@ class VoterVeto:
         Returns
         -------
         pfa : dict
-            Config updated with new 'favorability' maps.
+            Config updated with new 'favorability' models.
         """
         PrRs = []
         w_criteria = []
@@ -129,19 +129,19 @@ class VoterVeto:
                 w0 = cls.get_w0(Pr0)
                 for layer in pfa['criteria'][criteria]['components'][component]['layers']:
                     print(layer)
-                    map = pfa['criteria'][criteria]['components'][component]['layers'][layer]['model']
-                    col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['map_data_col']
+                    model = pfa['criteria'][criteria]['components'][component]['layers'][layer]['model']
+                    col = pfa['criteria'][criteria]['components'][component]['layers'][layer]['model_data_col']
                     transformation_method = pfa['criteria'][criteria]['components'][component]['layers'][layer]['transformation_method']
 
-                    map_array = VoterVetoTransformation3D.rasterize_map_3d(gdf=map, col=col)
+                    model_array = VoterVetoTransformation3D.rasterize_model_3d(gdf=model, col=col)
                     if transformation_method != "none":
-                        map_array = VoterVetoTransformation3D.transform(map_array, transformation_method)
-                    map_array = VoterVetoTransformation3D.normalize_array(map_array, method=normalize_method)
-                    z.append(map_array)
+                        model_array = VoterVetoTransformation3D.transform(model_array, transformation_method)
+                    model_array = VoterVetoTransformation3D.normalize_array(model_array, method=normalize_method)
+                    z.append(model_array)
                     w_layers.append(pfa['criteria'][criteria]['components'][component]['layers'][layer]['weight'])
 
                 PrX = cls.voter(np.array(w_layers), np.array(z), w0)
-                pfa['criteria'][criteria]['components'][component]['pr'] = VoterVetoTransformation3D.derasterize_map_3d(PrX, gdf_geom=map)
+                pfa['criteria'][criteria]['components'][component]['pr'] = VoterVetoTransformation3D.derasterize_model_3d(PrX, gdf_geom=model)
                 if normalize:
                     pfa['criteria'][criteria]['components'][component]['pr_norm'] = VoterVetoTransformation3D.normalize_gdf(
                         pfa['criteria'][criteria]['components'][component]['pr'], col='favorability', norm_to=norm_to)
@@ -149,7 +149,7 @@ class VoterVeto:
                 w_components.append(pfa['criteria'][criteria]['components'][component]['weight'])
 
             PrR = cls.modified_veto(PrXs, np.array(w_components), veto=component_veto)
-            pfa['criteria'][criteria]['pr'] = VoterVetoTransformation3D.derasterize_map_3d(PrR, gdf_geom=map)
+            pfa['criteria'][criteria]['pr'] = VoterVetoTransformation3D.derasterize_model_3d(PrR, gdf_geom=model)
             if normalize:
                 pfa['criteria'][criteria]['pr_norm'] = VoterVetoTransformation3D.normalize_gdf(
                     pfa['criteria'][criteria]['pr'], col='favorability', norm_to=norm_to)
@@ -157,7 +157,7 @@ class VoterVeto:
             w_criteria.append(pfa['criteria'][criteria]['weight'])
 
         PrR = cls.modified_veto(PrRs, np.array(w_criteria), veto=criteria_veto)
-        pfa['pr'] = VoterVetoTransformation3D.derasterize_map_3d(PrR, gdf_geom=map)
+        pfa['pr'] = VoterVetoTransformation3D.derasterize_model_3d(PrR, gdf_geom=model)
         if normalize:
             pfa['pr_norm'] = VoterVetoTransformation3D.normalize_gdf(pfa['pr'], col='favorability', norm_to=norm_to)
         return pfa
