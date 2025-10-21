@@ -2,7 +2,7 @@ import geopandas
 import pandas as pd
 import pytest
 
-from geoPFA.io import GeospatialDataWriters
+from geopfa.io import GeospatialDataWriters
 
 
 def test_write(tmp_path):

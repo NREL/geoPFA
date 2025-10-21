@@ -11,10 +11,10 @@ from hypothesis import given, settings, strategies as st
 import numpy as np
 import pytest
 
-import geoPFA.geopfa2d.layer_combination as layer_combination_2D
-import geoPFA.geopfa3d.layer_combination as layer_combination_3D
-import geoPFA.layer_combination
-from geoPFA.layer_combination import get_w0, voter
+import geopfa.geopfa2d.layer_combination as layer_combination_2D
+import geopfa.geopfa3d.layer_combination as layer_combination_3D
+import geopfa.layer_combination
+from geopfa.layer_combination import get_w0, voter
 
 
 # ==== Transition tets ====

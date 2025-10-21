@@ -89,10 +89,10 @@ documentation = "https://github.com/NREL/geoPFA"
 repository = "https://github.com/NREL/geoPFA"
 
 [tool.setuptools]
-packages = ["geoPFA"]
+packages = ["geopfa"]
 
 [tool.setuptools_scm]
-version_file = "geoPFA/_version.py"
+version_file = "geopfa/_version.py"
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
@@ -152,7 +152,7 @@ line-length = 79
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
-exclude = ["geoPFA/geopfa2d/*", "geoPFA/geopfa3d/*"]
+exclude = ["geopfa/geopfa2d/*", "geopfa/geopfa3d/*"]
 
 [tool.ruff.lint]
 preview = true
@@ -242,9 +242,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
-"geoPFA/geopfa3d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
-"geoPFA/geopfa2d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
-"geoPFA/processing.py" = [
+"geopfa/geopfa3d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
+"geopfa/geopfa2d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
+"geopfa/processing.py" = [
   "E722", # bare except
   "PD008", # Use `.loc` instead of `.at`.
   "PERF203", # `try`-`except` within a loop incurs performance overhead

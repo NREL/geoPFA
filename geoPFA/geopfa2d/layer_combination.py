@@ -7,7 +7,7 @@ Best Practices Report (Pauling et al. 2023).
 
 import numpy as np
 from .transformation import VoterVetoTransformation
-from geoPFA.layer_combination import get_w0, WeightsOfEvidence
+from geopfa.layer_combination import get_w0, WeightsOfEvidence
 
 class VoterVeto:
     """Class of functions to weight and combine data layers using the voter-veto method.

@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 from shapely.geometry import Point, Polygon
 
-from geoPFA.processing import Exclusions
+from geopfa.processing import Exclusions
 from geopandas.testing import assert_geodataframe_equal
-import geoPFA.geopfa2d.processing as processing_2D
+import geopfa.geopfa2d.processing as processing_2D
 
 
 def test_mask_exclusion_areas():
