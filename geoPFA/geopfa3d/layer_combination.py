@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Set of various methods to weight and combine data layers for use in PFA.
 The methods included in this class are based on those outlined by the PFA
@@ -9,6 +8,7 @@ import numpy as np
 from .transformation import VoterVetoTransformation3D
 from geopfa.layer_combination import get_w0, WeightsOfEvidence
 
+
 class VoterVeto:
     """Class of functions to weight and combine data layers using the voter-veto method.
     This method is based on a generalized linear model and is defined as a best practice
@@ -17,7 +17,6 @@ class VoterVeto:
     @staticmethod
     def get_w0(Pr0):
         return get_w0(Pr0)
-
 
     @staticmethod
     def voter(w, z, w0):

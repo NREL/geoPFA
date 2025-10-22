@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Set of methods to transform data from evidence layers into evidence layers, now supporting 3D data.
 """
@@ -15,7 +14,7 @@ from geopfa.transformation import transform as _transform
 
 class VoterVetoTransformation3D:
     """Class of functions for transforming 3D data layers into evidence layers."""
-    
+
     @staticmethod
     def normalize_gdf(gdf, col, norm_to=1):
         """

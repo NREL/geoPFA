@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Set of methods to transform data from evidence layers into evidence layers.
 """
@@ -16,8 +15,9 @@ class VoterVetoTransformation:
     """Class of functions for use in transforming data layers into evidence layers
     i.e., data values to 'favorability' values.
     """
+
     @staticmethod
-    def normalize_gdf(gdf, col, norm_to=1): 
+    def normalize_gdf(gdf, col, norm_to=1):
         return _normalize_gdf(gdf, col, norm_to)
 
     @staticmethod
@@ -87,7 +87,7 @@ class VoterVetoTransformation:
         for _, row in gdf.iterrows():
             # Extract the associated value or column at the point
             value = row[col]
-            
+
             # Find the index of the point's coordinates in the unique x and y arrays
             col_idx = np.where(np.abs(unique_x - row.geometry.x) < tolerance)[0]
             row_idx = np.where(np.abs(unique_y - row.inverted_y) < tolerance)[0]
@@ -159,4 +159,3 @@ class VoterVetoTransformation:
         # Assign the values from the rasterized model to the 'col' column of the GeoDataFrame
         gdf['favorability'] = rasterized_model.flatten()
         return gdf
-

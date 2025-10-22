@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Set of interp_methods to process data from various formats into 2d images.
 """
@@ -186,7 +185,7 @@ class Processing:
         y_grid = np.linspace(y_min, y_max, ny)
         xv, yv = np.meshgrid(x_grid, y_grid)
 
-        ## TODO: Properly implement IDW. The commented out code below does not work
+        # TODO: Properly implement IDW. The commented out code below does not work
         # Choose interpolation method
         # if interp_method == 'idw':
         #     # IDW interpolation inline
@@ -626,8 +625,7 @@ class Processing:
                 return point.distance(
                     nearest_line_geom
                 )  # Calculate distance between point and line
-            else:
-                return float("inf")  # If no lines are found, return infinity
+            return float("inf")  # If no lines are found, return infinity
 
         # Calculate the nearest line distance for each point in the GeoDataFrame
         nearest_line_distances = gdf_points.geometry.apply(
