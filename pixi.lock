@@ -8273,8 +8273,8 @@ packages:
   timestamp: 1734346217454
 - pypi: ./
   name: geopfa
-  version: 0.0.8.dev10+g6a6ac9888
-  sha256: 9d54e8632ee0c0687442bf7d15c26d79435ce0b851a9caaec6bea2535e99bbcd
+  version: 0.0.9
+  sha256: 2f87a9119ae2c63a2339039f1e62b24a3b267e441b3ca9d904d7f0cc236d0e5f
   requires_dist:
   - iapws>=1.5.4
   - matplotlib>=3.1
