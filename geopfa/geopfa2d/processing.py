@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Set of interp_methods to process data from various formats into 2d images.
 """
@@ -10,17 +9,17 @@ import pandas as pd
 import scipy
 import numpy as np
 import shapely
-from geoPFA.transformation import transform
 # from pygem import IDW
 
-import geoPFA.processing
+import geopfa.processing
+from geopfa.transformation import transform
 
 
-class Cleaners(geoPFA.processing.Cleaners):
-    """Alias for geoPFA.processing.Cleaners
+class Cleaners(geopfa.processing.Cleaners):
+    """Alias for geopfa.processing.Cleaners
 
     .. deprecated:: 0.1.0
-       :class:`~geoPFA.processing.Cleaners` instead.
+       :class:`~geopfa.processing.Cleaners` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -28,7 +27,7 @@ class Cleaners(geoPFA.processing.Cleaners):
         warnings.warn(
             "The geopfa3d.processing.Cleaners class is deprecated"
             " and will be removed in a future version."
-            " Please use the geoPFA.processing module instead.",
+            " Please use the geopfa.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -94,11 +93,11 @@ class Cleaners(geoPFA.processing.Cleaners):
         return gdf_clipped
 
 
-class Exclusions(geoPFA.processing.Exclusions):
-    """Alias for geoPFA.processing.Exclusions
+class Exclusions(geopfa.processing.Exclusions):
+    """Alias for geopfa.processing.Exclusions
 
     .. deprecated:: 0.1.0
-       :class:`~geoPFA.processing.Exclusions` instead.
+       :class:`~geopfa.processing.Exclusions` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -106,7 +105,7 @@ class Exclusions(geoPFA.processing.Exclusions):
         warnings.warn(
             "The geopfa3d.processing.Exclusions class is deprecated"
             " and will be removed in a future version."
-            " Please use the geoPFA.processing module instead.",
+            " Please use the geopfa.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -186,7 +185,7 @@ class Processing:
         y_grid = np.linspace(y_min, y_max, ny)
         xv, yv = np.meshgrid(x_grid, y_grid)
 
-        ## TODO: Properly implement IDW. The commented out code below does not work
+        # TODO: Properly implement IDW. The commented out code below does not work
         # Choose interpolation method
         # if interp_method == 'idw':
         #     # IDW interpolation inline
@@ -626,8 +625,7 @@ class Processing:
                 return point.distance(
                     nearest_line_geom
                 )  # Calculate distance between point and line
-            else:
-                return float("inf")  # If no lines are found, return infinity
+            return float("inf")  # If no lines are found, return infinity
 
         # Calculate the nearest line distance for each point in the GeoDataFrame
         nearest_line_distances = gdf_points.geometry.apply(

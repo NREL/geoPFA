@@ -7164,12 +7164,10 @@ packages:
   timestamp: 1734346217454
 - pypi: ./
   name: geopfa
-  version: 0.0.6.dev0+g7359cd26e.d20251017
-  sha256: c72e91365cb11c3fd132b4e9aa3d85022adb79bb7849fd0fec5b6757ced4364a
+  version: 0.0.8.dev11+gc77b7de4d
+  sha256: ec3cf9db8d85e4f558a678a5a16bf0040e8f78203e2133cd3c8e4f98d6a2626f
   requires_dist:
   - iapws>=1.5.4
-  - ipython>=8.29.0
-  - joblib>=1.4.2
   - matplotlib>=3.1
   - networkx>=2.3
   - notebook
@@ -7189,6 +7187,7 @@ packages:
   - pathos>=0.3.3
   - pykrige>=1.7
   - geostatspy>=0.0.72,<0.0.73
+  - ipython>=8.29.0 ; extra == 'dev'
   - twine>=5.1 ; extra == 'dev'
   - pre-commit>=4.0 ; extra == 'dev'
   - ghp-import>=2.1 ; extra == 'doc'

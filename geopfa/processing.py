@@ -15,8 +15,9 @@ from shapely.ops import unary_union
 from pykrige.ok3d import OrdinaryKriging3D
 from scipy.interpolate import griddata
 from osgeo import osr
-from geoPFA.transformation import transform
 from itertools import starmap
+
+from geopfa.transformation import transform
 
 
 class Cleaners:
