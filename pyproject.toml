@@ -101,6 +101,10 @@ platforms = ["osx-arm64", "linux-64", "win-64"]
 [tool.pixi.tasks]
 doc-html = { cmd = "make html", cwd = "docs"}
 
+[tool.pixi.feature.build.tasks]
+build-wheels = { cmd = "uv build --sdist --wheel --out-dir dist/ ." }
+publish-pypi = { cmd = "uv publish", depends-on = ["build-wheels"] }
+
 [tool.pixi.environments]
 default = { solve-group = "default" }
 build = { features = ["build"], solve-group = "default" }
