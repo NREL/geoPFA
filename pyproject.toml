@@ -101,9 +101,14 @@ platforms = ["osx-arm64", "linux-64", "win-64"]
 [tool.pixi.tasks]
 doc-html = { cmd = "make html", cwd = "docs"}
 
+[tool.pixi.feature.build.tasks]
+build-wheels = { cmd = "uv build --sdist --wheel --out-dir dist/ ." }
+publish-pypi = { cmd = "uv publish", depends-on = ["build-wheels"] }
+
 [tool.pixi.environments]
 default = { solve-group = "default" }
-dev = { features = ["dev", "doc", "test"], solve-group = "default" }
+build = { features = ["build"], solve-group = "default" }
+dev = { features = ["build", "dev", "doc", "test"], solve-group = "default" }
 doc = { features = ["doc"], solve-group = "default" }
 test = { features = ["test"], solve-group = "default" }
 
@@ -130,6 +135,9 @@ scipy = "==1.14.1"
 seaborn = "==0.13.2"
 shapely = ">=2.1.0,<3"
 tqdm = ">=4.67.1,<5"
+
+[tool.pixi.feature.build.dependencies]
+uv = ">=0.7.22,<0.8"
 
 [tool.pixi.feature.doc.dependencies]
 sphinx = ">=8.2.3,<9"
