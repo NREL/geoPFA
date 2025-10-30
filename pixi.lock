@@ -8359,8 +8359,8 @@ packages:
   timestamp: 1759763364111
 - pypi: ./
   name: geopfa
-  version: 0.0.11.dev7+geac7c9e4e.d20251030
-  sha256: fa615f483905946cf6fcfd82012401250856b00d5da4f277ae6dd71c25bc55ad
+  version: 0.0.11.dev8+g5767f330f.d20251030
+  sha256: 9815b9d98647d4d9ea9912d71796f64c7656cff47d1beb905186772f81b4add2
   requires_dist:
   - iapws>=1.5.4
   - matplotlib>=3.1
