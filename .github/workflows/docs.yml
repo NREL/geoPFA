@@ -15,13 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Update apt-get
-        run: "sudo apt-get update"
-
-      - name: Install LaTeX
-        run: "sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended"
-
-      - name: Pull Repo
+      - name: Checkout repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
