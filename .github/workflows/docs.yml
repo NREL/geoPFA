@@ -1,7 +1,5 @@
 name: Release Documentation
 
-permissions: write-all
-
 on:
   pull_request:
   push:
@@ -45,8 +43,14 @@ jobs:
     name: Deploy docs
     needs: build_html
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
-        id: deploy-pages
+        id: deployment
         uses: actions/deploy-pages@v4
