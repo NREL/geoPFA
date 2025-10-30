@@ -28,6 +28,7 @@ jobs:
           locked: true
           cache: true
           cache-write: ${{ github.ref == 'refs/heads/main' }}
+          environments: doc
 
       - name: Build HTML
         run: pixi run -e doc python-docs
