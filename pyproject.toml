@@ -143,6 +143,8 @@ uv = ">=0.7.22,<0.8"
 
 [tool.pixi.feature.doc.dependencies]
 sphinx = ">=8.2.3,<9"
+myst-parser = ">=4.0.1,<5"
+make = ">=4.4.1,<5"
 
 [tool.pixi.feature.test.dependencies]
 pylint = ">=3.3.3,<4"
