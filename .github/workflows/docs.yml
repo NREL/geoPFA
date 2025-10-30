@@ -39,8 +39,12 @@ jobs:
         with:
           path: 'docs/build/html'
 
-#      - name: Release
-#        uses: fnkr/github-action-ghr@v1
-#        env:
-#          GHR_PATH: docs/_build/latex/geoPFA.pdf
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  deploy:
+    name: Deploy docs
+    needs: build_html
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy-pages
+        uses: actions/deploy-pages@v4
