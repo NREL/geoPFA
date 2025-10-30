@@ -40,7 +40,7 @@ dependencies = [
   "networkx>=2.3",
   "notebook",
   "numpy>=1.16",
-  "pandas>=1.0",
+  "pandas>=2.0",
   "psutil>=6.1.0",
   "pytest>=5.2",
   "pyarrow>=21.0.0,<22",
@@ -126,7 +126,7 @@ iapws = "==1.5.4"
 networkx = "==3.4.2"
 matplotlib = ">=3.10.7,<4"
 numpy = ">=1.26.4,<2"
-pandas = "==2.2.3"
+pandas = ">=2.3.3,<3"
 pathos = "==0.3.3"
 pyarrow = ">=21.0.0,<22"
 pykrige = ">=1.7.1,<2"
