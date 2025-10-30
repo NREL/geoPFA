@@ -36,11 +36,14 @@ jobs:
       - name: Build HTML
         run: pixi run -e doc python-docs
 
-#      - name: Build document
-#        run: |
-#          cd docs
-#          pixi run -e doc make latexpdf
-#
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: 'docs/build/html'
+
 #      - name: Release
 #        uses: fnkr/github-action-ghr@v1
 #        env:
