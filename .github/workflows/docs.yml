@@ -33,14 +33,8 @@ jobs:
           cache: true
           cache-write: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Install Mermaid CLI
-        run: npm install -g @mermaid-js/mermaid-cli
-
-      - name: Install Pandoc
-        uses: r-lib/actions/setup-pandoc@v2
-
-      - name: Convert Markdown mermaid directive to MyST mermaid directive
-        run: find . -type f -name "*.md" -exec sed -i 's/```mermaid/```{mermaid}/g' {} +
+      - name: Build HTML
+        run: pixi run -e doc python-docs
 
 #      - name: Build document
 #        run: |
