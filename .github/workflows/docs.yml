@@ -11,6 +11,9 @@ jobs:
   build_html:
     name: Build docs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
 
     steps:
       - name: Checkout repository
