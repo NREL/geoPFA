@@ -3,6 +3,8 @@ name: Release Documentation
 permissions: write-all
 
 on:
+  pull_request:
+  push:
   release:
     types: [created, published]
   workflow_dispatch:
