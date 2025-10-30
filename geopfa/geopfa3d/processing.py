@@ -1,19 +1,19 @@
 """Transition module
 
 All functionalities from this module were moved to
-:module:`~geoPFA.processing`.
+:module:`~geopfa.processing`.
 """
 
 import warnings
 
-import geoPFA.processing
+import geopfa.processing
 
 
-class Cleaners(geoPFA.processing.Cleaners):
-    """Alias for geoPFA.processing.Cleaners
+class Cleaners(geopfa.processing.Cleaners):
+    """Alias for geopfa.processing.Cleaners
 
     .. deprecated:: 0.1.0
-       :class:`~geoPFA.processing.Cleaners` instead.
+       :class:`~geopfa.processing.Cleaners` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -21,18 +21,18 @@ class Cleaners(geoPFA.processing.Cleaners):
         warnings.warn(
             "The geopfa3d.processing.Cleaners class is deprecated"
             " and will be removed in a future version."
-           " Please use the geoPFA.processing module instead.",
+           " Please use the geopfa.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
         super().__init__(*args, **kwargs)
 
 
-class Exclusions(geoPFA.processing.Exclusions):
-    """Alias for geoPFA.processing.Exclusions
+class Exclusions(geopfa.processing.Exclusions):
+    """Alias for geopfa.processing.Exclusions
 
     .. deprecated:: 0.1.0
-       :class:`~geoPFA.processing.Exclusions` instead.
+       :class:`~geopfa.processing.Exclusions` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -40,18 +40,18 @@ class Exclusions(geoPFA.processing.Exclusions):
         warnings.warn(
             "The geopfa3d.processing.Exclusions class is deprecated"
             " and will be removed in a future version."
-           " Please use the geoPFA.processing module instead.",
+           " Please use the geopfa.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
         super().__init__(*args, **kwargs)
 
 
-class Processing(geoPFA.processing.Processing):
-    """Alias for geoPFA.processing.Processing
+class Processing(geopfa.processing.Processing):
+    """Alias for geopfa.processing.Processing
 
     .. deprecated:: 0.1.0
-       :class:`~geoPFA.processing.Processing` instead.
+       :class:`~geopfa.processing.Processing` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -59,7 +59,7 @@ class Processing(geoPFA.processing.Processing):
         warnings.warn(
             "The geopfa3d.processing.Processing class is deprecated"
             " and will be removed in a future version."
-           " Please use the geoPFA.processing module instead.",
+           " Please use the geopfa.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
