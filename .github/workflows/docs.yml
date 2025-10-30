@@ -3,9 +3,10 @@ name: Release Documentation
 on:
   pull_request:
   push:
+    branches:
+      - main
   release:
     types: [created, published]
-  workflow_dispatch:
 
 jobs:
   build_html:
