@@ -116,6 +116,8 @@ class GeospatialDataReaders:
             gdf.set_crs(crs, inplace=True)
 
         return gdf
+    
+    
 
     @staticmethod
     def read_raster(path):
@@ -172,6 +174,113 @@ class GeospatialDataReaders:
         gdf.set_crs(crs, inplace=True)
 
         return gdf
+
+    @staticmethod
+    def read_well_path_csv(
+        csv_path,
+        colmap,
+        value_col=None,
+        source_crs=None,
+        to_crs=None,
+        assume_lonlat_if_unknown=True,
+        sort_by=None,
+        dropna_any=True,
+        z_meas=None,           # e.g., "m-msl", "ft-msl", "epsg:5703", "depth"
+        target_z_meas=None,    # same options
+        convert_z_after=True,  # apply geopfa conversion *after* geometry creation
+        deduplicate_consecutive=True
+    ):
+        """
+        Reads a well path CSV and returns:
+        (1) a GeoDataFrame with a single 3D LineString,
+        (2) an optional per-vertex values array (for well_path_values).
+        
+        colmap must map your CSV columns to:
+        'x','y' or 'lon','lat'   → horizontal coordinates
+        'z'                      → depth or elevation column
+        Optional: 'md', 'name'
+        """
+
+        # Load CSV
+        df = pd.read_csv(csv_path)
+
+        # ---- Extract Coordinates ------------------------------------------------
+        if 'x' in colmap and 'y' in colmap:
+            x = df[colmap['x']].astype(float).to_numpy()
+            y = df[colmap['y']].astype(float).to_numpy()
+            inferred_crs = source_crs
+        else:
+            lon = df[colmap['lon']].astype(float).to_numpy()
+            lat = df[colmap['lat']].astype(float).to_numpy()
+            x, y = lon, lat
+            inferred_crs = source_crs
+            if inferred_crs is None and assume_lonlat_if_unknown:
+                inferred_crs = 4326  # default WGS84
+
+        # ---- Z Column (depth OR elevation, do NOT convert here) -----------------
+        if 'z' in colmap:
+            z = df[colmap['z']].astype(float).to_numpy()
+        else:
+            z = np.zeros_like(x, dtype=float)
+
+        coords = np.column_stack([x, y, z])
+
+        # ---- Drop NaN Rows ------------------------------------------------------
+        if dropna_any:
+            mask = ~np.isnan(coords).any(axis=1)
+        else:
+            mask = ~(np.isnan(coords).all(axis=1))
+
+        coords = coords[mask]
+        df = df.loc[mask].reset_index(drop=True)
+
+        # ---- Sorting ------------------------------------------------------------
+        if sort_by is None and 'md' in colmap and colmap['md'] in df.columns:
+            sort_by = colmap['md']
+
+        if sort_by is not None and sort_by in df.columns:
+            order = np.argsort(df[sort_by].to_numpy())
+            coords = coords[order]
+            df = df.iloc[order].reset_index(drop=True)
+
+        # ---- De-duplicate Vertices ---------------------------------------------
+        if deduplicate_consecutive and len(coords) > 1:
+            keep = np.ones(len(coords), dtype=bool)
+            keep[1:] = (np.abs(np.diff(coords, axis=0)) > 0).any(axis=1)
+            coords = coords[keep]
+            df = df.loc[keep].reset_index(drop=True)
+
+        # ---- Build 3D LineString ------------------------------------------------
+        line3d = LineString(coords.tolist())
+
+        well_name = df[colmap['name']].iloc[0] if ('name' in colmap and colmap['name'] in df.columns) else None
+        gdf = gpd.GeoDataFrame({'name': [well_name]}, geometry=[line3d], crs=inferred_crs)
+
+        # ---- Reproject Horizontal CRS ------------------------------------------
+        if to_crs is not None:
+            gdf = gdf.to_crs(to_crs)
+
+        # ---- Extract Optional Values Column -------------------------------------
+        values = None
+        vcol = value_col if value_col else colmap.get('value', None)
+        if vcol is not None:
+            if vcol not in df.columns:
+                raise ValueError(f"Value column '{vcol}' not found in CSV.")
+            values = df[vcol].to_numpy()
+
+            # Align length to number of vertices
+            if len(values) > len(coords):
+                values = values[:len(coords)]
+            elif len(values) < len(coords):
+                pad = np.full(len(coords) - len(values), np.nan)
+                values = np.concatenate([values, pad])
+
+        # ---- OPTIONAL Z-Measurement Conversion ---------------------------------
+        if convert_z_after and z_meas is not None and target_z_meas is not None:
+            from geopfa.processing.Processing import convert_z_measurements
+            gdf = convert_z_measurements(gdf, z_meas, target_z_meas)
+
+        return gdf, values
 
     @classmethod
     def gather_data(cls, data_dir, pfa, file_types):  # noqa: PLR0912

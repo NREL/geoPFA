@@ -42,53 +42,17 @@
                             "transformation_method": "None",
                             "processing_method": "interpolate"
                         },
-                        "velocity_model_vp": {
-                            "weight": 0.158,
-                            "units": "dv/v",
-                            "data_col": "vp",
-                            "x_col": "X",
-                            "y_col": "Y",
-                            "z_col": "z",
-                            "crs": "26910",
-                            "z_meas": "epsg:26910",
-                            "transformation_method": "negate",
-                            "processing_method": "interpolate"
-                        },
-                        "velocity_model_vs": {
-                            "weight": 0.158,
-                            "units": "dv/v",
-                            "data_col": "vs",
-                            "x_col": "X",
-                            "y_col": "Y",
-                            "z_col": "z",
-                            "crs": "26910",
-                            "z_meas": "epsg:26910",
-                            "transformation_method": "negate",
-                            "processing_method": "interpolate"
-                        },
-                        "velocity_model_vpvs": {
-                            "weight": 0.158,
-                            "units": "ratio",
-                            "data_col": "vpvs",
-                            "x_col": "X",
-                            "y_col": "Y",
-                            "z_col": "z",
-                            "crs": "26910",
-                            "z_meas": "epsg:26910",
-                            "transformation_method": "None",
-                            "processing_method": "interpolate"
-                        },
                         "earthquakes": {
                             "weight": 0.085,
                             "units": "ratio",
-                            "data_col": "None",
+                            "data_col": "Magnitude",
                             "x_col": "X",
                             "y_col": "Y",
                             "z_col": "Z",
                             "crs": "26910",
                             "z_meas": "epsg:26910",
                             "transformation_method": "negate",
-                            "processing_method": "density"
+                            "processing_method": "density x magnitude"
                         }
                     },
                     "pr0": 0.4
@@ -120,53 +84,17 @@
                             "transformation_method": "none",
                             "processing_method": "interpolate"
                         },
-                        "velocity_model_vp": {
-                            "weight": 0.106,
-                            "units": "dv/v",
-                            "data_col": "vp",
-                            "x_col": "X",
-                            "y_col": "Y",
-                            "z_col": "z",
-                            "crs": "26910",
-                            "z_meas": "epsg:26910",
-                            "transformation_method": "none",
-                            "processing_method": "interpolate"
-                        },
-                        "velocity_model_vs": {
-                            "weight": 0.106,
-                            "units": "dv/v",
-                            "data_col": "vs",
-                            "x_col": "X",
-                            "y_col": "Y",
-                            "z_col": "z",
-                            "crs": "26910",
-                            "z_meas": "epsg:26910",
-                            "transformation_method": "none",
-                            "processing_method": "interpolate"
-                        },
-                        "velocity_model_vpvs": {
-                            "weight": 0.106,
-                            "units": "ratio",
-                            "data_col": "vpvs",
-                            "x_col": "X",
-                            "y_col": "Y",
-                            "z_col": "z",
-                            "crs": "26910",
-                            "z_meas": "epsg:26910",
-                            "transformation_method": "none",
-                            "processing_method": "interpolate"
-                        },
                         "earthquakes": {
                             "weight": 0.179,
                             "units": "ratio",
-                            "data_col": "None",
+                            "data_col": "Magnitude",
                             "x_col": "X",
                             "y_col": "Y",
                             "z_col": "Z",
                             "crs": "26910",
                             "z_meas": "epsg:26910",
                             "transformation_method": "none",
-                            "processing_method": "density"
+                            "processing_method": "density x magnitude"
                         },
                         "faults_3d": {
                             "weight": 0.249,
@@ -195,7 +123,7 @@
                             "z_col": "Z_m",
                             "crs": "26910",
                             "z_meas": "m-msl",
-                            "transformation_method": "None",
+                            "transformation_method": "none",
                             "processing_method": "interpolate"
                         },
                         "mt_resistivity_joint_inv": {
@@ -207,32 +135,32 @@
                             "z_col": "Z_m",
                             "crs": "26910",
                             "z_meas": "m-msl",
-                            "transformation_method": "None",
-                            "processing_method": "interpolate"
-                        },
-                        "velocity_model_vp": {
-                            "weight": 0.124,
-                            "units": "dv/v",
-                            "data_col": "vp",
-                            "x_col": "X",
-                            "y_col": "Y",
-                            "z_col": "z",
-                            "crs": "26910",
-                            "z_meas": "epsg:26910",
-                            "transformation_method": "None",
+                            "transformation_method": "negate",
                             "processing_method": "interpolate"
                         },
                         "earthquakes": {
                             "weight": 0.049,
                             "units": "ratio",
-                            "data_col": "None",
+                            "data_col": "Magnitude",
                             "x_col": "X",
                             "y_col": "Y",
                             "z_col": "Z",
                             "crs": "26910",
                             "z_meas": "epsg:26910",
                             "transformation_method": "negate",
-                            "processing_method": "density"
+                            "processing_method": "density x magnitude"
+                        },
+                        "temperature_model_500m": {
+                            "weight": 0.204,
+                            "units": "degC",
+                            "data_col": "TEMP_all_wells",
+                            "x_col": "X",
+                            "y_col": "Y",
+                            "z_col": "Z",
+                            "crs": "26910",
+                            "z_meas": "epsg:26910",
+                            "transformation_method": "negate",
+                            "processing_method": "interpolate"
                         }
                     },
                     "pr0": 0.8
