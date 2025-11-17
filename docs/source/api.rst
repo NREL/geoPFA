@@ -2,4 +2,4 @@
    :toctree: _autosummary
    :recursive:
 
-    geoPFA
+    geopfa

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Set of various methods to weight and combine data layers for use in PFA.
 The methods included in this class are based on those outlined by the PFA
@@ -7,7 +6,8 @@ Best Practices Report (Pauling et al. 2023).
 
 import numpy as np
 from .transformation import VoterVetoTransformation
-from geoPFA.layer_combination import get_w0, WeightsOfEvidence
+from geopfa.layer_combination import get_w0, WeightsOfEvidence
+
 
 class VoterVeto:
     """Class of functions to weight and combine data layers using the voter-veto method.
@@ -75,6 +75,7 @@ class VoterVeto:
             else:
                 PrR = np.multiply(PrR, c)
         return PrR
+
     @staticmethod
     def modified_veto(PrXs,w,veto=True):
         """
@@ -157,7 +158,7 @@ class VoterVeto:
                     model_array = VoterVetoTransformation.normalize_array(model_array,method=normalize_method)
                     z.append(model_array)
                     w_layers.append(pfa['criteria'][criteria]['components'][component]['layers'][layer]['weight'])
-                
+
                 PrX = cls.voter(np.array(w_layers), np.array(z), w0)
                 pfa['criteria'][criteria]['components'][component]['pr'] = VoterVetoTransformation.derasterize_model(PrX,gdf_geom=model)
                 if normalize is True:
@@ -165,7 +166,7 @@ class VoterVeto:
                         pfa['criteria'][criteria]['components'][component]['pr'],col='favorability',norm_to=norm_to)
                 PrXs.append(PrX)
                 w_components.append(pfa['criteria'][criteria]['components'][component]['weight'])
-            
+
             PrR = cls.modified_veto(PrXs, np.array(w_components),veto=component_veto)
             pfa['criteria'][criteria]['pr'] = VoterVetoTransformation.derasterize_model(PrR,gdf_geom=model)
             if normalize is True:
@@ -173,7 +174,7 @@ class VoterVeto:
                     pfa['criteria'][criteria]['pr'],col='favorability',norm_to=norm_to)
             PrRs.append(PrR)
             w_criteria.append(pfa['criteria'][criteria]['weight'])
-        
+
         PrR = cls.modified_veto(PrRs,np.array(w_criteria),veto=criteria_veto)
         pfa['pr'] = VoterVetoTransformation.derasterize_model(PrR,gdf_geom=model)
         if normalize is True:

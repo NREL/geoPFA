@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Set of methods to transform data from evidence layers into evidence layers, now supporting 3D data.
 """
@@ -8,14 +7,14 @@ import numpy as np
 import shapely
 from shapely.geometry import Point
 
-from geoPFA.transformation import normalize_gdf as _normalize_gdf
-from geoPFA.transformation import normalize_array as _normalize_array
-from geoPFA.transformation import transform as _transform
+from geopfa.transformation import normalize_gdf as _normalize_gdf
+from geopfa.transformation import normalize_array as _normalize_array
+from geopfa.transformation import transform as _transform
 
 
 class VoterVetoTransformation3D:
     """Class of functions for transforming 3D data layers into evidence layers."""
-    
+
     @staticmethod
     def normalize_gdf(gdf, col, norm_to=1):
         """

@@ -10,7 +10,6 @@ import pandas as pd
 import scipy
 import numpy as np
 import shapely
-from geoPFA.transformation import transform
 # from pygem import IDW
 
 import geoPFA.processing
@@ -94,10 +93,11 @@ class Cleaners(geoPFA.processing.Cleaners):
         return gdf_clipped
 
 class Exclusions(geoPFA.processing.Exclusions):
-    """Alias for geoPFA.processing.Exclusions
+    """Alias for geopfa.processing.Exclusions
+>>>>>>> main:geopfa/geopfa2d/processing.py
 
     .. deprecated:: 0.1.0
-       :class:`~geoPFA.processing.Exclusions` instead.
+       :class:`~geopfa.processing.Exclusions` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -1029,7 +1029,7 @@ class Processing:
             List of length 4 containing the extent (i.e., bounding box) to use to produce the
             distance model. Can be produced using get_extent() function below. Should be in
             this order: [x_min, y_min, x_max, y_max]
-        - cell_size : float
+        cell_size : float
             Size of each cell in the grid used for density calculation.
             Example Cell Sizes for EPSG:3857
                 High Detail: 50 meters
