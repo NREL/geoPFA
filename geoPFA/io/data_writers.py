@@ -58,3 +58,22 @@ class GeospatialDataWriters:
         if gdf.crs is None:
             gdf.set_crs(target_crs)
         gdf.to_crs(target_crs).to_file(path)
+
+    @staticmethod
+    def write_csv(gdf, path, target_crs="EPSG:4326"):
+        """Writes geopandas dataframe to a shapefile.
+
+        Parameters
+        ----------
+        path : 'str'
+            Path to shapefile to write to
+        gdf : Geopandas DataFrame
+            Geopandas DataFrame containing data to write to the shapefile
+        target_crs : 'int'
+            Integer value associated with the CRS you with to write to.
+            Defaults to 4326
+        """
+        GenericFunctions.ensure_directory_exists(path)
+        if gdf.crs is None:
+            gdf.set_crs(target_crs)
+        gdf.to_crs(target_crs).to_csv(path)

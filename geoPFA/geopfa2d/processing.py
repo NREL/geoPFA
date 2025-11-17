@@ -93,7 +93,6 @@ class Cleaners(geoPFA.processing.Cleaners):
         gdf_clipped = gdf.clip(bbox)
         return gdf_clipped
 
-
 class Exclusions(geoPFA.processing.Exclusions):
     """Alias for geoPFA.processing.Exclusions
 
@@ -859,7 +858,6 @@ class Processing:
         nx,
         ny,
         alpha=1000.0,
-        transform_method="none",
         weight_points=True,
         weight_min=1.0,
         weight_max=2.0,
@@ -888,9 +886,6 @@ class Processing:
             Number of points along x and y in the final grid
         alpha : float, default=1000
             Decay constant for distance (in meters).
-        transform_method: str, default="none"
-            How to transform point data into proximity favorability via transformation
-            function (e.g."none", "negate", "inverse", etc.).
         weight_points : bool, default=True
             Whether to apply data-based point weighting or not.
         weight_min : float, default=1.0
@@ -964,9 +959,8 @@ class Processing:
 
         # Transform data values into weight
         arr_2d = data_array_1d.reshape(-1, 1)
-        arr_2d_trans = transform(arr_2d, transform_method)  # e.g. "negate"
-        arr_2d_trans = np.nan_to_num(arr_2d_trans, nan=0)  # handle NaNs
-        trans_1d = arr_2d_trans.ravel()
+        arr_2d = np.nan_to_num(arr_2d, nan=0)  # handle NaNs
+        arr_1d = arr_2d.ravel()
 
         # scale them to [out_min..out_max]
         if not weight_points:
@@ -978,7 +972,7 @@ class Processing:
 
         # Scale once with the chosen range
         weights_1d = normalize_point_weights(
-            trans_1d,
+            arr_1d,
             out_min=out_min,
             out_max=out_max,
         )

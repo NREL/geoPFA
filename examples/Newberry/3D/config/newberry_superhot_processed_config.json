@@ -65,7 +65,7 @@
                     },
                     "pr0": 0.4
                 },
-                "producibility": {
+                "reservoir": {
                     "weight": 0.4,
                     "layers": {
                         "density_joint_inv": {
@@ -110,7 +110,7 @@
                             "model_data_col": "weighted_point_score",
                             "model_units": "score (0-inf)"
                         },
-                        "faults_3d": {
+                        "ring_faults": {
                             "weight": 0.249,
                             "units": "None",
                             "data_col": "None",
@@ -121,6 +121,21 @@
                             "z_meas": "epsg:26910",
                             "transformation_method": "negate",
                             "processing_method": "distance",
+                            "model_data_col": "distance",
+                            "model_units": "m"
+                        },
+                        "lineaments": {
+                            "weight": 0.249,
+                            "units": "",
+                            "data_col": "None",
+                            "x_col": "X",
+                            "y_col": "Y",
+                            "z_col": "Z",
+                            "crs": "4326",
+                            "is_3d": "no",
+                            "transformation_method": "negate",
+                            "processing_method": "distance",
+                            "z_meas": "m-msl",
                             "model_data_col": "distance",
                             "model_units": "m"
                         }

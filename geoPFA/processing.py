@@ -9,6 +9,7 @@ import geopandas as gpd
 import pandas as pd
 import scipy
 import numpy as np
+import math
 import shapely
 from shapely.geometry.polygon import Polygon, LineString, Point
 from shapely.ops import unary_union
@@ -283,6 +284,28 @@ class Cleaners:
 
         extent = [xmin, ymin, zmin, xmax, ymax, zmax]
         return extent
+
+    @staticmethod
+    def set_extent(gdf, extent):
+        """Clip a GeoPandas DataFrame to a specified extent.
+
+        Parameters
+        ----------
+        gdf : geopandas.GeoDataFrame
+            The GeoDataFrame to be clipped. It can contain any geometry type (e.g., Point, LineString, Polygon).
+        extent : list or tuple
+            The extent to clip to, specified as [xmin, ymin, xmax, ymax].
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            A new GeoDataFrame clipped to the specified extent.
+        """
+        # Create a bounding box from the extent
+        bbox = shapely.geometry.box(extent[0], extent[1], extent[2], extent[3])
+        # Clip the GeoDataFrame using the bounding box
+        gdf_clipped = gdf.clip(bbox)
+        return gdf_clipped
 
     @staticmethod
     def set_extent_3d(gdf: gpd.GeoDataFrame, extent):
@@ -1208,102 +1231,171 @@ class Processing:
     @staticmethod
     def extrude_2d_to_3d(
         pfa,
-        *,
-        criteria: str,
-        component: str,
-        layer: str,
-        z_min: float,
-        z_max: float,
-        nz: int,
+        criteria,
+        component,
+        layer,
+        extent,
+        nz,
+        strike=None,
+        dip=None,
+        target_z_meas=None,
     ):
         """
-        Extrude 2D geometries in a layer into 3D solid geometries between specified vertical bounds.
-
-        Converts:
-            - 2D LineStrings -> vertical wall polygons.
-            - 2D Polygons -> 3D prisms (top and bottom faces plus vertical sides).
-
-        The new 3D geometries replace the original 2D geometries in
-        `layer['data']` in the PFA dictionary. A copy of the original
-        2D data is saved to `layer['old_data']`.
+        Extrude 2D/3D geometries into 3D solids using a 3D extent and optional dip.
 
         Parameters
         ----------
         pfa : dict
-            PFA dictionary.
-        criteria : str
-            Name of the criteria level in the PFA hierarchy.
-        component : str
-            Name of the component within the criteria.
-        layer : str
-            Layer name whose geometries will be extruded.
-        z_min : float
-            Lower vertical bound of the extruded solids.
-        z_max : float
-            Upper vertical bound of the extruded solids.
+            Project/frame archive structure.
+        criteria, component, layer : str
+            Keys into pfa["criteria"][criteria]["components"][component]["layers"][layer].
+        extent : list or tuple
+            [xmin, ymin, zmin, xmax, ymax, zmax].
+            The smallest of (zmin, zmax) is treated as the bottom,
+            the largest as the top of the extrusion. x/y are used to clip geometry.
         nz : int
-            Number of vertical slices defining the z-grid resolution. Ensure a
-            consistent nz value is used for downstream processing performance.
-
-        Returns
-        -------
-        pfa : dict
-            Updated PFA dictionary with extruded geometries.
+            Number of vertical layers (stored as metadata).
+        strike : float, optional
+            Global strike azimuth in degrees, clockwise from North.
+            If None or used with dip=None, extrusion is vertical.
+        dip : float, optional
+            Global dip angle in degrees from horizontal (0–90).
+            If None or dip ~ 90°, extrusion is vertical.
+        target_z_meas : any, optional
+            Stored in layer_dict["z_meas"] for downstream use.
         """
-        layer_dict = pfa["criteria"][criteria]["components"][component][
-            "layers"
-        ][layer]
+
+        # Unpack extent (note: your convention is [xmin, ymin, zmin, xmax, ymax, zmax])
+        xmin, ymin, z0, xmax, ymax, z1 = extent
+
+        # Enforce consistent vertical ordering
+        z_min = min(z0, z1)
+        z_max = max(z0, z1)
+
+        # Build XY clipping box
+        xy_box = shapely.geometry.box(xmin, ymin, xmax, ymax)
+
+        layer_dict = pfa["criteria"][criteria]["components"][component]["layers"][layer]
         gdf2 = layer_dict["data"]
-        # backup
+
+        # Backup original data
         layer_dict["old_data"] = gdf2.copy()
+        layer_dict["z_meas"] = target_z_meas
+
+        def _dip_offset(z_top, z_bot, strike_deg, dip_deg):
+            """
+            Compute (dx, dy) offset for the bottom trace along dip direction over
+            the vertical span from z_top to z_bot.
+            """
+            if strike_deg is None or dip_deg is None:
+                return 0.0, 0.0
+
+            # Treat near-vertical as vertical extrusion
+            if dip_deg >= 89.9:
+                return 0.0, 0.0
+
+            dz = z_top - z_bot  # positive if z_top > z_bot
+            if dz == 0:
+                return 0.0, 0.0
+
+            dip_rad = math.radians(dip_deg)
+            # tan(dip) = vertical / horizontal  =>  horizontal = vertical / tan(dip)
+            horiz = abs(dz) / math.tan(dip_rad)
+
+            strike_rad = math.radians(strike_deg)
+            dip_az = strike_rad + math.pi / 2.0  # dip direction
+
+            # azimuth convention: x = East, y = North
+            dx = horiz * math.sin(dip_az)
+            dy = horiz * math.cos(dip_az)
+            return dx, dy
+
+        # Global offset for bottom surfaces (same z_min/z_max for all features)
+        dx_dip, dy_dip = _dip_offset(z_max, z_min, strike, dip)
+
+        # Helper to safely get x,y from a coordinate (supports 2D or 3D coords)
+        def _xy(coord):
+            return coord[0], coord[1]
 
         geoms3 = []
         for geom in gdf2.geometry:
             if geom.is_empty:
                 continue
-            if geom.geom_type in {"LineString", "MultiLineString"}:
-                # build one wall per Linestring part
+
+            # Clip to XY box first (works for 2D or 3D, z is dropped by intersection)
+            geom_clipped = geom.intersection(xy_box)
+            if geom_clipped.is_empty:
+                continue
+
+            # Lines → fault walls
+            if geom_clipped.geom_type in ("LineString", "MultiLineString"):
                 parts = (
-                    geom.geoms
-                    if geom.geom_type == "MultiLineString"
-                    else [geom]
+                    geom_clipped.geoms
+                    if geom_clipped.geom_type == "MultiLineString"
+                    else [geom_clipped]
                 )
                 for line in parts:
-                    coords = list(line.coords)
+                    coords = [_xy(c) for c in line.coords]
+
+                    # Top trace at z_max
                     top = [(x, y, z_max) for x, y in coords]
-                    bot = [(x, y, z_min) for x, y in reversed(coords)]
-                    # side-wall ring
+
+                    # Bottom trace at z_min, shifted along dip direction
+                    bot = [(x + dx_dip, y + dy_dip, z_min) for x, y in reversed(coords)]
+
                     ring = top + bot
-                    geoms3.append(Polygon(ring))
-            elif geom.geom_type in {"Polygon", "MultiPolygon"}:
+                    geoms3.append(shapely.geometry.Polygon(ring))
+
+            # Polygons → 3D prisms (bottom offset along dip)
+            elif geom_clipped.geom_type in ("Polygon", "MultiPolygon"):
                 polys = (
-                    geom.geoms if geom.geom_type == "MultiPolygon" else [geom]
+                    geom_clipped.geoms
+                    if geom_clipped.geom_type == "MultiPolygon"
+                    else [geom_clipped]
                 )
                 for poly in polys:
-                    ext = list(poly.exterior.coords)
-                    top = [(x, y, z_max) for x, y in ext]
-                    bot = [(x, y, z_min) for x, y in reversed(ext)]
+                    ext = [_xy(c) for c in poly.exterior.coords]
+
+                    top_ext = [(x, y, z_max) for x, y in ext]
+                    bot_ext = [
+                        (x + dx_dip, y + dy_dip, z_min) for x, y in reversed(ext)
+                    ]
+
                     holes3 = []
                     for hole in poly.interiors:
-                        hc = list(hole.coords)
+                        hc = [_xy(c) for c in hole.coords]
                         top_h = [(x, y, z_max) for x, y in hc]
-                        bot_h = [(x, y, z_min) for x, y in reversed(hc)]
+                        bot_h = [
+                            (x + dx_dip, y + dy_dip, z_min)
+                            for x, y in reversed(hc)
+                        ]
                         holes3.append(top_h + bot_h)
-                    geoms3.append(Polygon(top + bot, holes=holes3))
+
+                    geoms3.append(
+                        shapely.geometry.Polygon(top_ext + bot_ext, holes=holes3)
+                    )
+
+            # Skip points and unsupported geometry types
             else:
-                # skip Points, etc.
                 continue
 
         gdf3 = gpd.GeoDataFrame(geometry=geoms3, crs=gdf2.crs)
-        # mark how it was extruded
-        gdf3.attrs["extruded"] = True
-        gdf3.attrs["z_min"], gdf3.attrs["z_max"] = z_min, z_max
-        gdf3.attrs["nz"] = nz
 
-        # replace
+        # Mark how it was extruded
+        gdf3.attrs["extruded"] = True
+        gdf3.attrs["z_min"] = z_min
+        gdf3.attrs["z_max"] = z_max
+        gdf3.attrs["nz"] = nz
+        if strike is not None:
+            gdf3.attrs["strike"] = strike
+        if dip is not None:
+            gdf3.attrs["dip"] = dip
+
+        # Replace layer data with 3D solids
         layer_dict["data"] = gdf3
         layer_dict["data_col"] = "None"
         layer_dict["units"] = ""
+        layer_dict["z_meas"] = target_z_meas
 
         return pfa
 
