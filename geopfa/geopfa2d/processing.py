@@ -12,14 +12,14 @@ import numpy as np
 import shapely
 # from pygem import IDW
 
-import geoPFA.processing
+import geopfa.processing
 
 
-class Cleaners(geoPFA.processing.Cleaners):
-    """Alias for geoPFA.processing.Cleaners
+class Cleaners(geopfa.processing.Cleaners):
+    """Alias for geopfa.processing.Cleaners
 
     .. deprecated:: 0.1.0
-       :class:`~geoPFA.processing.Cleaners` instead.
+       :class:`~geopfa.processing.Cleaners` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -27,7 +27,7 @@ class Cleaners(geoPFA.processing.Cleaners):
         warnings.warn(
             "The geopfa3d.processing.Cleaners class is deprecated"
             " and will be removed in a future version."
-            " Please use the geoPFA.processing module instead.",
+            " Please use the geopfa.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -92,12 +92,11 @@ class Cleaners(geoPFA.processing.Cleaners):
         gdf_clipped = gdf.clip(bbox)
         return gdf_clipped
 
-class Exclusions(geoPFA.processing.Exclusions):
-    """Alias for geopfa.processing.Exclusions
->>>>>>> main:geopfa/geopfa2d/processing.py
+class Exclusions(geopfa.processing.Exclusions):
+    """Alias for geopfa.processing.Cleaners
 
     .. deprecated:: 0.1.0
-       :class:`~geopfa.processing.Exclusions` instead.
+       :class:`~geopfa.processing.Cleaners` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -105,7 +104,7 @@ class Exclusions(geoPFA.processing.Exclusions):
         warnings.warn(
             "The geopfa3d.processing.Exclusions class is deprecated"
             " and will be removed in a future version."
-            " Please use the geoPFA.processing module instead.",
+            " Please use the geopfa.processing module instead.",
             DeprecationWarning,
             stacklevel=2,
         )
