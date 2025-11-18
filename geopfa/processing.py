@@ -9,6 +9,7 @@ import geopandas as gpd
 import pandas as pd
 import scipy
 import numpy as np
+import math
 import shapely
 from shapely.geometry.polygon import Polygon, LineString, Point
 from shapely.ops import unary_union
@@ -17,7 +18,15 @@ from scipy.interpolate import griddata
 from osgeo import osr
 from itertools import starmap
 
-from geopfa.transformation import transform
+from scipy.interpolate import LinearNDInterpolator
+from scipy.spatial import cKDTree
+
+try:
+    # Shapely 2.0 vectorized accessors (fast path)
+    from shapely import get_z
+    _HAS_GET_Z = True
+except Exception:
+    _HAS_GET_Z = False
 
 
 class Cleaners:
@@ -120,19 +129,16 @@ class Cleaners:
         # Set up source and target spatial references
         source_srs = osr.SpatialReference()
         if z_meas.startswith("epsg:"):
-            print(z_meas, int(z_meas.split(":")[1]))
             source_srs.ImportFromEPSG(int(z_meas.split(":")[1]))
-            print("successful import")
+            print("\t\t successful import")
 
         target_srs = osr.SpatialReference()
         if target_z_meas.startswith("epsg:"):
-            print(target_z_meas, int(target_z_meas.split(":")[1]))
             target_srs.ImportFromEPSG(int(target_z_meas.split(":")[1]))
-            print("successful import")
+            print("\t\t successful import")
 
         # Coordinate transformation
         transform = osr.CoordinateTransformation(source_srs, target_srs)
-        print("CoordinateTransformation created")
 
         # Function to update Z values based on input and target references
         def convert_z(geom):
@@ -146,7 +152,7 @@ class Cleaners:
             elif z_meas.startswith("epsg:") and target_z_meas.startswith(
                 "epsg:"
             ):
-                print("transforming ", z_meas, " to ", target_z_meas)
+                print("\t\t ","transforming ", z_meas, " to ", target_z_meas)
                 _x, _y, z = transform.TransformPoint(geom.x, geom.y, current_z)
                 new_z = z  # Updated Z from the transformation
 
@@ -278,6 +284,28 @@ class Cleaners:
 
         extent = [xmin, ymin, zmin, xmax, ymax, zmax]
         return extent
+
+    @staticmethod
+    def set_extent(gdf, extent):
+        """Clip a GeoPandas DataFrame to a specified extent.
+
+        Parameters
+        ----------
+        gdf : geopandas.GeoDataFrame
+            The GeoDataFrame to be clipped. It can contain any geometry type (e.g., Point, LineString, Polygon).
+        extent : list or tuple
+            The extent to clip to, specified as [xmin, ymin, xmax, ymax].
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            A new GeoDataFrame clipped to the specified extent.
+        """
+        # Create a bounding box from the extent
+        bbox = shapely.geometry.box(extent[0], extent[1], extent[2], extent[3])
+        # Clip the GeoDataFrame using the bounding box
+        gdf_clipped = gdf.clip(bbox)
+        return gdf_clipped
 
     @staticmethod
     def set_extent_3d(gdf: gpd.GeoDataFrame, extent):
@@ -546,7 +574,6 @@ class Exclusions:
 
 class Processing:
     """Class of functions for use in processing data into models"""
-
     @staticmethod
     def interpolate_points_3d(
         pfa,
@@ -559,52 +586,56 @@ class Processing:
         extent=None,
         method="linear",
     ):
-        """Optimized 3D interpolation using Scipy's griddata."""
-        start_time = time.time()
+        """Optimized 3D interpolation using Scipy's griddata (with timing checkpoints)."""
+        import time
+        start_total = time.time()
 
-        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        data_col = pfa["criteria"][criteria]["components"][component][
-            "layers"
-        ][layer]["data_col"]
+        t0 = time.time()
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][layer]["data"]
+        data_col = pfa["criteria"][criteria]["components"][component]["layers"][layer]["data_col"]
+        print(f"[Time] Load layer data: {time.time() - t0:.4f} s")
 
+        # Convert polygons → centroids if needed
         if gdf.geometry.type.iloc[0] == "Polygon":
-            print("Converting Polygons to Points using centroids.")
+            t1 = time.time()
             gdf.geometry = gdf.geometry.centroid
+            print(f"[Time] Polygon → centroid conversion: {time.time() - t1:.4f} s")
 
-        # Extract coordinates and values
+        # Extract coordinates + values
+        t2 = time.time()
         x = gdf.geometry.x
         y = gdf.geometry.y
         z = gdf.geometry.apply(lambda geom: geom.z)
         values = gdf[data_col]
+        print(f"[Time] Extract coordinates & values: {time.time() - t2:.4f} s")
 
-        # Define grid
+        # Determine grid extents
+        t3 = time.time()
         if extent is None:
             x_min, x_max = x.min(), x.max()
             y_min, y_max = y.min(), y.max()
             z_min, z_max = z.min(), z.max()
         else:
             x_min, y_min, z_min, x_max, y_max, z_max = extent
+        print(f"[Time] Compute extents: {time.time() - t3:.4f} s")
 
+        # Build grid
+        t4 = time.time()
         x_grid = np.linspace(x_min, x_max, nx)
         y_grid = np.linspace(y_min, y_max, ny)
         z_grid = np.linspace(z_min, z_max, nz)
         xv, yv, zv = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
+        print(f"[Time] Build grid (meshgrid): {time.time() - t4:.4f} s")
+        print(f"\t Grid resolution: {nx} x {ny} x {nz}")
 
-        print(f"Grid resolution: {nx} x {ny} x {nz}")
-
-        # Perform interpolation
+        # Interpolation
+        t5 = time.time()
         points = np.vstack((x.to_numpy(), y.to_numpy(), z.to_numpy())).T
-        start_interp = time.time()
-        grid_values = griddata(
-            points, values.values, (xv, yv, zv), method=method
-        )
-        print(
-            f"Interpolation completed in {time.time() - start_interp} seconds"
-        )
+        grid_values = griddata(points, values.values, (xv, yv, zv), method=method)
+        print(f"[Time] Interpolation (griddata): {time.time() - t5:.4f} s")
 
-        # Create GeoDataFrame
+        # Construct GeoDataFrame
+        t6 = time.time()
         interpolated_points = np.vstack((xv.ravel(), yv.ravel(), zv.ravel())).T
         interpolated_gdf = gpd.GeoDataFrame(
             {"value_interpolated": grid_values.ravel()},
@@ -615,23 +646,189 @@ class Processing:
             ),
             crs=gdf.crs,
         )
+        print(f"[Time] Build interpolated GeoDataFrame: {time.time() - t6:.4f} s")
+
+        # Store results
+        t7 = time.time()
+        pfa["criteria"][criteria]["components"][component]["layers"][layer]["model"] = interpolated_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer]["model_data_col"] = "value_interpolated"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer]["model_units"] = \
+            pfa["criteria"][criteria]["components"][component]["layers"][layer]["units"]
+        print(f"[Time] Update PFA structure: {time.time() - t7:.4f} s")
+
+        # Total runtime
+        print(f"[TOTAL] interpolate_points_3d completed in {time.time() - start_total:.4f} s")
+
+        return pfa
+
+   
+    @staticmethod
+    def fast_interpolate_points_3d(
+        pfa,
+        criteria,
+        component,
+        layer,
+        nx,
+        ny,
+        nz,
+        extent=None,
+        method="linear",             # "linear" or "nearest"
+        build_gdf=True,              # set False to skip heavy GeoDataFrame creation
+        chunk_points=2_000_000,      # max # of grid points per chunk to evaluate
+        use_representative_point=True, # faster/safer than centroid for polygons
+        dtype=np.float32,            # memory saver vs float64
+    ):
+        """
+        Faster 3D interpolation with lower memory usage.
+
+        - method="nearest": uses cKDTree (very fast).
+        - method="linear": uses LinearNDInterpolator + chunked evaluation.
+        - build_gdf=False avoids creating millions of shapely Points (big speed win).
+        """
+        t0 = time.time()
+
+        node = pfa["criteria"][criteria]["components"][component]["layers"][layer]
+        gdf = node["data"]
+        data_col = node["data_col"]
+
+        # If polygons: convert to points once
+        if gdf.geometry.type.iloc[0] == "Polygon":
+            print("Converting polygons to points "
+                  f"via {'representative_point()' if use_representative_point else 'centroid'}")
+            if use_representative_point:
+                gdf = gdf.set_geometry(gdf.geometry.representative_point())
+            else:
+                gdf = gdf.set_geometry(gdf.geometry.centroid)
+
+        # Extract coordinates (vectorized for x,y; z via shapely.get_z if available)
+        x = gdf.geometry.x.to_numpy(dtype=dtype, copy=False)
+        y = gdf.geometry.y.to_numpy(dtype=dtype, copy=False)
+
+        # --- z extraction (vectorized when Shapely 2 is present) ---
+        geoms = gdf.geometry.values  # a GeometryArray
+
+        if _HAS_GET_Z:
+            # Shapely 2.x: just pass the array; no ".data"
+            try:
+                z = get_z(geoms).astype(dtype, copy=False)
+            except Exception:
+                # If any geometry lacks Z, fall back gracefully
+                z = np.fromiter(
+                    (getattr(geom, "z", np.nan) for geom in geoms),
+                    count=len(geoms),
+                    dtype=dtype
+                )
+        else:
+            # Shapely 1.x fallback (still vector-ish, avoids .apply)
+            z = np.fromiter(
+                (getattr(geom, "z", np.nan) for geom in geoms),
+                count=len(geoms),
+                dtype=dtype
+            )
+
+        values = gdf[data_col].to_numpy(dtype=dtype, copy=False)
+
+        # Define grid
+        if extent is None:
+            x_min, x_max = float(x.min()), float(x.max())
+            y_min, y_max = float(y.min()), float(y.max())
+            z_min, z_max = float(z.min()), float(z.max())
+        else:
+            x_min, y_min, z_min, x_max, y_max, z_max = map(float, extent)
+
+        x_grid = np.linspace(x_min, x_max, nx, dtype=dtype)
+        y_grid = np.linspace(y_min, y_max, ny, dtype=dtype)
+        z_grid = np.linspace(z_min, z_max, nz, dtype=dtype)
+
+        print(f"\t\tGrid resolution: {nx} x {ny} x {nz}")
+
+        # Construct grid coordinate arrays lazily to avoid a huge full mesh in memory
+        # We'll evaluate in chunks of flattened (x,y,z) points.
+        total_pts = nx * ny * nz
+
+        # Build interpolator / index once
+        t1 = time.time()
+        if method == "nearest":
+            tree = cKDTree(np.column_stack((x, y, z)))
+            interp_obj = tree  # alias
+        elif method == "linear":
+            interp_obj = LinearNDInterpolator(np.column_stack((x, y, z)), values, fill_value=np.nan)
+        else:
+            raise ValueError("method must be 'linear' or 'nearest' for this optimized version")
+        print(f"\t\tInterpolator built in {time.time() - t1:.3f}s")
+
+        # Preallocate output
+        out = np.empty(total_pts, dtype=dtype)
+
+        # Helper to evaluate a chunk of linear indices
+        def eval_chunk(flat_idx_slice):
+            # Map flat indices -> (ix, iy, iz)
+            inds = np.arange(flat_idx_slice.start, flat_idx_slice.stop, dtype=np.int64)
+            iz = inds % nz
+            iy = (inds // nz) % ny
+            ix = inds // (ny * nz)
+
+            X = x_grid[ix]
+            Y = y_grid[iy]
+            Z = z_grid[iz]
+            pts = np.column_stack((X, Y, Z))
+
+            if method == "nearest":
+                dists, locs = interp_obj.query(pts, k=1, workers=-1)
+                vals = values[locs].astype(dtype, copy=False)
+                return vals
+            else:
+                vals = interp_obj(pts)
+                # interp_obj returns float64 by default; cast down
+                return vals.astype(dtype, copy=False)
+
+        # Chunked evaluation to keep peak memory in check
+        t2 = time.time()
+        if chunk_points is None or chunk_points >= total_pts:
+            out[:] = eval_chunk(slice(0, total_pts))
+        else:
+            start = 0
+            while start < total_pts:
+                end = min(start + int(chunk_points), total_pts)
+                out[start:end] = eval_chunk(slice(start, end))
+                start = end
+        print(f"\t\tInterpolation evaluated in {time.time() - t2:.3f}s")
+
+        # Optionally build GeoDataFrame (slow for very large grids)
+        if build_gdf:
+            t3 = time.time()
+            # Create coordinates for geometry creation (still heavy; consider skipping for huge grids)
+            xv, yv, zv = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
+            interpolated_points = np.column_stack((xv.ravel(), yv.ravel(), zv.ravel()))
+            interpolated_gdf = gpd.GeoDataFrame(
+                {"value_interpolated": out},
+                geometry=gpd.points_from_xy(
+                    interpolated_points[:, 0],
+                    interpolated_points[:, 1],
+                    z=interpolated_points[:, 2],
+                ),
+                crs=gdf.crs,
+            )
+            print(f"\t\tGeoDataFrame built in {time.time() - t3:.3f}s")
+            model_obj = interpolated_gdf
+            model_col = "value_interpolated"
+        else:
+            # Store compact arrays—let downstream code build a GDF only if truly needed
+            model_obj = {
+                "x": x_grid,
+                "y": y_grid,
+                "z": z_grid,
+                "values": out.reshape(nx, ny, nz),
+                "crs": gdf.crs,
+            }
+            model_col = None  # not applicable
 
         # Update PFA
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model"
-        ] = interpolated_gdf
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_data_col"
-        ] = "value_interpolated"
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_units"
-        ] = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["units"]
+        node["model"] = model_obj
+        node["model_data_col"] = model_col if model_col is not None else "values"
+        node["model_units"] = node["units"]
 
-        print(
-            f"Total time for interpolate_points_3d: {time.time() - start_time} seconds"
-        )
+        print(f"\t\tTotal time: {time.time() - t0:.3f}s")
         return pfa
 
     @staticmethod
@@ -1034,102 +1231,171 @@ class Processing:
     @staticmethod
     def extrude_2d_to_3d(
         pfa,
-        *,
-        criteria: str,
-        component: str,
-        layer: str,
-        z_min: float,
-        z_max: float,
-        nz: int,
+        criteria,
+        component,
+        layer,
+        extent,
+        nz,
+        strike=None,
+        dip=None,
+        target_z_meas=None,
     ):
         """
-        Extrude 2D geometries in a layer into 3D solid geometries between specified vertical bounds.
-
-        Converts:
-            - 2D LineStrings -> vertical wall polygons.
-            - 2D Polygons -> 3D prisms (top and bottom faces plus vertical sides).
-
-        The new 3D geometries replace the original 2D geometries in
-        `layer['data']` in the PFA dictionary. A copy of the original
-        2D data is saved to `layer['old_data']`.
+        Extrude 2D/3D geometries into 3D solids using a 3D extent and optional dip.
 
         Parameters
         ----------
         pfa : dict
-            PFA dictionary.
-        criteria : str
-            Name of the criteria level in the PFA hierarchy.
-        component : str
-            Name of the component within the criteria.
-        layer : str
-            Layer name whose geometries will be extruded.
-        z_min : float
-            Lower vertical bound of the extruded solids.
-        z_max : float
-            Upper vertical bound of the extruded solids.
+            Project/frame archive structure.
+        criteria, component, layer : str
+            Keys into pfa["criteria"][criteria]["components"][component]["layers"][layer].
+        extent : list or tuple
+            [xmin, ymin, zmin, xmax, ymax, zmax].
+            The smallest of (zmin, zmax) is treated as the bottom,
+            the largest as the top of the extrusion. x/y are used to clip geometry.
         nz : int
-            Number of vertical slices defining the z-grid resolution. Ensure a
-            consistent nz value is used for downstream processing performance.
-
-        Returns
-        -------
-        pfa : dict
-            Updated PFA dictionary with extruded geometries.
+            Number of vertical layers (stored as metadata).
+        strike : float, optional
+            Global strike azimuth in degrees, clockwise from North.
+            If None or used with dip=None, extrusion is vertical.
+        dip : float, optional
+            Global dip angle in degrees from horizontal (0–90).
+            If None or dip ~ 90°, extrusion is vertical.
+        target_z_meas : any, optional
+            Stored in layer_dict["z_meas"] for downstream use.
         """
-        layer_dict = pfa["criteria"][criteria]["components"][component][
-            "layers"
-        ][layer]
+
+        # Unpack extent (note: your convention is [xmin, ymin, zmin, xmax, ymax, zmax])
+        xmin, ymin, z0, xmax, ymax, z1 = extent
+
+        # Enforce consistent vertical ordering
+        z_min = min(z0, z1)
+        z_max = max(z0, z1)
+
+        # Build XY clipping box
+        xy_box = shapely.geometry.box(xmin, ymin, xmax, ymax)
+
+        layer_dict = pfa["criteria"][criteria]["components"][component]["layers"][layer]
         gdf2 = layer_dict["data"]
-        # backup
+
+        # Backup original data
         layer_dict["old_data"] = gdf2.copy()
+        layer_dict["z_meas"] = target_z_meas
+
+        def _dip_offset(z_top, z_bot, strike_deg, dip_deg):
+            """
+            Compute (dx, dy) offset for the bottom trace along dip direction over
+            the vertical span from z_top to z_bot.
+            """
+            if strike_deg is None or dip_deg is None:
+                return 0.0, 0.0
+
+            # Treat near-vertical as vertical extrusion
+            if dip_deg >= 89.9:
+                return 0.0, 0.0
+
+            dz = z_top - z_bot  # positive if z_top > z_bot
+            if dz == 0:
+                return 0.0, 0.0
+
+            dip_rad = math.radians(dip_deg)
+            # tan(dip) = vertical / horizontal  =>  horizontal = vertical / tan(dip)
+            horiz = abs(dz) / math.tan(dip_rad)
+
+            strike_rad = math.radians(strike_deg)
+            dip_az = strike_rad + math.pi / 2.0  # dip direction
+
+            # azimuth convention: x = East, y = North
+            dx = horiz * math.sin(dip_az)
+            dy = horiz * math.cos(dip_az)
+            return dx, dy
+
+        # Global offset for bottom surfaces (same z_min/z_max for all features)
+        dx_dip, dy_dip = _dip_offset(z_max, z_min, strike, dip)
+
+        # Helper to safely get x,y from a coordinate (supports 2D or 3D coords)
+        def _xy(coord):
+            return coord[0], coord[1]
 
         geoms3 = []
         for geom in gdf2.geometry:
             if geom.is_empty:
                 continue
-            if geom.geom_type in {"LineString", "MultiLineString"}:
-                # build one wall per Linestring part
+
+            # Clip to XY box first (works for 2D or 3D, z is dropped by intersection)
+            geom_clipped = geom.intersection(xy_box)
+            if geom_clipped.is_empty:
+                continue
+
+            # Lines → fault walls
+            if geom_clipped.geom_type in ("LineString", "MultiLineString"):
                 parts = (
-                    geom.geoms
-                    if geom.geom_type == "MultiLineString"
-                    else [geom]
+                    geom_clipped.geoms
+                    if geom_clipped.geom_type == "MultiLineString"
+                    else [geom_clipped]
                 )
                 for line in parts:
-                    coords = list(line.coords)
+                    coords = [_xy(c) for c in line.coords]
+
+                    # Top trace at z_max
                     top = [(x, y, z_max) for x, y in coords]
-                    bot = [(x, y, z_min) for x, y in reversed(coords)]
-                    # side-wall ring
+
+                    # Bottom trace at z_min, shifted along dip direction
+                    bot = [(x + dx_dip, y + dy_dip, z_min) for x, y in reversed(coords)]
+
                     ring = top + bot
-                    geoms3.append(Polygon(ring))
-            elif geom.geom_type in {"Polygon", "MultiPolygon"}:
+                    geoms3.append(shapely.geometry.Polygon(ring))
+
+            # Polygons → 3D prisms (bottom offset along dip)
+            elif geom_clipped.geom_type in ("Polygon", "MultiPolygon"):
                 polys = (
-                    geom.geoms if geom.geom_type == "MultiPolygon" else [geom]
+                    geom_clipped.geoms
+                    if geom_clipped.geom_type == "MultiPolygon"
+                    else [geom_clipped]
                 )
                 for poly in polys:
-                    ext = list(poly.exterior.coords)
-                    top = [(x, y, z_max) for x, y in ext]
-                    bot = [(x, y, z_min) for x, y in reversed(ext)]
+                    ext = [_xy(c) for c in poly.exterior.coords]
+
+                    top_ext = [(x, y, z_max) for x, y in ext]
+                    bot_ext = [
+                        (x + dx_dip, y + dy_dip, z_min) for x, y in reversed(ext)
+                    ]
+
                     holes3 = []
                     for hole in poly.interiors:
-                        hc = list(hole.coords)
+                        hc = [_xy(c) for c in hole.coords]
                         top_h = [(x, y, z_max) for x, y in hc]
-                        bot_h = [(x, y, z_min) for x, y in reversed(hc)]
+                        bot_h = [
+                            (x + dx_dip, y + dy_dip, z_min)
+                            for x, y in reversed(hc)
+                        ]
                         holes3.append(top_h + bot_h)
-                    geoms3.append(Polygon(top + bot, holes=holes3))
+
+                    geoms3.append(
+                        shapely.geometry.Polygon(top_ext + bot_ext, holes=holes3)
+                    )
+
+            # Skip points and unsupported geometry types
             else:
-                # skip Points, etc.
                 continue
 
         gdf3 = gpd.GeoDataFrame(geometry=geoms3, crs=gdf2.crs)
-        # mark how it was extruded
-        gdf3.attrs["extruded"] = True
-        gdf3.attrs["z_min"], gdf3.attrs["z_max"] = z_min, z_max
-        gdf3.attrs["nz"] = nz
 
-        # replace
+        # Mark how it was extruded
+        gdf3.attrs["extruded"] = True
+        gdf3.attrs["z_min"] = z_min
+        gdf3.attrs["z_max"] = z_max
+        gdf3.attrs["nz"] = nz
+        if strike is not None:
+            gdf3.attrs["strike"] = strike
+        if dip is not None:
+            gdf3.attrs["dip"] = dip
+
+        # Replace layer data with 3D solids
         layer_dict["data"] = gdf3
         layer_dict["data_col"] = "None"
         layer_dict["units"] = ""
+        layer_dict["z_meas"] = target_z_meas
 
         return pfa
 
@@ -1676,7 +1942,6 @@ class Processing:
         ny,
         nz,
         alpha=1000.0,
-        transform_method="none",
         weight_points=True,
         weight_min=1.0,
         weight_max=2.0,
@@ -1733,9 +1998,8 @@ class Processing:
         nz : int
             Number of grid layers in the z-direction.
         alpha : float, optional
-            Decay length scale in the same units as the CRS (e.g. meters). Default is 1000.
-        transform_method : str, optional
-            Transformation to apply to attribute values before weighting. Default is "none".
+            Decay length scale in the same units as the CRS (e.g. meters). Default is 1000. 
+            A larger value gives slower decay, making the influence spread farther.
         weight_points : bool, optional
             Whether to apply weighting based on attribute values. Default is True.
         weight_min : float, optional
@@ -1790,13 +2054,10 @@ class Processing:
             return pfa
 
         arr_vals = np.nan_to_num(np.asarray(vals, dtype=float))
-        arr_trans = transform(
-            arr_vals.reshape(-1, 1), transform_method
-        ).ravel()
         weights = (
-            normalize(arr_trans, weight_min, weight_max)
+            normalize(arr_vals, weight_min, weight_max)
             if weight_points
-            else np.ones_like(arr_trans)
+            else np.ones_like(arr_vals)
         )
 
         # build grid

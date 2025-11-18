@@ -112,14 +112,14 @@
                             "model_data_col": "density",
                             "model_units": "density per2500 m^2"
                         },
-                        "faults_newberry": {
+                        "Lineaments": {
                             "weight": 0.249,
                             "units": "None",
                             "is_3d": "no",
                             "id_col": "FAULTS_ID",
                             "needs_flattening": "no",
                             "data_col": "None",
-                            "crs": "26910",
+                            "crs": "4326",
                             "transformation_method": "none",
                             "processing_method": "faults",
                             "model_data_col": "fault score",

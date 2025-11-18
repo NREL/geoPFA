@@ -116,6 +116,8 @@ class GeospatialDataReaders:
             gdf.set_crs(crs, inplace=True)
 
         return gdf
+    
+    
 
     @staticmethod
     def read_raster(path):
@@ -172,6 +174,140 @@ class GeospatialDataReaders:
         gdf.set_crs(crs, inplace=True)
 
         return gdf
+    
+    @staticmethod
+    def read_well_path_csv(
+        csv_path,
+        x_col,
+        y_col,
+        z_col=None,
+        *,
+        well_name_col=None,      # optional
+        value_col=None,          # optional per-vertex values (temp/GR/etc.)
+        source_crs=None,
+        to_crs=None,
+        sort_by=None,
+        md_col=None,
+        dropna_any=True,
+        deduplicate_consecutive=True,
+        z_meas=None,
+        target_z_meas=None,
+        convert_z_after=True
+    ):
+        """Reads a well-path CSV and returns a point GeoDataFrame (ordered vertices) and optional values.
+
+        Parameters
+        ----------
+        csv_path : 'str'
+            Path to the CSV file containing well path vertices.
+        x_col : 'str'
+            Column name for X (or longitude).
+        y_col : 'str'
+            Column name for Y (or latitude).
+        z_col : 'str', optional
+            Column name for Z (depth or elevation). If omitted, Z=0.
+        well_name_col : 'str', optional
+            Column name for well name; stored in output.
+        value_col : 'str', optional
+            Column name for per-vertex values (e.g., Temperature, GR).
+        source_crs : 'int or str', optional
+            Input CRS for X/Y. Example: 32613 or 4326.
+        to_crs : 'int or str', optional
+            Output CRS for reprojection.
+        sort_by : 'str', optional
+            Column to sort by before building points (e.g., 'MD_m').
+        md_col : 'str', optional
+            If provided and sort_by is None, rows are sorted by this column.
+        dropna_any : 'bool'
+            If True, drop rows with any NaN in X/Y/Z; else only drop rows with all NaNs.
+        deduplicate_consecutive : 'bool'
+            If True, drop consecutive duplicate XY Z vertices.
+        z_meas : 'str', optional
+            Vertical reference of Z in the CSV (e.g., 'depth', 'm-msl', 'epsg:5703').
+        target_z_meas : 'str', optional
+            Desired vertical reference (e.g., 'm-msl', 'ft-msl', 'epsg:6360').
+        convert_z_after : 'bool'
+            If True and z_meas/target_z_meas provided, converts Z via convert_z_measurements().
+
+        Returns
+        -------
+        well_gdf : GeoDataFrame
+            Ordered vertices as 3D Point geometries (one row per vertex).
+        values : np.ndarray or None
+            Per-vertex values aligned with rows (or None if value_col not provided).
+        """
+        df = pd.read_csv(csv_path)
+
+        # Pull coordinates
+        x = df[x_col].astype(float).to_numpy()
+        y = df[y_col].astype(float).to_numpy()
+        if z_col is not None:
+            z = df[z_col].astype(float).to_numpy()
+        else:
+            z = np.zeros_like(x, dtype=float)
+
+        coords = np.column_stack([x, y, z])
+
+        # Drop NaNs
+        if dropna_any:
+            mask = ~np.isnan(coords).any(axis=1)
+        else:
+            mask = ~(np.isnan(coords).all(axis=1))
+        df = df.loc[mask].reset_index(drop=True)
+        coords = coords[mask]
+
+        if coords.shape[0] < 2:
+            raise ValueError("Not enough valid vertices to define a well path.")
+
+        # Sorting
+        if sort_by is None and md_col is not None and md_col in df.columns:
+            sort_by = md_col
+        if sort_by is not None and sort_by in df.columns:
+            order = np.argsort(df[sort_by].to_numpy())
+            df = df.iloc[order].reset_index(drop=True)
+            coords = coords[order]
+
+        # De-duplicate consecutive vertices
+        if deduplicate_consecutive and len(coords) > 1:
+            keep = np.ones(len(coords), dtype=bool)
+            keep[1:] = (np.abs(np.diff(coords, axis=0)) > 0).any(axis=1)
+            df = df.loc[keep].reset_index(drop=True)
+            coords = coords[keep]
+            if len(coords) < 2:
+                raise ValueError("Well path collapsed to one vertex after de-duplication.")
+
+        # Build point GeoDataFrame
+        geometries = [shapely.geometry.Point(float(X), float(Y), float(Z)) for X, Y, Z in coords]
+        well_name = df[well_name_col].iloc[0] if (well_name_col and well_name_col in df.columns) else None
+        well_gdf = gpd.GeoDataFrame(
+            {'name': [well_name] * len(geometries)},
+            geometry=geometries,
+            crs=source_crs
+        )
+
+        # Reproject horizontal CRS if requested
+        if to_crs is not None:
+            well_gdf = well_gdf.to_crs(to_crs)
+
+        # Optional per-vertex values
+        values = None
+        if value_col is not None:
+            if value_col not in df.columns:
+                raise ValueError(f"Column '{value_col}' not found for values.")
+            values = df[value_col].to_numpy()
+            # Align to vertex count
+            if len(values) > len(well_gdf):
+                values = values[:len(well_gdf)]
+            elif len(values) < len(well_gdf):
+                pad = np.full(len(well_gdf) - len(values), np.nan)
+                values = np.concatenate([values, pad])
+
+        # Optional vertical conversion (expects point Zs in geometry)
+        if convert_z_after and z_meas is not None and target_z_meas is not None:
+            from geopfa.processing.Processing import convert_z_measurements
+            well_gdf = convert_z_measurements(well_gdf, z_meas, target_z_meas)
+
+        return well_gdf, values
 
     @classmethod
     def gather_data(cls, data_dir, pfa, file_types):  # noqa: PLR0912

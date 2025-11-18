@@ -7,6 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib.gridspec import GridSpec
+from matplotlib.ticker import MaxNLocator
 from scipy.interpolate import griddata
 import contextily as ctx
 import shapely
@@ -92,30 +94,98 @@ class GeospatialDataPlotters:
     
     @staticmethod
     def geo_plot_3d(
-        gdf, col, units, title, area_outline=None, overlay=None, xlabel='default', ylabel='default', zlabel='Z-axis',
-        cmap='jet', xlim=None, ylim=None, zlim=None, extent=None, markersize=15, figsize=(10, 10),
-        vmin=None, vmax=None, filter_threshold=None, x_slice=None, y_slice=None, z_slice=None
+        gdf, col, units, title,
+        area_outline=None, overlay=None, well_path=None, well_path_values=None,
+        xlabel='default', ylabel='default', zlabel='Z-axis',
+        cmap='jet', xlim=None, ylim=None, zlim=None, extent=None, markersize=15, figsize=(14, 5),
+        vmin=None, vmax=None, filter_threshold=None, x_slice=None, y_slice=None, z_slice=None,
+        # Well-path colorbar settings
+        well_units='Temperature (°C)',
+        well_cmap='magma',
+        show_well_colorbar=True,
+        # Main (favorability) colorbar settings
+        show_main_colorbar=True,
+        # Two-view controls
+        view_main=(20, -60),     # (elev, azim)
+        view_se=(20, 135),       # southeast view
+        # Layout controls (fractions of figure width; thin bars so they don’t look chunky)
+        cbar_width=0.035,
+        panel_width_main=0.50,
+        panel_width_se=0.415
     ):
         """
-        Plots 3D geospatial data using matplotlib's 3D plotting capabilities with optional filtering.
+        Plots 3D geospatial data with a main and a southeast view.
+        Colorbars live in dedicated side columns, never overlapping content.
         """
-        fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111, projection='3d')
+
+        # ---------- helpers ----------
+        def _coords3_from_point(pt):
+            z = getattr(pt, "z", None)
+            if z is None:
+                c0 = pt.coords[0]
+                z = c0[2] if len(c0) == 3 else 0.0
+            return (pt.x, pt.y, z)
+
+        def _build_well_pts(_well):
+            if _well is None:
+                return None
+            if hasattr(_well, "geometry"):
+                if all(g.geom_type == "Point" for g in _well.geometry):
+                    return np.array([_coords3_from_point(p) for p in _well.geometry], dtype=float)
+                # fallback: lines in a GDF
+                geoms = list(_well.geometry)
+                merged = geoms[0]
+                if len(geoms) > 1:
+                    try:
+                        from shapely.ops import linemerge
+                        merged = linemerge(geoms)
+                    except Exception:
+                        pass
+                if isinstance(merged, (LineString, MultiLineString)):
+                    parts = merged.geoms if isinstance(merged, MultiLineString) else [merged]
+                    arrs = []
+                    for ls in parts:
+                        arr = np.asarray(ls.coords, dtype=float)
+                        if arr.shape[1] == 2:
+                            arr = np.c_[arr, np.zeros(len(arr))]
+                        arrs.append(arr)
+                    return np.vstack(arrs) if arrs else None
+                return None
+            # plain shapely lines
+            if isinstance(_well, (LineString, MultiLineString)):
+                parts = _well.geoms if isinstance(_well, MultiLineString) else [_well]
+                arrs = []
+                for ls in parts:
+                    arr = np.asarray(ls.coords, dtype=float)
+                    if arr.shape[1] == 2:
+                        arr = np.c_[arr, np.zeros(len(arr))]
+                    arrs.append(arr)
+                return np.vstack(arrs) if arrs else None
+            return None
+
+        def _apply_slice_pts(arr):
+            if arr is None:
+                return None
+            mask = np.ones(len(arr), dtype=bool)
+            if x_slice is not None: mask &= arr[:, 0] <= x_slice
+            if y_slice is not None: mask &= arr[:, 1] <= y_slice
+            if z_slice is not None: mask &= arr[:, 2] <= z_slice
+            return arr[mask]
+
+        # ---------- prep main dataset ----------
         gdf_copy = gdf.copy()
 
-        # Normalize color data
+        # main colormap/norm
         if col is not None and str(col).lower() != "none":
-            if vmin is None:
-                vmin = gdf_copy[col].min()
-            if vmax is None:
-                vmax = gdf_copy[col].max()
-            norm = plt.Normalize(vmin=vmin, vmax=vmax)
-            cmap = plt.get_cmap(cmap)
-            colors = cmap(norm(gdf_copy[col]))
+            vmin_main = gdf_copy[col].min() if vmin is None else vmin
+            vmax_main = gdf_copy[col].max() if vmax is None else vmax
+            norm_main = plt.Normalize(vmin=vmin_main, vmax=vmax_main)
+            cmap_main_obj = plt.get_cmap(cmap)
         else:
-            colors = 'blue'
+            norm_main = None
+            cmap_main_obj = None
 
-        # Apply slicing for x, y, and z axes
+        # slicing on first coordinate (matches your original semantics)
         if x_slice is not None:
             gdf_copy = gdf_copy[gdf_copy.geometry.apply(lambda geom: geom.coords[0][0] <= x_slice)]
         if y_slice is not None:
@@ -123,107 +193,165 @@ class GeospatialDataPlotters:
         if z_slice is not None:
             gdf_copy = gdf_copy[gdf_copy.geometry.apply(lambda geom: geom.coords[0][2] <= z_slice)]
 
-        # Apply filtering if filter_threshold is set
+        # threshold filter
         if filter_threshold is not None and col != "None":
-            mask = gdf_copy[col] >= filter_threshold
-            gdf_filtered = gdf_copy[mask]
+            gdf_filtered = gdf_copy[gdf_copy[col] >= filter_threshold]
         else:
             gdf_filtered = gdf_copy
 
-        # Check if gdf_filtered is empty
-        if gdf_filtered.empty:
+        if gdf_filtered.empty and well_path is None:
             print("No data to plot after filtering and slicing.")
             return
 
-        # Update colors for filtered data
-        if col is not None and str(col).lower() != "none":
-            filtered_colors = cmap(norm(gdf_filtered[col]))
+        # color array for points (only created if col provided)
+        if (col is not None and str(col).lower() != "none") and not gdf_filtered.empty:
+            filtered_colors = cmap_main_obj(norm_main(gdf_filtered[col]))
         else:
-            filtered_colors = colors
+            filtered_colors = 'blue'
 
-        # Extract 3D coordinates from filtered geometry
-        if gdf_filtered.geometry.iloc[0].geom_type == 'Point':
-            xs, ys, zs = zip(*[geom.coords[0] for geom in gdf_filtered.geometry])
-            ax.scatter(
-                xs,
-                ys,
-                zs,
-                c=filtered_colors if (col is not None and str(col).lower() != "none") else None,
-                s=markersize,
-            )
+        # well points + values
+        well_pts = _apply_slice_pts(_build_well_pts(well_path))
+        well_vals = None if well_path_values is None else np.asarray(well_path_values)
 
-        # Plot polygons as filled surfaces
-        elif gdf_filtered.geometry.iloc[0].geom_type in ['Polygon', 'MultiPolygon']:
-            for geom in gdf_filtered.geometry:
-                if geom.geom_type == 'Polygon':
-                    rings = [geom.exterior] + list(geom.interiors)
-                elif geom.geom_type == 'MultiPolygon':
-                    rings = [ring for polygon in geom.geoms for ring in [polygon.exterior] + list(polygon.interiors)]
+        # ---------- figure layout: [well_cbar | main3D | se3D | main_cbar] ----------
+        ratios = [cbar_width, panel_width_main, panel_width_se, cbar_width]
+        total = sum(ratios)
+        ratios = [r / total for r in ratios]  # normalize to 1.0 for GridSpec
 
-                for ring in rings:
-                    vertices = [(coord[0], coord[1], coord[2] if len(coord) == 3 else 0) for coord in ring.coords]
-                    poly = Poly3DCollection([vertices], alpha=0.5, edgecolor='grey', facecolor='lightblue')
-                    ax.add_collection3d(poly)
+        fig = plt.figure(figsize=figsize, constrained_layout=True)
+        gs = GridSpec(1, 4, figure=fig, width_ratios=ratios)
 
-        # Add colorbar if a column is specified
-        if col is not None and str(col).lower() != "none":
-            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-            cbar = fig.colorbar(sm, ax=ax, pad=0.1)
-            cbar.set_label(units)
+        # axes
+        ax_main = fig.add_subplot(gs[0, 1], projection='3d')
+        ax_se   = fig.add_subplot(gs[0, 2], projection='3d')
+        cax_left  = fig.add_subplot(gs[0, 0])  # 2D axes for well colorbar
+        cax_right = fig.add_subplot(gs[0, 3])  # 2D axes for main colorbar
 
-        # Plot overlay if provided
-        if overlay is not None:
-            overlay_xs, overlay_ys, overlay_zs = zip(*[geom.coords[0] for geom in overlay.geometry])
-            ax.scatter(overlay_xs, overlay_ys, overlay_zs, color='gray', s=5, alpha=0.5)
+        # make cbar axes frameless but keep ticks/labels visible
+        for cax in (cax_left, cax_right):
+            for spine in cax.spines.values():
+                spine.set_visible(False)
 
-        # Plot area outline if provided
-        if area_outline is not None:
-            # Compute zmax across all geometries in the gdf_copy
-            if gdf_copy.geometry.iloc[0].geom_type == 'Point':
-                zmax = max(geom.z for geom in gdf_copy.geometry)
-            elif gdf_copy.geometry.iloc[0].geom_type in ['Polygon', 'MultiPolygon']:
-                zmax = max(
-                    max(coord[2] for coord in ring.coords if len(coord) == 3)
-                    for geom in gdf_copy.geometry
-                    for ring in ([geom.exterior] + list(geom.interiors))
-                )
+        # view angles
+        ax_main.view_init(*view_main)
+        ax_se.view_init(*view_se)
+
+        # ---------- per-panel plotting ----------
+        def _plot_on(ax, add_main_cbar=False, add_well_cbar=False):
+            # main geometries
+            if not gdf_filtered.empty:
+                gtype0 = gdf_filtered.geometry.iloc[0].geom_type
+                if gtype0 == 'Point':
+                    xs, ys, zs = zip(*[geom.coords[0] for geom in gdf_filtered.geometry])
+                    if isinstance(filtered_colors, str):
+                        ax.scatter(xs, ys, zs, s=markersize, color=filtered_colors)
+                    else:
+                        ax.scatter(xs, ys, zs, s=markersize, c=filtered_colors)
+                elif gtype0 in ['Polygon', 'MultiPolygon']:
+                    for geom in gdf_filtered.geometry:
+                        if geom.geom_type == 'Polygon':
+                            rings = [geom.exterior] + list(geom.interiors)
+                        elif geom.geom_type == 'MultiPolygon':
+                            rings = [ring for polygon in geom.geoms
+                                    for ring in [polygon.exterior] + list(polygon.interiors)]
+                        else:
+                            rings = []
+                        for ring in rings:
+                            verts = [(c[0], c[1], c[2] if len(c) == 3 else 0) for c in ring.coords]
+                            ax.add_collection3d(
+                                Poly3DCollection([verts], alpha=0.5, edgecolor='grey', facecolor='lightblue')
+                            )
+
+            # overlay
+            if overlay is not None and hasattr(overlay, "empty") and not overlay.empty:
+                ox, oy, oz = zip(*[geom.coords[0] for geom in overlay.geometry])
+                ax.scatter(ox, oy, oz, color='gray', s=5, alpha=0.5)
+
+            # well path scatter
+            sc_well = None
+            if well_pts is not None and len(well_pts):
+                if well_vals is None:
+                    sc_well = ax.scatter(well_pts[:, 0], well_pts[:, 1], well_pts[:, 2],
+                                        s=markersize * 1.6, color='k', alpha=0.9, zorder=5)
+                else:
+                    vals = well_vals
+                    if len(vals) > len(well_pts):
+                        vals = vals[:len(well_pts)]
+                    elif len(vals) < len(well_pts):
+                        vals = np.concatenate([vals, np.full(len(well_pts) - len(vals), np.nan)])
+
+                    if np.isfinite(vals).any():
+                        w_cmap = plt.get_cmap(well_cmap)
+                        vmin_w = np.nanmin(vals) if vmin is None else vmin
+                        vmax_w = np.nanmax(vals) if vmax is None else vmax
+                        norm_w = plt.Normalize(vmin=vmin_w, vmax=vmax_w)
+                        sc_well = ax.scatter(
+                            well_pts[:, 0], well_pts[:, 1], well_pts[:, 2],
+                            s=markersize * 1.6, c=vals, cmap=w_cmap, norm=norm_w, alpha=0.9, zorder=5
+                        )
+                    else:
+                        sc_well = ax.scatter(well_pts[:, 0], well_pts[:, 1], well_pts[:, 2],
+                                            s=markersize * 1.6, color='k', alpha=0.9, zorder=5)
+
+            # area outline
+            if area_outline is not None and hasattr(area_outline, "empty") and not area_outline.empty:
+                if not gdf_copy.empty and gdf_copy.geometry.iloc[0].geom_type == 'Point':
+                    zmax = max(geom.z for geom in gdf_copy.geometry)
+                elif not gdf_copy.empty and gdf_copy.geometry.iloc[0].geom_type in ['Polygon', 'MultiPolygon']:
+                    zmax = max(
+                        max(coord[2] for coord in ring.coords if len(coord) == 3)
+                        for geom in gdf_copy.geometry
+                        for ring in ([geom.exterior] + list(geom.interiors))
+                    )
+                else:
+                    zmax = 0
+                for poly in area_outline.geometry:
+                    xs, ys = zip(*[(c[0], c[1]) for c in poly.exterior.coords])
+                    zs = [zmax + 1] * len(xs)
+                    ax.plot(xs, ys, zs, color='black')
+
+            # labels & limits
+            _xlabel = xlabel if xlabel != 'default' else (gdf_copy.crs.axis_info[1].name if gdf_copy.crs else 'X-axis')
+            _ylabel = ylabel if ylabel != 'default' else (gdf_copy.crs.axis_info[0].name if gdf_copy.crs else 'Y-axis')
+            _zlabel = zlabel if zlabel else 'Z-axis'
+            ax.set_xlabel(_xlabel); ax.set_ylabel(_ylabel); ax.set_zlabel(_zlabel)
+
+            if extent is not None and zlim is None:
+                ax.set_xlim(extent[0], extent[3]); ax.set_ylim(extent[1], extent[4]); ax.set_zlim(extent[2], extent[5])
             else:
-                zmax = 0  # Default if geometry type is not supported
+                if xlim is not None: ax.set_xlim(xlim)
+                if ylim is not None: ax.set_ylim(ylim)
+                if zlim is not None: ax.set_zlim(zlim)
 
-            # Add the outline at zmax + 1
-            for geom in area_outline.geometry:
-                outline_xs, outline_ys = zip(*[(coord[0], coord[1]) for coord in geom.exterior.coords])
-                outline_zs = [zmax + 1] * len(outline_xs)
-                ax.plot(outline_xs, outline_ys, outline_zs, color='black')
+            ax.grid(True)
 
-        # Set axis labels
-        if xlabel == 'default':
-            xlabel = gdf_copy.crs.axis_info[1].name if gdf_copy.crs else 'X-axis'
-        if ylabel == 'default':
-            ylabel = gdf_copy.crs.axis_info[0].name if gdf_copy.crs else 'Y-axis'
-        if zlabel == 'default':
-            zlabel = 'Z-axis'
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_zlabel(zlabel)
+            # colorbars (draw into dedicated 2D axes; thin columns avoid chunky look)
+            if add_main_cbar and (col is not None and str(col).lower() != "none") and not gdf_filtered.empty:
+                sm = plt.cm.ScalarMappable(cmap=cmap_main_obj, norm=norm_main)
+                cax_right.cla()
+                cb = plt.colorbar(sm, cax=cax_right)
+                cb.set_label(units)
+                cb.locator = MaxNLocator(nbins=6); cb.update_ticks()
+                cb.ax.tick_params(labelsize=9)
 
-        # Set axis limits
-        if xlim is not None:
-            ax.set_xlim(xlim)
-        if ylim is not None:
-            ax.set_ylim(ylim)
-        if zlim is not None:
-            ax.set_zlim(zlim)
-        elif extent is not None:
-            ax.set_xlim(extent[0], extent[3])
-            ax.set_ylim(extent[1], extent[4])
-            ax.set_zlim(extent[2], extent[5])
+            if add_well_cbar and sc_well is not None and show_well_colorbar and well_vals is not None:
+                cax_left.cla()
+                cbw = plt.colorbar(sc_well, cax=cax_left)
+                cbw.set_label(well_units)
+                cbw.locator = MaxNLocator(nbins=6); cbw.update_ticks()
+                cbw.ax.tick_params(labelsize=9)
+                # If you want ticks on the left edge:
+                cbw.ax.yaxis.set_ticks_position('left')
+                cbw.ax.yaxis.set_label_position('left')
 
-        # Add title and grid
-        ax.set_title(title)
-        ax.grid(True)
+        # plot both panels; add colorbars only once (main panel)
+        _plot_on(ax_main, add_main_cbar=show_main_colorbar, add_well_cbar=show_well_colorbar)
+        _plot_on(ax_se,   add_main_cbar=False,            add_well_cbar=False)
 
-        plt.tight_layout()
+        # titles
+        ax_main.set_title(f"{title} — NW view")
+        ax_se.set_title(f"{title} — SE view")
+
         plt.show()
 
     @staticmethod

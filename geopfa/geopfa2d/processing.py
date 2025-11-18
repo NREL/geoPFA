@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Set of interp_methods to process data from various formats into 2d images.
 """
@@ -12,7 +13,6 @@ import shapely
 # from pygem import IDW
 
 import geopfa.processing
-from geopfa.transformation import transform
 
 
 class Cleaners(geopfa.processing.Cleaners):
@@ -92,12 +92,11 @@ class Cleaners(geopfa.processing.Cleaners):
         gdf_clipped = gdf.clip(bbox)
         return gdf_clipped
 
-
 class Exclusions(geopfa.processing.Exclusions):
-    """Alias for geopfa.processing.Exclusions
+    """Alias for geopfa.processing.Cleaners
 
     .. deprecated:: 0.1.0
-       :class:`~geopfa.processing.Exclusions` instead.
+       :class:`~geopfa.processing.Cleaners` instead.
     """
 
     def __init__(self, *args, **kwargs):
@@ -185,7 +184,7 @@ class Processing:
         y_grid = np.linspace(y_min, y_max, ny)
         xv, yv = np.meshgrid(x_grid, y_grid)
 
-        # TODO: Properly implement IDW. The commented out code below does not work
+        ## TODO: Properly implement IDW. The commented out code below does not work
         # Choose interpolation method
         # if interp_method == 'idw':
         #     # IDW interpolation inline
@@ -625,7 +624,8 @@ class Processing:
                 return point.distance(
                     nearest_line_geom
                 )  # Calculate distance between point and line
-            return float("inf")  # If no lines are found, return infinity
+            else:
+                return float("inf")  # If no lines are found, return infinity
 
         # Calculate the nearest line distance for each point in the GeoDataFrame
         nearest_line_distances = gdf_points.geometry.apply(
@@ -857,7 +857,6 @@ class Processing:
         nx,
         ny,
         alpha=1000.0,
-        transform_method="none",
         weight_points=True,
         weight_min=1.0,
         weight_max=2.0,
@@ -886,9 +885,6 @@ class Processing:
             Number of points along x and y in the final grid
         alpha : float, default=1000
             Decay constant for distance (in meters).
-        transform_method: str, default="none"
-            How to transform point data into proximity favorability via transformation
-            function (e.g."none", "negate", "inverse", etc.).
         weight_points : bool, default=True
             Whether to apply data-based point weighting or not.
         weight_min : float, default=1.0
@@ -962,9 +958,8 @@ class Processing:
 
         # Transform data values into weight
         arr_2d = data_array_1d.reshape(-1, 1)
-        arr_2d_trans = transform(arr_2d, transform_method)  # e.g. "negate"
-        arr_2d_trans = np.nan_to_num(arr_2d_trans, nan=0)  # handle NaNs
-        trans_1d = arr_2d_trans.ravel()
+        arr_2d = np.nan_to_num(arr_2d, nan=0)  # handle NaNs
+        arr_1d = arr_2d.ravel()
 
         # scale them to [out_min..out_max]
         if not weight_points:
@@ -976,7 +971,7 @@ class Processing:
 
         # Scale once with the chosen range
         weights_1d = normalize_point_weights(
-            trans_1d,
+            arr_1d,
             out_min=out_min,
             out_max=out_max,
         )
@@ -1033,7 +1028,7 @@ class Processing:
             List of length 4 containing the extent (i.e., bounding box) to use to produce the
             distance model. Can be produced using get_extent() function below. Should be in
             this order: [x_min, y_min, x_max, y_max]
-        - cell_size : float
+        cell_size : float
             Size of each cell in the grid used for density calculation.
             Example Cell Sizes for EPSG:3857
                 High Detail: 50 meters
