@@ -95,7 +95,7 @@ def transform(array, method):
         Input 2D rasterized np.array to transform
     method : str
         Method to transform data to relative favorability. Can be one
-        of ['inverse', 'negate', 'ln']
+        of ['inverse', 'negate', 'ln', 'None', 'hill', 'valley']
 
     Returns
     -------
@@ -111,6 +111,14 @@ def transform(array, method):
         transformed_array = np.log(array)
     elif (method == "none") | (method == "None"):
         transformed_array = array
+    elif method in {"hill", "valley"}:
+        median = np.nanmedian(array)
+        mad = np.nanmedian(np.abs(array - median))
+        if mad == 0:
+            mad = 1e-6  # prevent division by zero
+        squared_dist = (array - median)**2
+        gaussian = np.exp(-squared_dist / (2 * mad**2))
+        transformed_array = gaussian if method == "hill" else 1 - gaussian
     else:
         raise ValueError(
             "Transformation method ", method, " not yet implemented."
