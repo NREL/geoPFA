@@ -201,6 +201,7 @@ class Cleaners:
             Filtered version of the input data, with values above the specified quantile set to
             that quantile.
         """
+        series = series.copy()
         q = series.quantile(quantile)
         series.loc[series > q] = q
         return series
