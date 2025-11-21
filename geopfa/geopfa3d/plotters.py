@@ -103,18 +103,22 @@ class GeospatialDataPlotters:
         well_units='Temperature (°C)',
         well_cmap='magma',
         show_well_colorbar=True,
+        well_vmin=None,          # independent well-path vmin
+        well_vmax=None,          # independent well-path vmax
         # Main (favorability) colorbar settings
         show_main_colorbar=True,
-        # Two-view controls
-        view_main=(20, -60),     # (elev, azim)
-        view_se=(20, 135),       # southeast view
+        # Two-view controls (note: MAIN is from SE looking NW by default)
+        view_main=(20, 135),     # (elev, azim) – from SE looking NW
+        view_se=(20, -60),       # from NW looking SE
         # Layout controls (fractions of figure width; thin bars so they don’t look chunky)
         cbar_width=0.035,
         panel_width_main=0.50,
         panel_width_se=0.415
     ):
         """
-        Plots 3D geospatial data with a main and a southeast view.
+        Plots 3D geospatial data with a main and a secondary view.
+
+        Main view (by default) is from the southeast looking toward the northwest.
         Colorbars live in dedicated side columns, never overlapping content.
         """
 
@@ -213,6 +217,14 @@ class GeospatialDataPlotters:
         well_pts = _apply_slice_pts(_build_well_pts(well_path))
         well_vals = None if well_path_values is None else np.asarray(well_path_values)
 
+        # do we actually have usable well values?
+        has_well_values = (
+            well_pts is not None
+            and len(well_pts) > 0
+            and well_vals is not None
+            and np.isfinite(well_vals).any()
+        )
+
         # ---------- figure layout: [well_cbar | main3D | se3D | main_cbar] ----------
         ratios = [cbar_width, panel_width_main, panel_width_se, cbar_width]
         total = sum(ratios)
@@ -232,9 +244,13 @@ class GeospatialDataPlotters:
             for spine in cax.spines.values():
                 spine.set_visible(False)
 
+        # if no well values or user disabled well cbar, hide left axis
+        if not (show_well_colorbar and has_well_values):
+            cax_left.set_axis_off()
+
         # view angles
-        ax_main.view_init(*view_main)
-        ax_se.view_init(*view_se)
+        ax_main.view_init(*view_main)  # default: from SE looking NW
+        ax_se.view_init(*view_se)      # default: from NW looking SE
 
         # ---------- per-panel plotting ----------
         def _plot_on(ax, add_main_cbar=False, add_well_cbar=False):
@@ -270,9 +286,12 @@ class GeospatialDataPlotters:
             # well path scatter
             sc_well = None
             if well_pts is not None and len(well_pts):
-                if well_vals is None:
-                    sc_well = ax.scatter(well_pts[:, 0], well_pts[:, 1], well_pts[:, 2],
-                                        s=markersize * 1.6, color='k', alpha=0.9, zorder=5)
+                if not has_well_values:
+                    # just draw the well in black if no values
+                    sc_well = ax.scatter(
+                        well_pts[:, 0], well_pts[:, 1], well_pts[:, 2],
+                        s=markersize * 1.6, color='k', alpha=0.9, zorder=5
+                    )
                 else:
                     vals = well_vals
                     if len(vals) > len(well_pts):
@@ -280,18 +299,14 @@ class GeospatialDataPlotters:
                     elif len(vals) < len(well_pts):
                         vals = np.concatenate([vals, np.full(len(well_pts) - len(vals), np.nan)])
 
-                    if np.isfinite(vals).any():
-                        w_cmap = plt.get_cmap(well_cmap)
-                        vmin_w = np.nanmin(vals) if vmin is None else vmin
-                        vmax_w = np.nanmax(vals) if vmax is None else vmax
-                        norm_w = plt.Normalize(vmin=vmin_w, vmax=vmax_w)
-                        sc_well = ax.scatter(
-                            well_pts[:, 0], well_pts[:, 1], well_pts[:, 2],
-                            s=markersize * 1.6, c=vals, cmap=w_cmap, norm=norm_w, alpha=0.9, zorder=5
-                        )
-                    else:
-                        sc_well = ax.scatter(well_pts[:, 0], well_pts[:, 1], well_pts[:, 2],
-                                            s=markersize * 1.6, color='k', alpha=0.9, zorder=5)
+                    w_cmap = plt.get_cmap(well_cmap)
+                    _vmin_w = np.nanmin(vals) if well_vmin is None else well_vmin
+                    _vmax_w = np.nanmax(vals) if well_vmax is None else well_vmax
+                    norm_w = plt.Normalize(vmin=_vmin_w, vmax=_vmax_w)
+                    sc_well = ax.scatter(
+                        well_pts[:, 0], well_pts[:, 1], well_pts[:, 2],
+                        s=markersize * 1.6, c=vals, cmap=w_cmap, norm=norm_w, alpha=0.9, zorder=5
+                    )
 
             # area outline
             if area_outline is not None and hasattr(area_outline, "empty") and not area_outline.empty:
@@ -317,7 +332,9 @@ class GeospatialDataPlotters:
             ax.set_xlabel(_xlabel); ax.set_ylabel(_ylabel); ax.set_zlabel(_zlabel)
 
             if extent is not None and zlim is None:
-                ax.set_xlim(extent[0], extent[3]); ax.set_ylim(extent[1], extent[4]); ax.set_zlim(extent[2], extent[5])
+                ax.set_xlim(extent[0], extent[3])
+                ax.set_ylim(extent[1], extent[4])
+                ax.set_zlim(extent[2], extent[5])
             else:
                 if xlim is not None: ax.set_xlim(xlim)
                 if ylim is not None: ax.set_ylim(ylim)
@@ -325,7 +342,7 @@ class GeospatialDataPlotters:
 
             ax.grid(True)
 
-            # colorbars (draw into dedicated 2D axes; thin columns avoid chunky look)
+            # main colorbar
             if add_main_cbar and (col is not None and str(col).lower() != "none") and not gdf_filtered.empty:
                 sm = plt.cm.ScalarMappable(cmap=cmap_main_obj, norm=norm_main)
                 cax_right.cla()
@@ -334,23 +351,23 @@ class GeospatialDataPlotters:
                 cb.locator = MaxNLocator(nbins=6); cb.update_ticks()
                 cb.ax.tick_params(labelsize=9)
 
-            if add_well_cbar and sc_well is not None and show_well_colorbar and well_vals is not None:
+            # well colorbar (only if we truly have well values and user wants it)
+            if add_well_cbar and show_well_colorbar and has_well_values and sc_well is not None:
                 cax_left.cla()
                 cbw = plt.colorbar(sc_well, cax=cax_left)
                 cbw.set_label(well_units)
                 cbw.locator = MaxNLocator(nbins=6); cbw.update_ticks()
                 cbw.ax.tick_params(labelsize=9)
-                # If you want ticks on the left edge:
                 cbw.ax.yaxis.set_ticks_position('left')
                 cbw.ax.yaxis.set_label_position('left')
 
         # plot both panels; add colorbars only once (main panel)
-        _plot_on(ax_main, add_main_cbar=show_main_colorbar, add_well_cbar=show_well_colorbar)
+        _plot_on(ax_main, add_main_cbar=show_main_colorbar, add_well_cbar=True)
         _plot_on(ax_se,   add_main_cbar=False,            add_well_cbar=False)
 
-        # titles
-        ax_main.set_title(f"{title} — NW view")
-        ax_se.set_title(f"{title} — SE view")
+        # clearer view labels
+        ax_main.set_title(f"{title} — from SE (looking NW)")
+        ax_se.set_title(f"{title} — from NW (looking SE)")
 
         plt.show()
 
