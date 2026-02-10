@@ -1,5 +1,13 @@
 """
-Set of interp_methods to process data from various formats into 2d images.
+Processing utilities for geoPFA.
+
+NOTE:
+This module preserves a flat public API via the `Processing` class
+for backward compatibility. Internally, functionality is being
+organized into dimension-specific helpers:
+
+- _Processing2D : XY-only logic
+- _Processing3D : XYZ logic
 """
 
 import time
@@ -575,6 +583,24 @@ class Exclusions:
         gdf_points.loc[is_within, value_col] = 0
 
         return gdf_points
+
+
+class _Processing2D:
+    """
+    2D-only processing utilities.
+
+    Functions in this class operate strictly in the XY plane.
+    Any Z-coordinates present in geometries are ignored.
+    """
+
+
+class _Processing3D:
+    """
+    3D-only processing utilities.
+
+    Functions in this class operate in full XYZ space and require
+    geometries with valid Z-coordinates.
+    """
 
 
 class Processing:
