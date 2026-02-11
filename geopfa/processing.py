@@ -590,8 +590,585 @@ class _Processing2D:
     2D-only processing utilities.
 
     Functions in this class operate strictly in the XY plane.
-    Any Z-coordinates present in geometries are ignored.
     """
+
+    @staticmethod
+    def mark_buffer_areas_xy(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        buffer_distance,
+        polygon_value,
+        buffer_value,
+        background_value,
+    ):
+        """
+        Marks grid points within a spatial extent based on their location relative to polygons and buffer areas,
+        using vectorized operations with GeoPandas for performance optimization.
+
+        This function creates a grid of points within a given spatial extent and classifies each point as either:
+        - Inside a polygon (assigned `polygon_value`)
+        - Inside a buffer around a polygon but outside the polygon itself (assigned `buffer_value`)
+        - Outside both the polygon and its buffer (assigned `background_value`)
+
+        The classifications are performed using vectorized operations for efficiency, and the results are stored
+        in the `pfa` dictionary under the specified `criteria`, `component`, and `layer`.
+
+        Parameters:
+        ----------
+        pfa : dict
+            A dictionary containing spatial data, including:
+            - 'criteria': Holds various components and layers, where polygon and buffer data are stored.
+        criteria : str
+            The key for the specific criterion in the `pfa` dictionary under which the polygon data is stored.
+        component : str
+            The key for the specific component in the `pfa['criteria']` dictionary where the data layer is located.
+        layer : str
+            The key for the specific layer within the component where the polygon geometries are stored.
+        extent : tuple of float
+            The spatial extent in which the grid of points will be created, defined as (x_min, y_min, x_max, y_max).
+        nx : int
+            The number of points to generate along the x-axis within the extent.
+        ny : int
+            The number of points to generate along the y-axis within the extent.
+        buffer_distance : float
+            The distance to create buffer zones around the polygons.
+        polygon_value : float
+            The classification value to assign to points inside a polygon.
+        buffer_value : float
+            The classification value to assign to points inside a buffer but outside the polygon.
+        background_value : float
+            The classification value to assign to points outside both the polygon and buffer areas.
+
+        Returns:
+        -------
+        dict
+            The updated `pfa` dictionary, where the specified layer's grid points are classified based on their
+            spatial relationship to the polygons and buffers. The classification is stored in the `model` attribute
+            of the layer, with the 'classification' column representing the assigned values.
+
+        Notes:
+        ------
+        - The function generates a grid of points within the provided extent using `numpy` and classifies the
+        points based on spatial relationships to the polygons and buffers.
+        - The polygon geometries and their buffers are extracted from the `pfa` dictionary and processed with
+        vectorized GeoPandas operations for performance optimization.
+        - The results are stored back in the `pfa` dictionary, with the classifications as part of the layer's model data.
+        """
+
+        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
+
+        # Create a grid of points within the spatial extent
+        x_min, y_min, x_max, y_max = extent
+        x_points = np.linspace(x_min, x_max, nx)
+        y_points = np.linspace(y_min, y_max, ny)
+        xv, yv = np.meshgrid(x_points, y_points)
+        points = np.c_[xv.ravel(), yv.ravel()]
+
+        # Create a GeoDataFrame from the generated points
+        gdf_points = gpd.GeoDataFrame(
+            geometry=[shapely.geometry.Point(p) for p in points],
+            crs=gdf_polygons.crs,
+        )
+
+        # Create buffer areas around polygons
+        buffers = gdf_polygons.buffer(buffer_distance)
+
+        # Vectorized operations to classify points
+        gdf_points["inside_polygon"] = gdf_points.geometry.apply(
+            lambda point: gdf_polygons.contains(point).any()
+        )
+        gdf_points["inside_buffer"] = gdf_points.geometry.apply(
+            lambda point: buffers.contains(point).any()
+        )
+
+        # Assign classifications based on the spatial relationship
+        gdf_points["classification"] = np.where(
+            gdf_points["inside_polygon"],
+            polygon_value,
+            np.where(
+                gdf_points["inside_buffer"], buffer_value, background_value
+            ),
+        )
+
+        # Drop the temporary columns
+        gdf_points = gdf_points.drop(
+            columns=["inside_polygon", "inside_buffer"]
+        )
+
+        # Update the pfa dictionary with the new model
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = gdf_points
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_data_col"
+        ] = "classification"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_units"
+        ] = f"classification ({polygon_value}=polygon, {buffer_value}=buffer, {background_value}=outside)"
+
+        return pfa
+
+    @staticmethod
+    def polygons_to_points_xy(pfa, criteria, component, layer, extent, nx, ny):
+        """Calculate aggregated polygon values (sum or average) within a specified grid.
+
+        Parameters
+        ----------
+        pfa : dict
+            Configuration dictionary specifying relationships between criteria, components,
+            and data layers.
+        criteria : str
+            Criteria associated with Polygon data.
+        component : str
+            Component associated with Polygon data.
+        layer : str
+            Layer associated with Polygon data.
+        extent : list
+            List of length 4 containing the extent [x_min, y_min, x_max, y_max].
+        nx : int
+            Number of grid cells in the x direction.
+        ny : int
+            Number of grid cells in the y direction.
+
+        Returns
+        -------
+        pfa : dict
+            Updated pfa config which includes the aggregated polygon values as a point model.
+        """
+        # Extract GeoDataFrame containing polygons
+        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]
+        col = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data_col"]
+
+        # Define the extent
+        x_min, y_min, x_max, y_max = extent
+
+        # Calculate cell size from nx and ny
+        cell_size_x = (x_max - x_min) / nx
+        cell_size_y = (y_max - y_min) / ny
+
+        # Create a grid over the specified extent
+        grid_cells = []
+        for i in range(nx):
+            for j in range(ny):
+                x_start = x_min + i * cell_size_x
+                y_start = y_min + j * cell_size_y
+                grid_cell = shapely.geometry.box(
+                    x_start,
+                    y_start,
+                    x_start + cell_size_x,
+                    y_start + cell_size_y,
+                )
+                grid_cells.append(grid_cell)
+
+        # Create GeoDataFrame from grid cells
+        grid_gdf = gpd.GeoDataFrame(geometry=grid_cells, crs=gdf_polygons.crs)
+
+        # Initialize columns to store the aggregated values
+        grid_gdf["sum"] = 0.0
+        grid_gdf["count"] = 0
+
+        # Use spatial indexing to speed up the intersection checks
+        sindex = gdf_polygons.sindex
+
+        # Iterate over each grid cell to calculate the aggregated values
+        for grid_idx, grid_cell in grid_gdf.iterrows():
+            possible_matches_index = list(
+                sindex.intersection(grid_cell.geometry.bounds)
+            )
+            possible_matches = gdf_polygons.iloc[possible_matches_index]
+
+            for _, polygon in possible_matches.iterrows():
+                poly = polygon.geometry
+                value = polygon[col]
+                if poly.intersects(grid_cell.geometry):
+                    intersection = poly.intersection(grid_cell.geometry)
+                    intersection_area = intersection.area
+                    grid_gdf.at[grid_idx, "sum"] += value * intersection_area
+                    grid_gdf.at[grid_idx, "count"] += intersection_area
+
+        # Calculate the center point of each grid cell
+        points = []
+        for _, row in grid_gdf.iterrows():
+            centroid = row.geometry.centroid
+            if row["count"] > 0:
+                average_value = row["sum"] / row["count"]
+            else:
+                average_value = 0
+            points.append((centroid, average_value))
+
+        # Create a GeoDataFrame with point representation
+        point_geometries = [
+            shapely.geometry.Point(xy[0].x, xy[0].y) for xy in points
+        ]
+        values = [xy[1] for xy in points]
+
+        point_gdf = gpd.GeoDataFrame(
+            {"geometry": point_geometries, "value": values},
+            crs=gdf_polygons.crs,
+        )
+
+        # Update the pfa dictionary with the new point representation model
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = point_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_data_col"
+        ] = "value"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_units"
+        ] = "aggregated value"
+
+        return pfa
+
+    @staticmethod
+    def generate_grid_points_xy(extent, nx, ny, crs):
+        """
+        Generate grid points (centroids) for a regular grid within a given extent.
+
+        Args:
+            extent (tuple): A tuple of (xmin, ymin, xmax, ymax) defining the bounding box.
+            nx (int): Number of grid cells in the x direction.
+            ny (int): Number of grid cells in the y direction.
+            crs: Coordinate reference system for the GeoDataFrame.
+
+        Returns:
+            GeoDataFrame containing centroids of the grid cells.
+        """
+        xmin, ymin, xmax, ymax = extent
+
+        # Generate the x and y coordinates for the grid
+        x_coords = np.linspace(xmin, xmax, nx)
+        y_coords = np.linspace(ymin, ymax, ny)
+
+        # Create centroids by calculating the middle of each grid cell
+        centroids = []
+        for x in x_coords:
+            for y in y_coords:
+                centroids.append(shapely.geometry.Point(x, y))
+
+        # Create a GeoDataFrame with the centroids
+        gdf_points = gpd.GeoDataFrame(geometry=centroids, crs=crs)
+
+        return gdf_points
+
+    @staticmethod
+    def calculate_intersections_xy(gdf_lines):
+        """
+        Calculate intersection points between 2D line geometries in a GeoDataFrame.
+
+        Intersections between LineString and MultiLineString geometries are detected.
+        If the intersection geometry is:
+        - Point / MultiPoint: all points are included
+        - LineString / MultiLineString: the centroid of each overlapping segment is used
+        - GeometryCollection: points and line-derived centroids are extracted
+
+        Parameters
+        ----------
+        gdf_lines : geopandas.GeoDataFrame
+            GeoDataFrame containing 2D line geometries in the 'geometry' column.
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            GeoDataFrame of intersection points, using the same CRS as the input.
+        """
+        intersections = []
+        lines = gdf_lines.geometry.tolist()
+
+        for i, line1 in enumerate(lines):
+            for line2 in lines[i + 1 :]:
+                if not line1.intersects(line2):
+                    continue
+
+                intersection = line1.intersection(line2)
+
+                if isinstance(intersection, shapely.geometry.Point):
+                    intersections.append(intersection)
+                elif isinstance(intersection, shapely.geometry.MultiPoint):
+                    intersections.extend(list(intersection.geoms))
+                elif isinstance(intersection, shapely.geometry.LineString):
+                    intersections.append(intersection.centroid)
+                elif isinstance(
+                    intersection, shapely.geometry.MultiLineString
+                ):
+                    intersections.extend(
+                        geom.centroid for geom in intersection.geoms
+                    )
+                elif isinstance(
+                    intersection, shapely.geometry.GeometryCollection
+                ):
+                    for geom in intersection.geoms:
+                        if isinstance(geom, shapely.geometry.Point):
+                            intersections.append(geom)
+                        elif isinstance(
+                            geom,
+                            (
+                                shapely.geometry.LineString,
+                                shapely.geometry.MultiLineString,
+                            ),
+                        ):
+                            intersections.append(geom.centroid)
+
+        return gpd.GeoDataFrame(geometry=intersections, crs=gdf_lines.crs)
+
+    @staticmethod
+    def vectorized_distance_calculation_xy(
+        gdf_points, tree, intersection_tree=None
+    ):
+        """Calculates the nearest line and intersection distances for each point in a GeoDataFrame using vectorized operations
+        and spatial indexing with STRtree.
+
+        This function computes the shortest distance from each point in the `gdf_points` GeoDataFrame to the nearest line
+        in the `tree` (a spatial index of line geometries). Optionally, it can also compute the nearest distance to intersections
+        (if an `intersection_tree` is provided).
+
+        Parameters:
+        ----------
+        gdf_points : GeoDataFrame
+            A GeoDataFrame containing point geometries for which distances will be calculated.
+        tree : STRtree
+            A spatial index (STRtree) containing line geometries. This allows for efficient querying of the nearest line
+            for each point.
+        intersection_tree : STRtree, optional
+            An optional spatial index (STRtree) containing intersection geometries. If provided, the function calculates
+            the nearest distance to intersections as well. If not provided, the intersection distances are set to infinity.
+
+        Returns:
+        -------
+        tuple
+            A tuple containing two pandas Series:
+            - nearest_line_distances: The nearest distance from each point to the nearest line.
+            - nearest_intersection_distances: The nearest distance from each point to the nearest intersection (or infinity
+            if no intersection tree is provided).
+
+        Notes:
+        ------
+        - The function uses an inner helper `get_nearest_line_distance` to query the spatial index (`tree`) and calculate the
+        distance between a point and its nearest line.
+        - If no line is found for a point, the distance is set to infinity (`float('inf')`).
+        - When an `intersection_tree` is provided, it computes the minimum distance between a point and the intersection geometries.
+        - The function returns `float('inf')` for intersection distances if no intersections are found or if the `intersection_tree`
+        is not provided.
+
+        """
+
+        # Function to get the nearest line distance for each point
+        def get_nearest_line_distance(point):
+            # Query the STRtree for the nearest lines
+            nearest_lines = tree.query(point)
+            if nearest_lines:  # If lines are found
+                # Ensure nearest_lines are geometries, unpacking from STRtree structure if needed
+                nearest_line_geom = (
+                    nearest_lines[0].geometry
+                    if hasattr(nearest_lines[0], "geometry")
+                    else nearest_lines[0]
+                )
+                return point.distance(
+                    nearest_line_geom
+                )  # Calculate distance between point and line
+            return float("inf")  # If no lines are found, return infinity
+
+        # Calculate the nearest line distance for each point in the GeoDataFrame
+        nearest_line_distances = gdf_points.geometry.apply(
+            get_nearest_line_distance
+        )
+
+        # Handle intersections similarly (if available)
+        if intersection_tree:
+            nearest_intersection_distances = gdf_points.geometry.apply(
+                lambda point: min(
+                    [
+                        point.distance(geom)
+                        for geom in intersection_tree.query(point)
+                    ],
+                    default=float("inf"),
+                )
+            )
+        else:
+            nearest_intersection_distances = pd.Series(
+                [float("inf")] * len(gdf_points)
+            )
+
+        return nearest_line_distances, nearest_intersection_distances
+
+    @staticmethod
+    def distance_from_lines_with_intersections_xy(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        weight_line=1.0,
+        weight_intersection=0.5,
+    ):
+        """
+        TODO: Get this to work!!!
+        Calculate the weighted distances from points to the nearest lines and intersections,
+        and update the provided PFA (Potential Field Analysis) dictionary with the computed distance model.
+
+        This function creates a grid of points over a specified spatial extent, computes the distance
+        from each point to the nearest line and nearest line intersection, and then combines the distances
+        using specified weights. The result is stored in the 'pfa' dictionary under the specified criteria,
+        component, and layer.
+
+        Parameters:
+        ----------
+        pfa : dict
+            The PFA (Potential Field Analysis) dictionary that contains geospatial data for various criteria,
+            components, and layers.
+        criteria : str
+            The criteria key within the PFA dictionary to access the desired data.
+        component : str
+            The component key within the criteria to access the desired layer data.
+        layer : str
+            The layer key within the component to access the lines for distance calculation.
+        extent : tuple
+            A tuple (x_min, y_min, x_max, y_max) specifying the spatial extent for the grid of points.
+        nx : int
+            Number of points along the x-axis for the grid.
+        ny : int
+            Number of points along the y-axis for the grid.
+        weight_line : float, optional (default=0.7)
+            The weight assigned to the distance from the nearest line.
+        weight_intersection : float, optional (default=0.3)
+            The weight assigned to the distance from the nearest line intersection.
+
+        Returns:
+        -------
+        pfa : dict
+            The updated PFA dictionary with a new distance model stored in the specified layer.
+        """
+        # Extract lines and intersections from the PFA
+        gdf_lines = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data"]  # Lines data
+        gdf_intersections = _Processing2D.calculate_intersections_xy(gdf_lines)
+
+        # Define the CRS (Coordinate Reference System) to match the lines
+        crs = gdf_lines.crs
+        # Generate the grid of centroids within the given extent
+        gdf_points = _Processing2D.generate_grid_points_xy(extent, nx, ny, crs)
+
+        # Build spatial index using STRtree for lines and intersections
+        tree = shapely.strtree.STRtree(gdf_lines.geometry)  # STRtree for lines
+        intersection_tree = (
+            shapely.strtree.STRtree(gdf_intersections.geometry)
+            if gdf_intersections is not None
+            else None
+        )  # STRtree for intersections
+
+        # Perform vectorized distance calculations for both lines and intersections
+        line_distances, intersection_distances = (
+            _Processing2D.vectorized_distance_calculation_xy(
+                gdf_points, tree, intersection_tree
+            )
+        )
+
+        # Combine the distances with weights (line and intersection distances)
+        combined_distances = (
+            weight_line * line_distances
+            + weight_intersection * intersection_distances
+        )
+
+        # Assign combined distances to the points
+        gdf_points["distance"] = combined_distances
+
+        # Update the PFA dictionary with the calculated distances
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = gdf_points
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_data_col"
+        ] = "distance"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_units"
+        ] = "distance (weighted by line and intersection proximity)"
+
+        return pfa
+
+    @staticmethod
+    def extrapolate_xy(
+        pfa,
+        criteria,
+        component,
+        layer,
+        dataset="model",
+        *,
+        data_col="value_interpolated",
+        training_size=0.2,
+        verbose=False,
+    ):
+        """Function to extrapolate 2D fields to max extent grid using Gaussian Process Regression.
+
+        Parameters
+        ----------
+        pfa : dict
+            Config specifying criteria, components, and data layers' relationship to one another.
+            Includes data layers' associated GeoDataFrames.
+        criteria : str
+            Criteria associated with data to interpolate.
+        component : str
+            Component associated with data to interpolate.
+        layer : str
+            Layer associated with data to interpolate.
+        dataset : str
+            Layer data source for extrapolation.
+        data_col : str
+            Column in `dataset` to use for extrapolation input observations.
+        training_size : float
+            Percent of randomly select input observations to train on.
+        verbose : bool
+            Display training progress, assessment metrics, and final plots.
+        Returns
+        -------
+        pfa : dict
+            Updated pfa config which includes extrapolated layer.
+        """
+
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ][dataset]
+
+        # drop z value if present
+        gdf = drop_z_from_geometry(gdf, geom_col="geometry")
+
+        test_size = 1 - training_size
+
+        extrapolated_gdf = backfill_gdf(
+            gdf,
+            value_col=data_col,
+            z_value=None,
+            verbose=verbose,
+            test_size=test_size,
+        )
+
+        # Update the PFA dictionary with extrapolation results
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = extrapolated_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_data_col"
+        ] = "value_extrapolated"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_units"
+        ] = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["units"]
+
+        return pfa
 
 
 class _Processing3D:
@@ -605,6 +1182,103 @@ class _Processing3D:
 
 class Processing:
     """Class of functions for use in processing data into models"""
+
+    @staticmethod
+    def mark_buffer_areas(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        buffer_distance,
+        polygon_value,
+        buffer_value,
+        background_value,
+    ):
+        return _Processing2D.mark_buffer_areas_xy(
+            pfa,
+            criteria,
+            component,
+            layer,
+            extent,
+            nx,
+            ny,
+            buffer_distance,
+            polygon_value,
+            buffer_value,
+            background_value,
+        )
+
+    @staticmethod
+    def polygons_to_points(pfa, criteria, component, layer, extent, nx, ny):
+        return _Processing2D.polygons_to_points_xy(
+            pfa, criteria, component, layer, extent, nx, ny
+        )
+
+    @staticmethod
+    def generate_grid_points(extent, nx, ny, crs):
+        return _Processing2D.generate_grid_points_xy(extent, nx, ny, crs)
+
+    @staticmethod
+    def calculate_intersections(gdf_lines):
+        return _Processing2D.calculate_intersections_xy(gdf_lines)
+
+    @staticmethod
+    def vectorized_distance_calculation(
+        gdf_points, tree, intersection_tree=None
+    ):
+        return _Processing2D.vectorized_distance_calculation_xy(
+            gdf_points, tree, intersection_tree=intersection_tree
+        )
+
+    @staticmethod
+    def distance_from_lines_with_intersections(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nx,
+        ny,
+        weight_line=1.0,
+        weight_intersection=0.5,
+    ):
+        return _Processing2D.distance_from_lines_with_intersections_xy(
+            pfa,
+            criteria,
+            component,
+            layer,
+            extent,
+            nx,
+            ny,
+            weight_line=weight_line,
+            weight_intersection=weight_intersection,
+        )
+
+    @staticmethod
+    def extrapolate_2d(
+        pfa,
+        criteria,
+        component,
+        layer,
+        dataset="model",
+        *,
+        data_col="value_interpolated",
+        training_size=0.2,
+        verbose=False,
+    ):
+        return _Processing2D.extrapolate_xy(
+            pfa,
+            criteria,
+            component,
+            layer,
+            dataset=dataset,
+            data_col=data_col,
+            training_size=training_size,
+            verbose=verbose,
+        )
 
     @staticmethod
     def interpolate_points_3d(
@@ -1002,193 +1676,6 @@ class Processing:
         ]["units"]
         return pfa
 
-    @staticmethod
-    def extrapolate_2d(
-        pfa,
-        criteria,
-        component,
-        layer,
-        dataset="model",
-        *,
-        data_col="value_interpolated",
-        training_size=0.2,
-        verbose=False,
-    ):
-        """Function to extrapolate 2D fields to max extent grid using Gaussian Process Regression.
-
-        Parameters
-        ----------
-        pfa : dict
-            Config specifying criteria, components, and data layers' relationship to one another.
-            Includes data layers' associated GeoDataFrames.
-        criteria : str
-            Criteria associated with data to interpolate.
-        component : str
-            Component associated with data to interpolate.
-        layer : str
-            Layer associated with data to interpolate.
-        dataset : str
-            Layer data source for extrapolation.
-        data_col : str
-            Column in `dataset` to use for extrapolation input observations.
-        training_size : float
-            Percent of randomly select input observations to train on.
-        verbose : bol
-            Display training progress, assessment metrics, and final plots.
-        Returns
-        -------
-        pfa : dict
-            Updated pfa config which includes extrapolated layer.
-        """
-
-        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ][dataset]
-
-        # drop z value if present
-        gdf = drop_z_from_geometry(gdf, geom_col="geometry")
-
-        test_size = 1 - training_size
-
-        extrapolated_gdf = backfill_gdf(
-            gdf,
-            value_col=data_col,
-            z_value=None,
-            verbose=verbose,
-            test_size=test_size,
-        )
-
-        # Update the PFA dictionary with extrapolation results
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model"
-        ] = extrapolated_gdf
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_data_col"
-        ] = "value_extrapolated"
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_units"
-        ] = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["units"]
-
-        return pfa
-
-    @staticmethod
-    def polygons_to_points(pfa, criteria, component, layer, extent, nx, ny):
-        """Calculate aggregated polygon values (sum or average) within a specified grid.
-
-        Parameters
-        ----------
-        pfa : dict
-            Configuration dictionary specifying relationships between criteria, components,
-            and data layers.
-        criteria : str
-            Criteria associated with Polygon data.
-        component : str
-            Component associated with Polygon data.
-        layer : str
-            Layer associated with Polygon data.
-        extent : list
-            List of length 4 containing the extent [x_min, y_min, x_max, y_max].
-        nx : int
-            Number of grid cells in the x direction.
-        ny : int
-            Number of grid cells in the y direction.
-
-        Returns
-        -------
-        pfa : dict
-            Updated pfa config which includes the aggregated polygon values as a point model.
-        """
-        # Extract GeoDataFrame containing polygons
-        gdf_polygons = pfa["criteria"][criteria]["components"][component][
-            "layers"
-        ][layer]["data"]
-        col = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data_col"]
-
-        # Define the extent
-        x_min, y_min, x_max, y_max = extent
-
-        # Calculate cell size from nx and ny
-        cell_size_x = (x_max - x_min) / nx
-        cell_size_y = (y_max - y_min) / ny
-
-        # Create a grid over the specified extent
-        grid_cells = []
-        for i in range(nx):
-            for j in range(ny):
-                x_start = x_min + i * cell_size_x
-                y_start = y_min + j * cell_size_y
-                grid_cell = shapely.geometry.box(
-                    x_start,
-                    y_start,
-                    x_start + cell_size_x,
-                    y_start + cell_size_y,
-                )
-                grid_cells.append(grid_cell)
-
-        # Create GeoDataFrame from grid cells
-        grid_gdf = gpd.GeoDataFrame(geometry=grid_cells, crs=gdf_polygons.crs)
-
-        # Initialize columns to store the aggregated values
-        grid_gdf["sum"] = 0.0
-        grid_gdf["count"] = 0
-
-        # Use spatial indexing to speed up the intersection checks
-        sindex = gdf_polygons.sindex
-
-        # Iterate over each grid cell to calculate the aggregated values
-        for grid_idx, grid_cell in grid_gdf.iterrows():
-            possible_matches_index = list(
-                sindex.intersection(grid_cell.geometry.bounds)
-            )
-            possible_matches = gdf_polygons.iloc[possible_matches_index]
-
-            for _, polygon in possible_matches.iterrows():
-                poly = polygon.geometry
-                value = polygon[col]
-                if poly.intersects(grid_cell.geometry):
-                    intersection = poly.intersection(grid_cell.geometry)
-                    intersection_area = intersection.area
-                    grid_gdf.at[grid_idx, "sum"] += value * intersection_area
-                    grid_gdf.at[grid_idx, "count"] += intersection_area
-
-        # Calculate the center point of each grid cell
-        points = []
-        for _, row in grid_gdf.iterrows():
-            centroid = row.geometry.centroid
-            if row["count"] > 0:
-                average_value = row["sum"] / row["count"]
-            else:
-                average_value = 0
-            points.append((centroid, average_value))
-
-        # Create a GeoDataFrame with point representation
-        point_geometries = [
-            shapely.geometry.Point(xy[0].x, xy[0].y) for xy in points
-        ]
-        values = [xy[1] for xy in points]
-
-        point_gdf = gpd.GeoDataFrame(
-            {"geometry": point_geometries, "value": values},
-            crs=gdf_polygons.crs,
-        )
-
-        # Update the pfa dictionary with the new point representation model
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model"
-        ] = point_gdf
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_data_col"
-        ] = "value"
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_units"
-        ] = "aggregated value"
-
-        return pfa
-
     # Define a helper function to classify each point
     @staticmethod
     def classify_point(args):
@@ -1238,129 +1725,6 @@ class Processing:
             ):  # Inside the buffer but outside the polygon
                 return buffer_value
         return 1.0  # Outside both polygon and buffer
-
-    @staticmethod
-    def mark_buffer_areas(
-        pfa,
-        criteria,
-        component,
-        layer,
-        extent,
-        nx,
-        ny,
-        buffer_distance,
-        polygon_value,
-        buffer_value,
-        background_value,
-    ):
-        """
-        Marks grid points within a spatial extent based on their location relative to polygons and buffer areas,
-        using vectorized operations with GeoPandas for performance optimization.
-
-        This function creates a grid of points within a given spatial extent and classifies each point as either:
-        - Inside a polygon (assigned `polygon_value`)
-        - Inside a buffer around a polygon but outside the polygon itself (assigned `buffer_value`)
-        - Outside both the polygon and its buffer (assigned `background_value`)
-
-        The classifications are performed using vectorized operations for efficiency, and the results are stored
-        in the `pfa` dictionary under the specified `criteria`, `component`, and `layer`.
-
-        Parameters:
-        ----------
-        pfa : dict
-            A dictionary containing spatial data, including:
-            - 'criteria': Holds various components and layers, where polygon and buffer data are stored.
-        criteria : str
-            The key for the specific criterion in the `pfa` dictionary under which the polygon data is stored.
-        component : str
-            The key for the specific component in the `pfa['criteria']` dictionary where the data layer is located.
-        layer : str
-            The key for the specific layer within the component where the polygon geometries are stored.
-        extent : tuple of float
-            The spatial extent in which the grid of points will be created, defined as (x_min, y_min, x_max, y_max).
-        nx : int
-            The number of points to generate along the x-axis within the extent.
-        ny : int
-            The number of points to generate along the y-axis within the extent.
-        buffer_distance : float
-            The distance to create buffer zones around the polygons.
-        polygon_value : float
-            The classification value to assign to points inside a polygon.
-        buffer_value : float
-            The classification value to assign to points inside a buffer but outside the polygon.
-        background_value : float
-            The classification value to assign to points outside both the polygon and buffer areas.
-
-        Returns:
-        -------
-        dict
-            The updated `pfa` dictionary, where the specified layer's grid points are classified based on their
-            spatial relationship to the polygons and buffers. The classification is stored in the `model` attribute
-            of the layer, with the 'classification' column representing the assigned values.
-
-        Notes:
-        ------
-        - The function generates a grid of points within the provided extent using `numpy` and classifies the
-        points based on spatial relationships to the polygons and buffers.
-        - The polygon geometries and their buffers are extracted from the `pfa` dictionary and processed with
-        vectorized GeoPandas operations for performance optimization.
-        - The results are stored back in the `pfa` dictionary, with the classifications as part of the layer's model data.
-        """
-
-        gdf_polygons = pfa["criteria"][criteria]["components"][component][
-            "layers"
-        ][layer]["data"]
-
-        # Create a grid of points within the spatial extent
-        x_min, y_min, x_max, y_max = extent
-        x_points = np.linspace(x_min, x_max, nx)
-        y_points = np.linspace(y_min, y_max, ny)
-        xv, yv = np.meshgrid(x_points, y_points)
-        points = np.c_[xv.ravel(), yv.ravel()]
-
-        # Create a GeoDataFrame from the generated points
-        gdf_points = gpd.GeoDataFrame(
-            geometry=[shapely.geometry.Point(p) for p in points],
-            crs=gdf_polygons.crs,
-        )
-
-        # Create buffer areas around polygons
-        buffers = gdf_polygons.buffer(buffer_distance)
-
-        # Vectorized operations to classify points
-        gdf_points["inside_polygon"] = gdf_points.geometry.apply(
-            lambda point: gdf_polygons.contains(point).any()
-        )
-        gdf_points["inside_buffer"] = gdf_points.geometry.apply(
-            lambda point: buffers.contains(point).any()
-        )
-
-        # Assign classifications based on the spatial relationship
-        gdf_points["classification"] = np.where(
-            gdf_points["inside_polygon"],
-            polygon_value,
-            np.where(
-                gdf_points["inside_buffer"], buffer_value, background_value
-            ),
-        )
-
-        # Drop the temporary columns
-        gdf_points = gdf_points.drop(
-            columns=["inside_polygon", "inside_buffer"]
-        )
-
-        # Update the pfa dictionary with the new model
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model"
-        ] = gdf_points
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_data_col"
-        ] = "classification"
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_units"
-        ] = f"binary ({polygon_value}=polygon, {buffer_value}=buffer, 1=outside)"
-
-        return pfa
 
     @staticmethod
     def extrude_2d_to_3d(
@@ -1820,260 +2184,6 @@ class Processing:
         return pfa
 
     @staticmethod
-    def generate_grid_points(extent, nx, ny, crs):
-        """
-        Generate grid points (centroids) for a regular grid within a given extent.
-
-        Args:
-            extent (tuple): A tuple of (xmin, ymin, xmax, ymax) defining the bounding box.
-            nx (int): Number of grid cells in the x direction.
-            ny (int): Number of grid cells in the y direction.
-            crs: Coordinate reference system for the GeoDataFrame.
-
-        Returns:
-            GeoDataFrame containing centroids of the grid cells.
-        """
-        xmin, ymin, xmax, ymax = extent
-
-        # Generate the x and y coordinates for the grid
-        x_coords = np.linspace(xmin, xmax, nx)
-        y_coords = np.linspace(ymin, ymax, ny)
-
-        # Create centroids by calculating the middle of each grid cell
-        centroids = []
-        for x in x_coords:
-            for y in y_coords:
-                centroids.append(shapely.geometry.Point(x, y))
-
-        # Create a GeoDataFrame with the centroids
-        gdf_points = gpd.GeoDataFrame(geometry=centroids, crs=crs)
-
-        return gdf_points
-
-    @staticmethod
-    def calculate_intersections(gdf_lines):
-        """
-        Calculate intersection points between line geometries in a GeoDataFrame.
-
-        This function takes a GeoDataFrame of lines (such as faults or other linear features)
-        and calculates the intersection points between them. If two lines overlap (instead
-        of intersecting at a single point), the midpoint of the overlapping segment is taken
-        as the intersection point.
-
-        Parameters:
-        -----------
-        gdf_lines : geopandas.GeoDataFrame
-            A GeoDataFrame containing line geometries (e.g., faults) stored in the 'geometry' column.
-            It is assumed that these are LineString geometries.
-
-        Returns:
-        --------
-        gdf_intersections : geopandas.GeoDataFrame
-            A GeoDataFrame containing the points where the input lines intersect.
-            If lines overlap, the midpoint of the overlapping segment is included.
-            The returned GeoDataFrame will use the same CRS (coordinate reference system)
-            as the input GeoDataFrame.
-        """
-        intersections = []
-        # Extract the geometries from the GeoDataFrame
-        lines = gdf_lines["geometry"].tolist()
-
-        # Get all unique pairs of lines to check for intersections
-        for i, line1 in enumerate(lines):
-            for line2 in lines[i + 1 :]:
-                if line1.intersects(line2):
-                    # Find the intersection point (could be a Point or a LineString if overlapping)
-                    intersection = line1.intersection(line2)
-                    if isinstance(intersection, shapely.geometry.Point):
-                        intersections.append(intersection)
-                    elif isinstance(intersection, shapely.geometry.LineString):
-                        # If lines overlap, get the mid-point of the overlapping segment
-                        midpoint = shapely.geometry.Point(
-                            intersection.centroid
-                        )
-                        intersections.append(midpoint)
-
-        # Return a GeoDataFrame of intersection points
-        return gpd.GeoDataFrame(geometry=intersections, crs=gdf_lines.crs)
-
-    @staticmethod
-    def vectorized_distance_calculation(
-        gdf_points, tree, intersection_tree=None
-    ):
-        """Calculates the nearest line and intersection distances for each point in a GeoDataFrame using vectorized operations
-        and spatial indexing with STRtree.
-
-        This function computes the shortest distance from each point in the `gdf_points` GeoDataFrame to the nearest line
-        in the `tree` (a spatial index of line geometries). Optionally, it can also compute the nearest distance to intersections
-        (if an `intersection_tree` is provided).
-
-        Parameters:
-        ----------
-        gdf_points : GeoDataFrame
-            A GeoDataFrame containing point geometries for which distances will be calculated.
-        tree : STRtree
-            A spatial index (STRtree) containing line geometries. This allows for efficient querying of the nearest line
-            for each point.
-        intersection_tree : STRtree, optional
-            An optional spatial index (STRtree) containing intersection geometries. If provided, the function calculates
-            the nearest distance to intersections as well. If not provided, the intersection distances are set to infinity.
-
-        Returns:
-        -------
-        tuple
-            A tuple containing two pandas Series:
-            - nearest_line_distances: The nearest distance from each point to the nearest line.
-            - nearest_intersection_distances: The nearest distance from each point to the nearest intersection (or infinity
-            if no intersection tree is provided).
-
-        Notes:
-        ------
-        - The function uses an inner helper `get_nearest_line_distance` to query the spatial index (`tree`) and calculate the
-        distance between a point and its nearest line.
-        - If no line is found for a point, the distance is set to infinity (`float('inf')`).
-        - When an `intersection_tree` is provided, it computes the minimum distance between a point and the intersection geometries.
-        - The function returns `float('inf')` for intersection distances if no intersections are found or if the `intersection_tree`
-        is not provided.
-
-        """
-
-        # Function to get the nearest line distance for each point
-        def get_nearest_line_distance(point):
-            # Query the STRtree for the nearest lines
-            nearest_lines = tree.query(point)
-            if nearest_lines:  # If lines are found
-                # Ensure nearest_lines are geometries, unpacking from STRtree structure if needed
-                nearest_line_geom = (
-                    nearest_lines[0].geometry
-                    if hasattr(nearest_lines[0], "geometry")
-                    else nearest_lines[0]
-                )
-                return point.distance(
-                    nearest_line_geom
-                )  # Calculate distance between point and line
-            return float("inf")  # If no lines are found, return infinity
-
-        # Calculate the nearest line distance for each point in the GeoDataFrame
-        nearest_line_distances = gdf_points.geometry.apply(
-            get_nearest_line_distance
-        )
-
-        # Handle intersections similarly (if available)
-        if intersection_tree:
-            nearest_intersection_distances = gdf_points.geometry.apply(
-                lambda point: min(
-                    [
-                        point.distance(geom)
-                        for geom in intersection_tree.query(point)
-                    ],
-                    default=float("inf"),
-                )
-            )
-        else:
-            nearest_intersection_distances = pd.Series(
-                [float("inf")] * len(gdf_points)
-            )
-
-        return nearest_line_distances, nearest_intersection_distances
-
-    @staticmethod
-    def distance_from_lines_with_intersections(
-        pfa,
-        criteria,
-        component,
-        layer,
-        extent,
-        nx,
-        ny,
-        weight_line=1.0,
-        weight_intersection=0.5,
-    ):
-        """
-        TODO: Get this to work!!!
-        Calculate the weighted distances from points to the nearest lines and intersections,
-        and update the provided PFA (Potential Field Analysis) dictionary with the computed distance model.
-
-        This function creates a grid of points over a specified spatial extent, computes the distance
-        from each point to the nearest line and nearest line intersection, and then combines the distances
-        using specified weights. The result is stored in the 'pfa' dictionary under the specified criteria,
-        component, and layer.
-
-        Parameters:
-        ----------
-        pfa : dict
-            The PFA (Potential Field Analysis) dictionary that contains geospatial data for various criteria,
-            components, and layers.
-        criteria : str
-            The criteria key within the PFA dictionary to access the desired data.
-        component : str
-            The component key within the criteria to access the desired layer data.
-        layer : str
-            The layer key within the component to access the lines for distance calculation.
-        extent : tuple
-            A tuple (x_min, y_min, x_max, y_max) specifying the spatial extent for the grid of points.
-        nx : int
-            Number of points along the x-axis for the grid.
-        ny : int
-            Number of points along the y-axis for the grid.
-        weight_line : float, optional (default=0.7)
-            The weight assigned to the distance from the nearest line.
-        weight_intersection : float, optional (default=0.3)
-            The weight assigned to the distance from the nearest line intersection.
-
-        Returns:
-        -------
-        pfa : dict
-            The updated PFA dictionary with a new distance model stored in the specified layer.
-        """
-        # Extract lines and intersections from the PFA
-        gdf_lines = pfa["criteria"][criteria]["components"][component][
-            "layers"
-        ][layer]["data"]  # Lines data
-        gdf_intersections = Processing.calculate_intersections(gdf_lines)
-
-        # Define the CRS (Coordinate Reference System) to match the lines
-        crs = gdf_lines.crs
-        # Generate the grid of centroids within the given extent
-        gdf_points = Processing.generate_grid_points(extent, nx, ny, crs)
-
-        # Build spatial index using STRtree for lines and intersections
-        tree = shapely.strtree.STRtree(gdf_lines.geometry)  # STRtree for lines
-        intersection_tree = (
-            shapely.strtree.STRtree(gdf_intersections.geometry)
-            if gdf_intersections is not None
-            else None
-        )  # STRtree for intersections
-
-        # Perform vectorized distance calculations for both lines and intersections
-        line_distances, intersection_distances = (
-            Processing.vectorized_distance_calculation(
-                gdf_points, tree, intersection_tree
-            )
-        )
-
-        # Combine the distances with weights (line and intersection distances)
-        combined_distances = (
-            weight_line * line_distances
-            + weight_intersection * intersection_distances
-        )
-
-        # Assign combined distances to the points
-        gdf_points["distance"] = combined_distances
-
-        # Update the PFA dictionary with the calculated distances
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model"
-        ] = gdf_points
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_data_col"
-        ] = "distance"
-        pfa["criteria"][criteria]["components"][component]["layers"][layer][
-            "model_units"
-        ] = "distance (weighted by line and intersection proximity)"
-
-        return pfa
-
-    @staticmethod
     def weighted_distance_from_points_3d(
         pfa,
         criteria,
@@ -2476,6 +2586,7 @@ class Processing:
 
         return pfa
 
+    @staticmethod
     def convert_3d_to_2d(pfa, criteria, component, layer):
         """
         Convert a 3D GeoDataFrame layer to a 2D representation by collapsing along the Z-dimension.
@@ -2576,6 +2687,7 @@ class Processing:
         ] = "summed " + units
         return pfa
 
+    @staticmethod
     def extract_fault_traces_top(pfa, criteria, component, layer):
         """
         Create a 2D representation of 3D faults by extracting the trace at the top of each fault.
@@ -2639,6 +2751,7 @@ class Processing:
         ] = gdf_2d
         return pfa
 
+    @staticmethod
     def extract_fault_traces_bottom(
         pfa, criteria, component, layer, min_z=None, tolerance=1e6
     ):
