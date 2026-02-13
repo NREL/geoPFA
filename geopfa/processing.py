@@ -1,13 +1,6 @@
 """
 Processing utilities for geoPFA.
 
-NOTE:
-This module preserves a flat public API via the `Processing` class
-for backward compatibility. Internally, functionality is being
-organized into dimension-specific helpers:
-
-- _Processing2D : XY-only logic
-- _Processing3D : XYZ logic
 """
 
 import time
@@ -19,7 +12,6 @@ import scipy
 import numpy as np
 import math
 import shapely
-from shapely.geometry.polygon import Polygon, LineString, Point
 from shapely.ops import unary_union
 from pykrige.ok3d import OrdinaryKriging3D
 from scipy.interpolate import griddata
@@ -350,7 +342,7 @@ class Cleaners:
                 continue
 
             # Points
-            if isinstance(geom, Point):
+            if isinstance(geom, shapely.geometry.Point):
                 z = geom.z if geom.has_z else 0
                 if (
                     xmin <= geom.x <= xmax
@@ -585,15 +577,13 @@ class Exclusions:
         return gdf_points
 
 
-class _Processing2D:
-    """
-    2D-only processing utilities.
+class Processing:
+    """Class of functions for use in processing data into models"""
 
-    Functions in this class operate strictly in the XY plane.
-    """
+    # ------ 2D-specific functions (from _Processing2D) ------
 
     @staticmethod
-    def mark_buffer_areas_xy(
+    def mark_buffer_areas(
         pfa,
         criteria,
         component,
@@ -716,7 +706,7 @@ class _Processing2D:
         return pfa
 
     @staticmethod
-    def polygons_to_points_xy(pfa, criteria, component, layer, extent, nx, ny):
+    def polygons_to_points(pfa, criteria, component, layer, extent, nx, ny):
         """Calculate aggregated polygon values (sum or average) within a specified grid.
 
         Parameters
@@ -832,7 +822,7 @@ class _Processing2D:
         return pfa
 
     @staticmethod
-    def generate_grid_points_xy(extent, nx, ny, crs):
+    def generate_grid_points(extent, nx, ny, crs):
         """
         Generate grid points (centroids) for a regular grid within a given extent.
 
@@ -863,7 +853,7 @@ class _Processing2D:
         return gdf_points
 
     @staticmethod
-    def calculate_intersections_xy(gdf_lines):
+    def calculate_intersections(gdf_lines):
         """
         Calculate intersection points between 2D line geometries in a GeoDataFrame.
 
@@ -923,7 +913,7 @@ class _Processing2D:
         return gpd.GeoDataFrame(geometry=intersections, crs=gdf_lines.crs)
 
     @staticmethod
-    def vectorized_distance_calculation_xy(
+    def vectorized_distance_calculation(
         gdf_points, tree, intersection_tree=None
     ):
         """Calculates the nearest line and intersection distances for each point in a GeoDataFrame using vectorized operations
@@ -1003,7 +993,7 @@ class _Processing2D:
         return nearest_line_distances, nearest_intersection_distances
 
     @staticmethod
-    def distance_from_lines_with_intersections_xy(
+    def distance_from_lines_with_intersections(
         pfa,
         criteria,
         component,
@@ -1055,12 +1045,12 @@ class _Processing2D:
         gdf_lines = pfa["criteria"][criteria]["components"][component][
             "layers"
         ][layer]["data"]  # Lines data
-        gdf_intersections = _Processing2D.calculate_intersections_xy(gdf_lines)
+        gdf_intersections = Processing.calculate_intersections(gdf_lines)
 
         # Define the CRS (Coordinate Reference System) to match the lines
         crs = gdf_lines.crs
         # Generate the grid of centroids within the given extent
-        gdf_points = _Processing2D.generate_grid_points_xy(extent, nx, ny, crs)
+        gdf_points = Processing.generate_grid_points(extent, nx, ny, crs)
 
         # Build spatial index using STRtree for lines and intersections
         tree = shapely.strtree.STRtree(gdf_lines.geometry)  # STRtree for lines
@@ -1072,7 +1062,7 @@ class _Processing2D:
 
         # Perform vectorized distance calculations for both lines and intersections
         line_distances, intersection_distances = (
-            _Processing2D.vectorized_distance_calculation_xy(
+            Processing.vectorized_distance_calculation(
                 gdf_points, tree, intersection_tree
             )
         )
@@ -1100,7 +1090,7 @@ class _Processing2D:
         return pfa
 
     @staticmethod
-    def extrapolate_xy(
+    def extrapolate_2d(
         pfa,
         criteria,
         component,
@@ -1170,115 +1160,7 @@ class _Processing2D:
 
         return pfa
 
-
-class _Processing3D:
-    """
-    3D-only processing utilities.
-
-    Functions in this class operate in full XYZ space and require
-    geometries with valid Z-coordinates.
-    """
-
-
-class Processing:
-    """Class of functions for use in processing data into models"""
-
-    @staticmethod
-    def mark_buffer_areas(
-        pfa,
-        criteria,
-        component,
-        layer,
-        extent,
-        nx,
-        ny,
-        buffer_distance,
-        polygon_value,
-        buffer_value,
-        background_value,
-    ):
-        return _Processing2D.mark_buffer_areas_xy(
-            pfa,
-            criteria,
-            component,
-            layer,
-            extent,
-            nx,
-            ny,
-            buffer_distance,
-            polygon_value,
-            buffer_value,
-            background_value,
-        )
-
-    @staticmethod
-    def polygons_to_points(pfa, criteria, component, layer, extent, nx, ny):
-        return _Processing2D.polygons_to_points_xy(
-            pfa, criteria, component, layer, extent, nx, ny
-        )
-
-    @staticmethod
-    def generate_grid_points(extent, nx, ny, crs):
-        return _Processing2D.generate_grid_points_xy(extent, nx, ny, crs)
-
-    @staticmethod
-    def calculate_intersections(gdf_lines):
-        return _Processing2D.calculate_intersections_xy(gdf_lines)
-
-    @staticmethod
-    def vectorized_distance_calculation(
-        gdf_points, tree, intersection_tree=None
-    ):
-        return _Processing2D.vectorized_distance_calculation_xy(
-            gdf_points, tree, intersection_tree=intersection_tree
-        )
-
-    @staticmethod
-    def distance_from_lines_with_intersections(
-        pfa,
-        criteria,
-        component,
-        layer,
-        extent,
-        nx,
-        ny,
-        weight_line=1.0,
-        weight_intersection=0.5,
-    ):
-        return _Processing2D.distance_from_lines_with_intersections_xy(
-            pfa,
-            criteria,
-            component,
-            layer,
-            extent,
-            nx,
-            ny,
-            weight_line=weight_line,
-            weight_intersection=weight_intersection,
-        )
-
-    @staticmethod
-    def extrapolate_2d(
-        pfa,
-        criteria,
-        component,
-        layer,
-        dataset="model",
-        *,
-        data_col="value_interpolated",
-        training_size=0.2,
-        verbose=False,
-    ):
-        return _Processing2D.extrapolate_xy(
-            pfa,
-            criteria,
-            component,
-            layer,
-            dataset=dataset,
-            data_col=data_col,
-            training_size=training_size,
-            verbose=verbose,
-        )
+    # ------ 3D-specific functions (from _Processing3D) ------
 
     @staticmethod
     def interpolate_points_3d(
@@ -1677,225 +1559,6 @@ class Processing:
         return pfa
 
     @staticmethod
-    def extrude_2d_to_3d(
-        pfa,
-        criteria,
-        component,
-        layer,
-        extent,
-        nz,
-        strike=None,
-        dip=None,
-        target_z_meas=None,
-    ):
-        """
-        Extrude 2D/3D geometries into 3D solids using a 3D extent and optional dip.
-
-        Parameters
-        ----------
-        pfa : dict
-            Project/frame archive structure.
-        criteria, component, layer : str
-            Keys into pfa["criteria"][criteria]["components"][component]["layers"][layer].
-        extent : list or tuple
-            [xmin, ymin, zmin, xmax, ymax, zmax].
-            The smallest of (zmin, zmax) is treated as the bottom,
-            the largest as the top of the extrusion. x/y are used to clip geometry.
-        nz : int
-            Number of vertical layers (stored as metadata).
-        strike : float, optional
-            Global strike azimuth in degrees, clockwise from North.
-            If None or used with dip=None, extrusion is vertical.
-        dip : float, optional
-            Global dip angle in degrees from horizontal (0 to 90).
-            If None or dip ~ 90°, extrusion is vertical.
-        target_z_meas : any, optional
-            Stored in layer_dict["z_meas"] for downstream use.
-        """
-
-        # Unpack extent (note: your convention is [xmin, ymin, zmin, xmax, ymax, zmax])
-        xmin, ymin, z0, xmax, ymax, z1 = extent
-
-        # Enforce consistent vertical ordering
-        z_min = min(z0, z1)
-        z_max = max(z0, z1)
-
-        # Build XY clipping box
-        xy_box = shapely.geometry.box(xmin, ymin, xmax, ymax)
-
-        layer_dict = pfa["criteria"][criteria]["components"][component][
-            "layers"
-        ][layer]
-        gdf2 = layer_dict["data"]
-
-        # Backup original data
-        layer_dict["old_data"] = gdf2.copy()
-        layer_dict["z_meas"] = target_z_meas
-
-        def _dip_offset(z_top, z_bot, strike_deg, dip_deg):
-            """
-            Compute (dx, dy) offset for the bottom trace along dip direction over
-            the vertical span from z_top to z_bot.
-            """
-            if strike_deg is None or dip_deg is None:
-                return 0.0, 0.0
-
-            # Treat near-vertical as vertical extrusion
-            if dip_deg >= 89.9:
-                return 0.0, 0.0
-
-            dz = z_top - z_bot  # positive if z_top > z_bot
-            if dz == 0:
-                return 0.0, 0.0
-
-            dip_rad = math.radians(dip_deg)
-            # tan(dip) = vertical / horizontal  =>  horizontal = vertical / tan(dip)
-            horiz = abs(dz) / math.tan(dip_rad)
-
-            strike_rad = math.radians(strike_deg)
-            dip_az = strike_rad + math.pi / 2.0  # dip direction
-
-            # azimuth convention: x = East, y = North
-            dx = horiz * math.sin(dip_az)
-            dy = horiz * math.cos(dip_az)
-            return dx, dy
-
-        # Global offset for bottom surfaces (same z_min/z_max for all features)
-        dx_dip, dy_dip = _dip_offset(z_max, z_min, strike, dip)
-
-        # Helper to safely get x,y from a coordinate (supports 2D or 3D coords)
-        def _xy(coord):
-            return coord[0], coord[1]
-
-        geoms3 = []
-        for geom in gdf2.geometry:
-            if geom.is_empty:
-                continue
-
-            # Clip to XY box first (works for 2D or 3D, z is dropped by intersection)
-            geom_clipped = geom.intersection(xy_box)
-            if geom_clipped.is_empty:
-                continue
-
-            # Lines → fault walls
-            if geom_clipped.geom_type in ("LineString", "MultiLineString"):
-                parts = (
-                    geom_clipped.geoms
-                    if geom_clipped.geom_type == "MultiLineString"
-                    else [geom_clipped]
-                )
-                for line in parts:
-                    coords = [_xy(c) for c in line.coords]
-
-                    # Top trace at z_max
-                    top = [(x, y, z_max) for x, y in coords]
-
-                    # Bottom trace at z_min, shifted along dip direction
-                    bot = [
-                        (x + dx_dip, y + dy_dip, z_min)
-                        for x, y in reversed(coords)
-                    ]
-
-                    ring = top + bot
-                    geoms3.append(shapely.geometry.Polygon(ring))
-
-            # Polygons → 3D prisms (bottom offset along dip)
-            elif geom_clipped.geom_type in ("Polygon", "MultiPolygon"):
-                polys = (
-                    geom_clipped.geoms
-                    if geom_clipped.geom_type == "MultiPolygon"
-                    else [geom_clipped]
-                )
-                for poly in polys:
-                    ext = [_xy(c) for c in poly.exterior.coords]
-
-                    top_ext = [(x, y, z_max) for x, y in ext]
-                    bot_ext = [
-                        (x + dx_dip, y + dy_dip, z_min)
-                        for x, y in reversed(ext)
-                    ]
-
-                    holes3 = []
-                    for hole in poly.interiors:
-                        hc = [_xy(c) for c in hole.coords]
-                        top_h = [(x, y, z_max) for x, y in hc]
-                        bot_h = [
-                            (x + dx_dip, y + dy_dip, z_min)
-                            for x, y in reversed(hc)
-                        ]
-                        holes3.append(top_h + bot_h)
-
-                    geoms3.append(
-                        shapely.geometry.Polygon(
-                            top_ext + bot_ext, holes=holes3
-                        )
-                    )
-
-            # Skip points and unsupported geometry types
-            else:
-                continue
-
-        gdf3 = gpd.GeoDataFrame(geometry=geoms3, crs=gdf2.crs)
-
-        # Mark how it was extruded
-        gdf3.attrs["extruded"] = True
-        gdf3.attrs["z_min"] = z_min
-        gdf3.attrs["z_max"] = z_max
-        gdf3.attrs["nz"] = nz
-        if strike is not None:
-            gdf3.attrs["strike"] = strike
-        if dip is not None:
-            gdf3.attrs["dip"] = dip
-
-        # Replace layer data with 3D solids
-        layer_dict["data"] = gdf3
-        layer_dict["data_col"] = "None"
-        layer_dict["units"] = ""
-        layer_dict["z_meas"] = target_z_meas
-
-        return pfa
-
-    @staticmethod
-    def create_fault_surfaces_from_points(gdf_points, fault_number_col):
-        """Create surfaces representing faults from point data.
-
-        Parameters
-        ----------
-        gdf_points : GeoDataFrame
-            GeoDataFrame containing point data with x, y, z coordinates and fault numbers.
-        fault_number_col : str
-            Column name in the GeoDataFrame that contains fault numbers.
-
-        Returns
-        -------
-        gdf_surfaces : GeoDataFrame
-            GeoDataFrame containing surfaces (Polygons or MultiPolygons) for each fault.
-        """
-        fault_surfaces = []
-
-        # Group points by fault number
-        grouped = gdf_points.groupby(fault_number_col)
-
-        for fault_number, group in grouped:
-            points = group.geometry
-            coords = [(point.x, point.y, point.z) for point in points]
-
-            # Create a surface (e.g., convex hull) for the fault
-            try:
-                surface = shapely.geometry.MultiPoint(coords).convex_hull
-                fault_surfaces.append(
-                    {"fault_number": fault_number, "geometry": surface}
-                )
-            except Exception as e:
-                print(f"Error creating surface for fault {fault_number}: {e}")
-
-        # Create GeoDataFrame for surfaces
-        gdf_surfaces = gpd.GeoDataFrame(fault_surfaces)
-        gdf_surfaces = gdf_surfaces.set_crs(gdf_points.crs)
-
-        return gdf_surfaces
-
-    @staticmethod
     def distance_from_lines_3d(
         pfa, criteria, component, layer, extent, nx, ny, nz
     ):
@@ -1984,50 +1647,6 @@ class Processing:
         return pfa
 
     @staticmethod
-    def slice_geometry_at_z(geom3d, z, z_tol=1e-8):
-        """
-        Extract the 2D footprint of a 3D polygon geometry at a specific elevation.
-
-        If the specified z-level lies outside the vertical extent of the geometry,
-        returns None. Degenerate or invalid polygon slices are converted to their
-        boundary LineString.
-
-        Parameters
-        ----------
-        geom3d : shapely Polygon
-            3D solid polygon geometry with z-coordinates in its vertices.
-        z : float
-            Target elevation for slicing the geometry.
-        z_tol : float, optional
-            Vertical tolerance for including slices near the target elevation.
-
-        Returns
-        -------
-        shapely geometry or None
-            2D Polygon or LineString footprint at elevation z, or None if outside range.
-        """
-        if not hasattr(geom3d, "exterior"):
-            return None
-        coords3 = list(geom3d.exterior.coords)
-        zs = [c[2] for c in coords3]
-        zlo, zhi = min(zs), max(zs)
-        if z < zlo - z_tol or z > zhi + z_tol:
-            return None
-        xy = [(x, y) for (x, y, _) in coords3]
-
-        # attempt full polygon
-        try:
-            fp = Polygon(xy)
-        except Exception:
-            fp = LineString(xy)
-
-        # convert zero-area or invalid polygons to boundary
-        if fp.geom_type == "Polygon" and (fp.area == 0 or not fp.is_valid):
-            fp = fp.boundary
-
-        return fp
-
-    @staticmethod
     def distance_from_3d_solids(
         pfa,
         *,
@@ -2104,7 +1723,7 @@ class Processing:
                 continue
 
             uni = unary_union(fps)
-            pts2 = [Point(x, y) for y in ys for x in xs]
+            pts2 = [shapely.geometry.Point(x, y) for y in ys for x in xs]
             dist2 = np.array([pt.distance(uni) for pt in pts2]).reshape(ny, nx)
             D[iz] = dist2
             valid.append(iz)
@@ -2121,7 +1740,9 @@ class Processing:
         for iz in range(nz):
             for iy in range(ny):
                 for ix in range(nx):
-                    all_pts.append(Point(xs[ix], ys[iy], zs[iz]))
+                    all_pts.append(
+                        shapely.geometry.Point(xs[ix], ys[iy], zs[iz])
+                    )
                     all_d.append(D[iz, iy, ix])
 
         gdf_out = gpd.GeoDataFrame(
@@ -2294,13 +1915,11 @@ class Processing:
             wk = weights[idx]
             score = np.sum(np.exp(-dk / alpha) * wk, axis=1)
         else:
-            raise ValueError(
-                "mode must be one of ['mean','sum','max','knearest']"
-            )
+            raise ValueError("mode must be one of ['mean','max','knearest']")
 
         # store results
         gdf_grid = gpd.GeoDataFrame(
-            geometry=list(starmap(Point, grid_xyz)),
+            geometry=list(starmap(shapely.geometry.Point, grid_xyz)),
             data={"weighted_point_score": score},
             crs=gdf_pts.crs,
         )
@@ -2535,6 +2154,271 @@ class Processing:
         ] = f"density per {cell_size_x}x{cell_size_y}x{cell_size_z} m^3"
 
         return pfa
+
+    # ------ General processing functions (not strictly 2D or 3D) ------
+
+    @staticmethod
+    def extrude_2d_to_3d(
+        pfa,
+        criteria,
+        component,
+        layer,
+        extent,
+        nz,
+        strike=None,
+        dip=None,
+        target_z_meas=None,
+    ):
+        """
+        Extrude 2D/3D geometries into 3D solids using a 3D extent and optional dip.
+
+        Parameters
+        ----------
+        pfa : dict
+            Project/frame archive structure.
+        criteria, component, layer : str
+            Keys into pfa["criteria"][criteria]["components"][component]["layers"][layer].
+        extent : list or tuple
+            [xmin, ymin, zmin, xmax, ymax, zmax].
+            The smallest of (zmin, zmax) is treated as the bottom,
+            the largest as the top of the extrusion. x/y are used to clip geometry.
+        nz : int
+            Number of vertical layers (stored as metadata).
+        strike : float, optional
+            Global strike azimuth in degrees, clockwise from North.
+            If None or used with dip=None, extrusion is vertical.
+        dip : float, optional
+            Global dip angle in degrees from horizontal (0 to 90).
+            If None or dip ~ 90°, extrusion is vertical.
+        target_z_meas : any, optional
+            Stored in layer_dict["z_meas"] for downstream use.
+        """
+
+        # Unpack extent (note: your convention is [xmin, ymin, zmin, xmax, ymax, zmax])
+        xmin, ymin, z0, xmax, ymax, z1 = extent
+
+        # Enforce consistent vertical ordering
+        z_min = min(z0, z1)
+        z_max = max(z0, z1)
+
+        # Build XY clipping box
+        xy_box = shapely.geometry.box(xmin, ymin, xmax, ymax)
+
+        layer_dict = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]
+        gdf2 = layer_dict["data"]
+
+        # Backup original data
+        layer_dict["old_data"] = gdf2.copy()
+        layer_dict["z_meas"] = target_z_meas
+
+        def _dip_offset(z_top, z_bot, strike_deg, dip_deg):
+            """
+            Compute (dx, dy) offset for the bottom trace along dip direction over
+            the vertical span from z_top to z_bot.
+            """
+            if strike_deg is None or dip_deg is None:
+                return 0.0, 0.0
+
+            # Treat near-vertical as vertical extrusion
+            if dip_deg >= 89.9:
+                return 0.0, 0.0
+
+            dz = z_top - z_bot  # positive if z_top > z_bot
+            if dz == 0:
+                return 0.0, 0.0
+
+            dip_rad = math.radians(dip_deg)
+            # tan(dip) = vertical / horizontal  =>  horizontal = vertical / tan(dip)
+            horiz = abs(dz) / math.tan(dip_rad)
+
+            strike_rad = math.radians(strike_deg)
+            dip_az = strike_rad + math.pi / 2.0  # dip direction
+
+            # azimuth convention: x = East, y = North
+            dx = horiz * math.sin(dip_az)
+            dy = horiz * math.cos(dip_az)
+            return dx, dy
+
+        # Global offset for bottom surfaces (same z_min/z_max for all features)
+        dx_dip, dy_dip = _dip_offset(z_max, z_min, strike, dip)
+
+        # Helper to safely get x,y from a coordinate (supports 2D or 3D coords)
+        def _xy(coord):
+            return coord[0], coord[1]
+
+        geoms3 = []
+        for geom in gdf2.geometry:
+            if geom.is_empty:
+                continue
+
+            # Clip to XY box first (works for 2D or 3D, z is dropped by intersection)
+            geom_clipped = geom.intersection(xy_box)
+            if geom_clipped.is_empty:
+                continue
+
+            # Lines → fault walls
+            if geom_clipped.geom_type in ("LineString", "MultiLineString"):
+                parts = (
+                    geom_clipped.geoms
+                    if geom_clipped.geom_type == "MultiLineString"
+                    else [geom_clipped]
+                )
+                for line in parts:
+                    coords = [_xy(c) for c in line.coords]
+
+                    # Top trace at z_max
+                    top = [(x, y, z_max) for x, y in coords]
+
+                    # Bottom trace at z_min, shifted along dip direction
+                    bot = [
+                        (x + dx_dip, y + dy_dip, z_min)
+                        for x, y in reversed(coords)
+                    ]
+
+                    ring = top + bot
+                    geoms3.append(shapely.geometry.Polygon(ring))
+
+            # Polygons → 3D prisms (bottom offset along dip)
+            elif geom_clipped.geom_type in ("Polygon", "MultiPolygon"):
+                polys = (
+                    geom_clipped.geoms
+                    if geom_clipped.geom_type == "MultiPolygon"
+                    else [geom_clipped]
+                )
+                for poly in polys:
+                    ext = [_xy(c) for c in poly.exterior.coords]
+
+                    top_ext = [(x, y, z_max) for x, y in ext]
+                    bot_ext = [
+                        (x + dx_dip, y + dy_dip, z_min)
+                        for x, y in reversed(ext)
+                    ]
+
+                    holes3 = []
+                    for hole in poly.interiors:
+                        hc = [_xy(c) for c in hole.coords]
+                        top_h = [(x, y, z_max) for x, y in hc]
+                        bot_h = [
+                            (x + dx_dip, y + dy_dip, z_min)
+                            for x, y in reversed(hc)
+                        ]
+                        holes3.append(top_h + bot_h)
+
+                    geoms3.append(
+                        shapely.geometry.Polygon(
+                            top_ext + bot_ext, holes=holes3
+                        )
+                    )
+
+            # Skip points and unsupported geometry types
+            else:
+                continue
+
+        gdf3 = gpd.GeoDataFrame(geometry=geoms3, crs=gdf2.crs)
+
+        # Mark how it was extruded
+        gdf3.attrs["extruded"] = True
+        gdf3.attrs["z_min"] = z_min
+        gdf3.attrs["z_max"] = z_max
+        gdf3.attrs["nz"] = nz
+        if strike is not None:
+            gdf3.attrs["strike"] = strike
+        if dip is not None:
+            gdf3.attrs["dip"] = dip
+
+        # Replace layer data with 3D solids
+        layer_dict["data"] = gdf3
+        layer_dict["data_col"] = "None"
+        layer_dict["units"] = ""
+        layer_dict["z_meas"] = target_z_meas
+
+        return pfa
+
+    @staticmethod
+    def create_fault_surfaces_from_points(gdf_points, fault_number_col):
+        """Create surfaces representing faults from point data.
+
+        Parameters
+        ----------
+        gdf_points : GeoDataFrame
+            GeoDataFrame containing point data with x, y, z coordinates and fault numbers.
+        fault_number_col : str
+            Column name in the GeoDataFrame that contains fault numbers.
+
+        Returns
+        -------
+        gdf_surfaces : GeoDataFrame
+            GeoDataFrame containing surfaces (Polygons or MultiPolygons) for each fault.
+        """
+        fault_surfaces = []
+
+        # Group points by fault number
+        grouped = gdf_points.groupby(fault_number_col)
+
+        for fault_number, group in grouped:
+            points = group.geometry
+            coords = [(point.x, point.y, point.z) for point in points]
+
+            # Create a surface (e.g., convex hull) for the fault
+            try:
+                surface = shapely.geometry.MultiPoint(coords).convex_hull
+                fault_surfaces.append(
+                    {"fault_number": fault_number, "geometry": surface}
+                )
+            except Exception as e:
+                print(f"Error creating surface for fault {fault_number}: {e}")
+
+        # Create GeoDataFrame for surfaces
+        gdf_surfaces = gpd.GeoDataFrame(fault_surfaces)
+        gdf_surfaces = gdf_surfaces.set_crs(gdf_points.crs)
+
+        return gdf_surfaces
+
+    @staticmethod
+    def slice_geometry_at_z(geom3d, z, z_tol=1e-8):
+        """
+        Extract the 2D footprint of a 3D polygon geometry at a specific elevation.
+
+        If the specified z-level lies outside the vertical extent of the geometry,
+        returns None. Degenerate or invalid polygon slices are converted to their
+        boundary LineString.
+
+        Parameters
+        ----------
+        geom3d : shapely Polygon
+            3D solid polygon geometry with z-coordinates in its vertices.
+        z : float
+            Target elevation for slicing the geometry.
+        z_tol : float, optional
+            Vertical tolerance for including slices near the target elevation.
+
+        Returns
+        -------
+        shapely geometry or None
+            2D Polygon or LineString footprint at elevation z, or None if outside range.
+        """
+        if not hasattr(geom3d, "exterior"):
+            return None
+        coords3 = list(geom3d.exterior.coords)
+        zs = [c[2] for c in coords3]
+        zlo, zhi = min(zs), max(zs)
+        if z < zlo - z_tol or z > zhi + z_tol:
+            return None
+        xy = [(x, y) for (x, y, _) in coords3]
+
+        # attempt full polygon
+        try:
+            fp = shapely.geometry.Polygon(xy)
+        except Exception:
+            fp = shapely.geometry.LineString(xy)
+
+        # convert zero-area or invalid polygons to boundary
+        if fp.geom_type == "Polygon" and (fp.area == 0 or not fp.is_valid):
+            fp = fp.boundary
+
+        return fp
 
     @staticmethod
     def convert_3d_to_2d(pfa, criteria, component, layer):
