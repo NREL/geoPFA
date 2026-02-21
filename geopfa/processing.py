@@ -583,6 +583,129 @@ class Processing:
     # ------ 2D-specific functions (from _Processing2D) ------
 
     @staticmethod
+    def interpolate_points_2d(
+        pfa,
+        criteria,
+        component,
+        layer,
+        nx,
+        ny,
+        extent=None,
+        interp_method="linear",
+    ):
+        """Funtion to interpolate, or go from points to a 2D image.
+
+        Parameters
+        ----------
+        pfa : dict
+            Config specifying criteria, components, and data layers' relationship to one another.
+            Includes data layers' associated GeoDataFrames.
+        criteria : str
+            Criteria associated with data to interpolate.
+        component : str
+            Component associated with data to interpolate.
+        layer : str
+            Layer associated with data to interpolate.
+        nx : int
+            Number of points in the x-direction
+        ny : int
+            Number of points in the y-direction
+        extent : list
+            List of length 4 containing the extent (i.e., bounding box) of the gdf,
+            in this order: [x_min, y_min, x_max, y_max]
+        interp_method : str
+            Method to use for interpolation. Can be one of: 'nearest' (KNN), 'linear',
+            or 'cubic'.
+        power: int
+            Determines how the distance between data points affects the interpolation result.
+            *Specifically, it defines the rate at which the influence of a data point decreases
+            as the distance from the interpolation location increases.
+            *Adjust power parameter accordingly to change how strongly the distance influences the
+            interpolation (default is 2).
+
+
+        Returns
+        -------
+        pfa : dict
+            Updated pfa config which includes interpolation
+        """
+        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["data"]
+        data_col = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]["data_col"]
+
+        if gdf.geometry.type.iloc[0] == "Polygon":
+            print(
+                "Notice: interpolate_points() function recieved GeoDataFrame with geometry type 'Polygon.' Converting geometry to 'Point' geometry using centroids."
+            )
+            gdf.geometry = gdf.geometry.centroid
+
+        # Extract coordinates and values from the GeoDataFrame
+        x = gdf.geometry.x
+        y = gdf.geometry.y
+        values = gdf[data_col]
+
+        # Define the grid for interpolation
+        if extent is None:
+            x_min = min(x)
+            x_max = max(x)
+            y_min = min(y)
+            y_max = max(y)
+        else:
+            x_min, y_min, x_max, y_max = extent
+        x_grid = np.linspace(x_min, x_max, nx)
+        y_grid = np.linspace(y_min, y_max, ny)
+        xv, yv = np.meshgrid(x_grid, y_grid)
+
+        ## TODO: Properly implement IDW. The commented out code below does not work
+        # Choose interpolation method
+        # if interp_method == 'idw':
+        #     # IDW interpolation inline
+        #     grid = np.zeros_like(xv)
+        #     distances = np.sqrt((x[:, None, None] - xv[None, :, :])**2 + (y[:, None, None] - yv[None, :, :])**2)
+        #     weights = 1 / np.power(distances, power)
+        #     weighted_values = weights * values[:, None, None]
+        #     grid = np.sum(weighted_values, axis=0) / np.sum(weights, axis=0)
+        # pygem IDW option
+        # if interp_method == 'idw':
+        # mesh_points = np.array([x.values, y.values, values.values])
+        # idw = IDW(power)
+        # idw.read_parameters('tests/test_datasets/parameters_idw_cube.prm')
+        # new_mesh_points = idw(mesh_points.T)
+        # grid = idw(xv.flatten(), yv.flatten()).reshape(nx, ny)
+        # else:
+        # Otherwise, default to scipy interpolation
+
+        # Clean out any rows with NaNs before interpolation
+        valid = ~(x.isna() | y.isna() | values.isna())
+        x, y, values = x[valid], y[valid], values[valid]
+
+        grid = scipy.interpolate.griddata(
+            (x, y), values, (xv, yv), method=interp_method
+        )
+
+        # Create a new GeoDataFrame with the interpolated values
+        interpolated_gdf = gpd.GeoDataFrame(
+            {"value_interpolated": grid.flatten()},
+            geometry=gpd.points_from_xy(xv.flatten(), yv.flatten()),
+            crs=gdf.crs,
+        )
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model"
+        ] = interpolated_gdf
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_data_col"
+        ] = "value_interpolated"
+        pfa["criteria"][criteria]["components"][component]["layers"][layer][
+            "model_units"
+        ] = pfa["criteria"][criteria]["components"][component]["layers"][
+            layer
+        ]["units"]
+        return pfa
+
+    @staticmethod
     def mark_buffer_areas(
         pfa,
         criteria,
@@ -1174,26 +1297,19 @@ class Processing:
         extent=None,
         method="linear",
     ):
-        """Optimized 3D interpolation using Scipy's griddata (with timing checkpoints)."""
+        """Optimized 3D interpolation using Scipy's griddata."""
 
-        start_total = time.time()
-
-        t0 = time.time()
         gdf = pfa["criteria"][criteria]["components"][component]["layers"][
             layer
         ]["data"]
         data_col = pfa["criteria"][criteria]["components"][component][
             "layers"
         ][layer]["data_col"]
-        print(f"[Time] Load layer data: {time.time() - t0:.4f} s")
 
         # Convert polygons → centroids if needed
         if gdf.geometry.type.iloc[0] == "Polygon":
             t1 = time.time()
             gdf.geometry = gdf.geometry.centroid
-            print(
-                f"[Time] Polygon → centroid conversion: {time.time() - t1:.4f} s"
-            )
 
         # Extract coordinates + values
         t2 = time.time()
@@ -1201,7 +1317,6 @@ class Processing:
         y = gdf.geometry.y
         z = gdf.geometry.apply(lambda geom: geom.z)
         values = gdf[data_col]
-        print(f"[Time] Extract coordinates & values: {time.time() - t2:.4f} s")
 
         # Determine grid extents
         t3 = time.time()
@@ -1211,7 +1326,6 @@ class Processing:
             z_min, z_max = z.min(), z.max()
         else:
             x_min, y_min, z_min, x_max, y_max, z_max = extent
-        print(f"[Time] Compute extents: {time.time() - t3:.4f} s")
 
         # Build grid
         t4 = time.time()
@@ -1219,16 +1333,12 @@ class Processing:
         y_grid = np.linspace(y_min, y_max, ny)
         z_grid = np.linspace(z_min, z_max, nz)
         xv, yv, zv = np.meshgrid(x_grid, y_grid, z_grid, indexing="ij")
-        print(f"[Time] Build grid (meshgrid): {time.time() - t4:.4f} s")
-        print(f"\t Grid resolution: {nx} x {ny} x {nz}")
-
         # Interpolation
         t5 = time.time()
         points = np.vstack((x.to_numpy(), y.to_numpy(), z.to_numpy())).T
         grid_values = griddata(
             points, values.values, (xv, yv, zv), method=method
         )
-        print(f"[Time] Interpolation (griddata): {time.time() - t5:.4f} s")
 
         # Construct GeoDataFrame
         t6 = time.time()
@@ -1242,12 +1352,7 @@ class Processing:
             ),
             crs=gdf.crs,
         )
-        print(
-            f"[Time] Build interpolated GeoDataFrame: {time.time() - t6:.4f} s"
-        )
 
-        # Store results
-        t7 = time.time()
         pfa["criteria"][criteria]["components"][component]["layers"][layer][
             "model"
         ] = interpolated_gdf
@@ -1259,12 +1364,6 @@ class Processing:
         ] = pfa["criteria"][criteria]["components"][component]["layers"][
             layer
         ]["units"]
-        print(f"[Time] Update PFA structure: {time.time() - t7:.4f} s")
-
-        # Total runtime
-        print(
-            f"[TOTAL] interpolate_points_3d completed in {time.time() - start_total:.4f} s"
-        )
 
         return pfa
 
@@ -2481,9 +2580,11 @@ class Processing:
         gdf_3d = gdf_3d.sort_values(
             by=["geometry"],
             key=lambda col: col.apply(
-                lambda geom: (geom.x, geom.y, geom.z)
-                if not geom.is_empty
-                else (float("nan"), float("nan"), float("nan"))
+                lambda geom: (
+                    (geom.x, geom.y, geom.z)
+                    if not geom.is_empty
+                    else (float("nan"), float("nan"), float("nan"))
+                )
             ),
         ).reset_index(drop=True)
 
@@ -2664,3 +2765,58 @@ class Processing:
             "data"
         ] = fault_traces_gdf
         return pfa
+
+    @staticmethod
+    def interpolate_points(
+        pfa,
+        criteria,
+        component,
+        layer,
+        nx,
+        ny,
+        nz=None,
+        extent=None,
+        interp_method="linear",
+    ):
+        """
+        Interpolate to either a 2D or 3D grid.
+
+        If nz is provided, 3D interpolation is performed.
+        Otherwise, 2D interpolation is performed.
+        """
+
+        if nz is not None:
+            if extent is not None and len(extent) != 6:
+                raise ValueError(
+                    "3D interpolation requires extent of length 6 "
+                    "[xmin, ymin, zmin, xmax, ymax, zmax]"
+                )
+
+            return Processing.interpolate_points_3d(
+                pfa,
+                criteria,
+                component,
+                layer,
+                nx,
+                ny,
+                nz=nz,
+                extent=extent,
+                method=interp_method,
+            )
+
+        if extent is not None and len(extent) != 4:
+            raise ValueError(
+                "2D interpolation requires extent of length 4 "
+                "[xmin, ymin, xmax, ymax]"
+            )
+
+        return Processing.interpolate_points_2d(
+            pfa,
+            criteria,
+            component,
+            layer,
+            nx,
+            ny,
+            extent=extent,
+            interp_method=interp_method,
+        )
