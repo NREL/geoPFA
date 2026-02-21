@@ -1297,7 +1297,64 @@ class Processing:
         extent=None,
         method="linear",
     ):
-        """Optimized 3D interpolation using Scipy's griddata."""
+        """
+        Function to interpolate, or go from points to a 3D image (voxel grid).
+
+        Parameters
+        ----------
+        pfa : dict
+            Config specifying criteria, components, and data layers' relationship to one another.
+            Includes data layers' associated GeoDataFrames.
+        criteria : str
+            Criteria associated with data to interpolate.
+        component : str
+            Component associated with data to interpolate.
+        layer : str
+            Layer associated with data to interpolate.
+        nx : int
+            Number of points in the x-direction.
+        ny : int
+            Number of points in the y-direction.
+        nz : int
+            Number of points in the z-direction.
+        extent : list or tuple, optional
+            List of length 6 containing the 3D extent (i.e., bounding box) of the grid,
+            in this order: [x_min, y_min, z_min, x_max, y_max, z_max].
+            If None, the extent is inferred from the input data.
+        method : str
+            Method to use for interpolation. Can be one of:
+            'nearest', 'linear', or 'cubic'.
+            Passed directly to scipy.interpolate.griddata.
+
+        Returns
+        -------
+        pfa : dict
+            Updated pfa config which includes the interpolated 3D model
+            stored in the specified layer under:
+            - layer["model"]
+            - layer["model_data_col"] = "value_interpolated"
+
+        Notes
+        -----
+        - Uses scipy.interpolate.griddata to perform interpolation.
+        - Builds a full 3D meshgrid in memory before evaluation.
+        - Suitable for small to moderate grid sizes.
+        - For very large grids (e.g., > ~1e6 voxels), consider using
+        fast_interpolate_points_3d() for improved performance
+        and reduced memory usage.
+        """
+
+        total_pts = nx * ny * nz
+
+        if total_pts > 1_000_000:
+            warnings.warn(
+                "Large 3D grid detected (>1e6 cells). "
+                "If computation is prohibitively slow, consider "
+                "fast_interpolate_points_3d() for improved "
+                "performance and lower memory usage.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         gdf = pfa["criteria"][criteria]["components"][component]["layers"][
             layer
@@ -1384,11 +1441,65 @@ class Processing:
         dtype=np.float32,  # memory saver vs float64
     ):
         """
-        Faster 3D interpolation with lower memory usage.
+        Function to interpolate, or go from points to a 3D image (voxel grid),
+        using a memory-efficient and scalable approach.
 
-        - method="nearest": uses cKDTree (very fast).
-        - method="linear": uses LinearNDInterpolator + chunked evaluation.
-        - build_gdf=False avoids creating millions of shapely Points (big speed win).
+        Parameters
+        ----------
+        pfa : dict
+            Config specifying criteria, components, and data layers' relationship to one another.
+            Includes data layers' associated GeoDataFrames.
+        criteria : str
+            Criteria associated with data to interpolate.
+        component : str
+            Component associated with data to interpolate.
+        layer : str
+            Layer associated with data to interpolate.
+        nx : int
+            Number of points in the x-direction.
+        ny : int
+            Number of points in the y-direction.
+        nz : int
+            Number of points in the z-direction.
+        extent : list or tuple, optional
+            List of length 6 containing the 3D extent (i.e., bounding box) of the grid,
+            in this order: [x_min, y_min, z_min, x_max, y_max, z_max].
+            If None, the extent is inferred from the input data.
+        method : str
+            Method to use for interpolation. Can be one of:
+            'nearest' or 'linear'.
+            - 'nearest' uses scipy.spatial.cKDTree (fast KNN lookup).
+            - 'linear' uses scipy.interpolate.LinearNDInterpolator.
+        build_gdf : bool, optional
+            If True (default), builds a GeoDataFrame of 3D Points for the output.
+            If False, stores compact NumPy arrays instead to reduce memory usage.
+        chunk_points : int, optional
+            Maximum number of grid points evaluated per chunk.
+            Controls memory usage during interpolation.
+        use_representative_point : bool, optional
+            If True, converts Polygon geometries to representative_point()
+            before interpolation (faster and safer than centroid for complex shapes).
+        dtype : numpy dtype, optional
+            Data type used for coordinate and value arrays (default: float32).
+            Lower precision reduces memory usage.
+
+        Returns
+        -------
+        pfa : dict
+            Updated pfa config which includes the interpolated 3D model
+            stored in the specified layer. Depending on build_gdf:
+            - If True: layer["model"] is a GeoDataFrame of 3D Points.
+            - If False: layer["model"] is a dictionary containing
+            coordinate arrays and a 3D values array.
+
+        Notes
+        -----
+        - Designed for large 3D grids where full meshgrid construction
+        would be memory-intensive.
+        - Performs interpolation in chunks to reduce peak memory usage.
+        - Typically much faster and more scalable than interpolate_points_3d()
+        for large grids.
+        - Does not support cubic interpolation.
         """
         t0 = time.time()
 
@@ -2779,10 +2890,59 @@ class Processing:
         interp_method="linear",
     ):
         """
-        Interpolate to either a 2D or 3D grid.
+        Function to interpolate, or go from points to either a 2D image
+        or a 3D image (voxel grid), depending on user input.
 
-        If nz is provided, 3D interpolation is performed.
-        Otherwise, 2D interpolation is performed.
+        This function serves as a unified interface for interpolation.
+        If `nz` is provided, 3D interpolation is performed.
+        If `nz` is None, 2D interpolation is performed.
+
+        Parameters
+        ----------
+        pfa : dict
+            Config specifying criteria, components, and data layers' relationship to one another.
+            Includes data layers' associated GeoDataFrames.
+        criteria : str
+            Criteria associated with data to interpolate.
+        component : str
+            Component associated with data to interpolate.
+        layer : str
+            Layer associated with data to interpolate.
+        nx : int
+            Number of points in the x-direction.
+        ny : int
+            Number of points in the y-direction.
+        nz : int, optional
+            Number of points in the z-direction.
+            If provided, 3D interpolation is performed.
+            If None (default), 2D interpolation is performed.
+        extent : list or tuple, optional
+            Spatial extent defining the interpolation grid.
+            - For 2D interpolation: length 4
+            [x_min, y_min, x_max, y_max]
+            - For 3D interpolation: length 6
+            [x_min, y_min, z_min, x_max, y_max, z_max]
+            If None, the extent is inferred from the input data.
+        interp_method : str
+            Method to use for interpolation.
+            For 2D: supports 'nearest', 'linear', or 'cubic'.
+            For 3D: supported methods depend on the underlying 3D function
+            (typically 'nearest' or 'linear').
+
+        Returns
+        -------
+        pfa : dict
+            Updated pfa config which includes the interpolated model
+            stored in the specified layer.
+
+        Notes
+        -----
+        - This function dispatches internally to either
+        `interpolate_points_2d()` or `interpolate_points_3d()`.
+        - Dimensionality is determined solely by whether `nz` is provided.
+        - For large 3D grids, consider using
+        `fast_interpolate_points_3d()` directly for improved
+        performance and memory efficiency.
         """
 
         if nz is not None:
