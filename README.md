@@ -2,7 +2,7 @@
 [![PyPi](https://badge.fury.io/py/geoPFA.svg)](https://pypi.org/project/geoPFA/)
 [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.17316283.svg)](https://doi.org/10.5281/zenodo.17316283)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
-![SWR](https://img.shields.io/badge/SWR--25--73_-blue?label=NREL)
+![SWR](https://img.shields.io/badge/SWR--25--73_-blue?label=NLR)
 
 [![PythonV](https://img.shields.io/pypi/pyversions/geoPFA.svg)](https://pypi.org/project/geoPFA/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -14,7 +14,7 @@
 geoPFA is an open-source Python library for conducting Play Fairway Analysis
 (PFA) in 2D and 3D, designed to reduce exploration risk by integrating surface
 and subsurface considerations into a single, transparent workflow. Built around
-NREL’s Geothermal PFA Best Practices and aligned with FAIR software principles,
+NLR’s Geothermal PFA Best Practices and aligned with FAIR software principles,
 geoPFA provides modular, extensible tools for cleaning, processing, weighting,
 and combining diverse datasets into quantitative favorability maps. These
 datasets can include geological, geophysical, geochemical, and
