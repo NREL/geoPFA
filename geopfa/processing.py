@@ -237,28 +237,41 @@ class Cleaners:
         return gdf
 
     @staticmethod
-    def get_extent(gdf: gpd.GeoDataFrame):
+    def get_extent(gdf: gpd.GeoDataFrame, dim="auto"):
         """
         Compute the spatial extent (bounding box) of a GeoDataFrame.
-
-        For purely 2D geometries, returns a 4-length list:
-            [xmin, ymin, xmax, ymax]
-
-        For 3D geometries (all geometries contain Z values),
-        returns a 6-length list:
-            [xmin, ymin, zmin, xmax, ymax, zmax]
 
         Parameters
         ----------
         gdf : geopandas.GeoDataFrame
             GeoDataFrame containing Point, LineString, Polygon,
             Multi*, or GeometryCollection geometries.
+        dim : {"auto", 2, 3}, optional
+            Controls dimensionality of returned extent.
+            - "auto" (default): returns 3D extent only if ALL geometries
+            contain Z values. Otherwise returns 2D extent.
+            - 2: always return 2D extent [xmin, ymin, xmax, ymax],
+            even if geometries contain Z values.
+            - 3: force 3D extent [xmin, ymin, zmin, xmax, ymax, zmax].
+            Raises ValueError if no Z values are present.
 
         Returns
         -------
         extent : list
-            Bounding box extent of the GeoDataFrame.
             Length 4 (2D) or length 6 (3D).
+
+        Raises
+        ------
+        ValueError
+            If GeoDataFrame is empty.
+            If dim=3 but no Z values exist.
+            If dim is invalid.
+
+        Warns
+        -----
+        UserWarning
+            If mixed 2D and 3D geometries are present and dim="auto".
+            Z bounds will be computed using geometries with Z only.
 
         Notes
         -----
@@ -270,17 +283,31 @@ class Cleaners:
         if gdf.empty or gdf.geometry.is_empty.all():
             raise ValueError("Cannot compute extent of empty GeoDataFrame.")
 
+        if dim not in ("auto", 2, 3):
+            raise ValueError("dim must be one of {'auto', 2, 3}.")
+
         xmin, ymin, xmax, ymax = gdf.total_bounds
 
-        # Detect dimensionality
+        # Always return 2D if explicitly requested
+        if dim == 2:
+            return [xmin, ymin, xmax, ymax]
+
+        # Detect Z presence
         has_z_flags = gdf.geometry.apply(
             lambda geom: getattr(geom, "has_z", False)
         )
 
-        if not has_z_flags.any():
+        any_z = has_z_flags.any()
+        all_z = has_z_flags.all()
+
+        if not any_z:
+            if dim == 3:
+                raise ValueError(
+                    "dim=3 requested but geometries do not contain Z values."
+                )
             return [xmin, ymin, xmax, ymax]
 
-        if not has_z_flags.all():
+        if dim == "auto" and not all_z:
             warnings.warn(
                 "Mixed 2D and 3D geometries detected. "
                 "Z extent will be computed using geometries with Z values only.",
@@ -315,47 +342,56 @@ class Cleaners:
             recurse(geom)
             return zs
 
-        all_z = []
+        z_values = []
         for geom in gdf.geometry:
-            all_z.extend(extract_z(geom))
+            z_values.extend(extract_z(geom))
 
-        if not all_z:
-            # No valid Z values found
+        if not z_values:
+            if dim == 3:
+                raise ValueError(
+                    "dim=3 requested but no valid Z coordinates found."
+                )
             return [xmin, ymin, xmax, ymax]
 
-        return [xmin, ymin, min(all_z), xmax, ymax, max(all_z)]
+        return [xmin, ymin, min(z_values), xmax, ymax, max(z_values)]
 
     @staticmethod
     def set_extent(gdf: gpd.GeoDataFrame, extent):
         """
         Clip a GeoDataFrame to a 2D or 3D extent.
 
-        If extent has length 4:
-            Performs standard 2D clipping using shapely box.
-
-        If extent has length 6:
-            Performs 2D clipping in XY, then filters geometries
-            by Z range. Geometries are NOT sliced in Z; they are
-            either retained or discarded based on bounding-box overlap.
-
         Parameters
         ----------
         gdf : geopandas.GeoDataFrame
             GeoDataFrame containing geometries to clip.
         extent : list or tuple
-            Length 4: [xmin, ymin, xmax, ymax]
-            Length 6: [xmin, ymin, zmin, xmax, ymax, zmax]
+            - Length 4: [xmin, ymin, xmax, ymax]
+            - Length 6: [xmin, ymin, zmin, xmax, ymax, zmax]
 
         Returns
         -------
         geopandas.GeoDataFrame
             Clipped GeoDataFrame.
 
+        Raises
+        ------
+        ValueError
+            If extent length is not 4 or 6.
+
+        Warns
+        -----
+        UserWarning
+            If a 3D extent is provided but geometries do not
+            contain Z values.
+
         Notes
         -----
-        - 3D clipping does NOT slice geometries along Z.
-        It only filters geometries whose Z bounds intersect the extent.
-        - XY clipping uses GeoPandas .clip() method.
+        - 2D clipping uses GeoPandas .clip() with a shapely box.
+        - For 3D extents:
+            1. Geometries are clipped in XY.
+            2. Z filtering is applied based on bounding-box overlap.
+        - Geometries are NOT sliced in Z. They are either
+        retained or discarded based on Z intersection.
         """
 
         if len(extent) not in (4, 6):
