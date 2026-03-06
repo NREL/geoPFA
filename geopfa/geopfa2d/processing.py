@@ -37,7 +37,7 @@ class Exclusions(geopfa.processing.Exclusions):
     def __init__(self, *args, **kwargs):
         """Initialize the Exclusions class"""
         warnings.warn(
-            "The geopfa3d.processing.Exclusions class is deprecated"
+            "The geopfa2d.processing.Exclusions class is deprecated"
             " and will be removed in a future version."
             " Please use the geopfa.processing module instead.",
             DeprecationWarning,
