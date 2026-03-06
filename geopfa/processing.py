@@ -397,8 +397,15 @@ class Cleaners:
         if len(extent) not in (4, 6):
             raise ValueError("Extent must be length 4 (2D) or 6 (3D).")
 
-        xmin, ymin = extent[0], extent[1]
-        xmax, ymax = extent[-2], extent[-1]
+        if len(extent) == 4:
+            xmin, ymin, xmax, ymax = extent
+        else:
+            xmin, ymin, zmin, xmax, ymax, zmax = extent
+
+        if xmax <= xmin or ymax <= ymin:
+            raise ValueError(
+                "Invalid extent: xmax/xmin or ymax/ymin ordering is incorrect."
+            )
 
         bbox = shapely.geometry.box(xmin, ymin, xmax, ymax)
         gdf_xy = gdf.clip(bbox)
@@ -407,10 +414,12 @@ class Cleaners:
             return gdf_xy
 
         # 3D case
-        zmin, zmax = extent[2], extent[5]
+        xmin, ymin, zmin, xmax, ymax, zmax = extent
+        bbox = shapely.geometry.box(xmin, ymin, xmax, ymax)
+        gdf_xy = gdf.clip(bbox)
 
         has_z_flags = gdf_xy.geometry.apply(
-            lambda geom: getattr(geom, "has_z", False)
+            lambda geom: getattr(geom, "has_z", False) if geom else False
         )
 
         if not has_z_flags.any():
