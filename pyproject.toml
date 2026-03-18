@@ -263,6 +263,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
+"docs/source/conf.py" = ["INP001", "D100"]
 "geopfa/geopfa3d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
 "geopfa/geopfa2d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
 "geopfa/processing.py" = [
