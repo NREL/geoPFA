@@ -60,6 +60,7 @@ dev = [
   "pre-commit>=4.0",
 ]
 doc = [
+  "furo>=2025.12.19,<2026",
   "myst-parser>=5.0",
   "numpydoc>=1.6",
   "pandoc>=2.3",
@@ -143,6 +144,7 @@ tqdm = ">=4.67.1,<5"
 uv = ">=0.7.22,<0.8"
 
 [tool.pixi.feature.doc.dependencies]
+furo = ">=2025.12.19,<2026"
 ghp-import = ">=2.1.0,<3"
 make = ">=4.4.1,<5"
 myst-parser = ">=5.0.0,<6"
