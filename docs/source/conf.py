@@ -38,8 +38,10 @@ exclude_patterns = []
 
 
 # -- Extension configuration -------------------------------------------------
-# Specify your BibTeX file(s)
+# BibTeX configuration
 bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = "unsrt"
+bibtex_reference_style = "author_year"
 
 
 # -- Options for HTML output -------------------------------------------------
