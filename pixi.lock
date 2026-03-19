@@ -7760,8 +7760,8 @@ packages:
   timestamp: 1766475275483
 - pypi: ./
   name: geopfa
-  version: 0.0.19.dev32+ge0c633c02.d20260318
-  sha256: 3d13a871fd3b5eb8677a7d6df30d623627bb019d97d849c1f078c6b1e9033260
+  version: 0.0.19.dev39+g46cbf40f1
+  sha256: 8cf9913d04585cfdfc996cb95e77a4805757b57035c3432042ada454fa45b249
   requires_dist:
   - contextily>=1.6.2
   - geopandas>=0.14.4
@@ -7784,6 +7784,7 @@ packages:
   - ipython>=8.29.0 ; extra == 'dev'
   - pre-commit>=4.0 ; extra == 'dev'
   - twine>=5.1 ; extra == 'dev'
+  - furo>=2025.12.19,<2026 ; extra == 'doc'
   - myst-parser>=5.0 ; extra == 'doc'
   - numpydoc>=1.6 ; extra == 'doc'
   - pandoc>=2.3 ; extra == 'doc'
