@@ -7,8 +7,8 @@ All functionalities from this module were moved to
 
 import warnings
 
-from geopfa.transformation import (
-    VoterVetoTransformation as _UnifiedVoterVetoTransformation
+from geopfa.layer_combination import (
+    VoterVeto as _UnifiedVoterVetoTransformation
 )
 
 
