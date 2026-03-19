@@ -3,13 +3,17 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+from importlib.metadata import version as get_version
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Geothermal Play Fairway Analysis"
 copyright = "2025, Nicole Taverna"
 author = "Nicole Taverna"
-release = "0.1.0"
+
+release = get_version("geopfa").split("+")[0]
+version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -74,5 +78,5 @@ myst_enable_extensions = [
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "furo"
-html_title = "Geothermal PFA"
+html_title = f"Geothermal PFA {release}"
 html_static_path = ["_static"]
