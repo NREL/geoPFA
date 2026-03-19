@@ -38,6 +38,13 @@ exclude_patterns = []
 
 
 # -- Extension configuration -------------------------------------------------
+# -- Autodoc & Autosummary configuration --
+autosummary_generate = True  # Turn on sphinx.ext.autosummary
+autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
+autodoc_member_order = "bysource"
+autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
+add_module_names = False  # Remove namespaces from class/method signatures
+
 # -- BibTeX configuration --
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = "unsrt"
