@@ -38,10 +38,15 @@ exclude_patterns = []
 
 
 # -- Extension configuration -------------------------------------------------
-# BibTeX configuration
+# -- BibTeX configuration --
 bibtex_bibfiles = ["references.bib"]
 bibtex_default_style = "unsrt"
 bibtex_reference_style = "author_year"
+
+# -- Napoleon configuration --
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_use_rtype = False
 
 
 # -- Options for HTML output -------------------------------------------------
