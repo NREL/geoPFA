@@ -185,14 +185,14 @@ def grid_from_tidy(
     grid : pandas.DataFrame
         Pivoted grid of shape ``(ny, nx)``, with sorted ``y`` as rows and
         sorted ``x`` as columns.
-    xs : numpy.ndarray of shape (nx,)
-        Sorted unique ``x`` coordinates.
-    ys : numpy.ndarray of shape (ny,)
-        Sorted unique ``y`` coordinates.
-    x_2d : numpy.ndarray of shape (ny, nx)
-        2D meshgrid of ``x`` coordinates.
-    y_2d : numpy.ndarray of shape (ny, nx)
-        2D meshgrid of ``y`` coordinates.
+    xs : numpy.ndarray
+        Sorted unique ``x`` coordinates, shape ``(nx,)``.
+    ys : numpy.ndarray
+        Sorted unique ``y`` coordinates, shape ``(ny,)``.
+    x_2d : numpy.ndarray
+        2D meshgrid of ``x`` coordinates, shape ``(ny, nx)``.
+    y_2d : numpy.ndarray
+        2D meshgrid of ``y`` coordinates, shape ``(ny, nx)``.
 
     Notes
     -----
@@ -225,21 +225,22 @@ def standardize_xy(
 
     Parameters
     ----------
-    X_train : ndarray of shape (n_train, 2)
-        Training coordinate array.
-    X_full : ndarray of shape (n_full, 2)
-        Full coordinate array to be standardized using training statistics.
+    X_train : numpy.ndarray
+        Training coordinate array, shape ``(n_train, 2)``.
+    X_full : numpy.ndarray
+        Full coordinate array to be standardized using training statistics,
+        shape ``(n_full, 2)``.
 
     Returns
     -------
-    X_train_std : ndarray of shape (n_train, 2)
-        Standardized training coordinates.
-    X_full_std : ndarray of shape (n_full, 2)
-        Standardized full-grid coordinates.
-    mean : ndarray of shape (2,)
-        Per-dimension mean of the training data.
-    std : ndarray of shape (2,)
-        Per-dimension standard deviation of the training data.
+    X_train_std : numpy.ndarray
+        Standardized training coordinates, shape ``(n_train, 2)``.
+    X_full_std : numpy.ndarray
+        Standardized full-grid coordinates, shape ``(n_full, 2)``.
+    mean : numpy.ndarray
+        Per-dimension mean of the training data, shape ``(2,)``.
+    std : numpy.ndarray
+        Per-dimension standard deviation of the training data, shape ``(2,)``.
 
     Notes
     -----
@@ -431,9 +432,9 @@ def estimate_variance(Y: ArrayLike) -> float:
 
     Parameters
     ----------
-    Y : array_like
-        Observed values (1D or 2D). If 2D, the array is flattened before
-        variance computation.
+    Y : numpy.ndarray
+        Observed values (1-D or 2-D array-like). If 2-D, the array is flattened
+        before variance computation.
 
     Returns
     -------
@@ -509,8 +510,9 @@ def compute_global_radius(X_std: np.ndarray) -> float:
 
     Parameters
     ----------
-    X_std : numpy.ndarray of shape (N, 2)
-        Standardized training coordinates. Each row is [x, y].
+    X_std : numpy.ndarray
+        Standardized training coordinates, shape ``(N, 2)``. Each row is
+        ``[x, y]``.
 
     Returns
     -------
@@ -577,10 +579,10 @@ def build_rbf_kernel_global(
 
     Parameters
     ----------
-    X_stdized : numpy.ndarray of shape (N, 2)
-        Standardized training coordinates.
-    Y_stdized : numpy.ndarray of shape (N, 1)
-        Standardized training targets.
+    X_stdized : numpy.ndarray
+        Standardized training coordinates, shape ``(N, 2)``.
+    Y_stdized : numpy.ndarray
+        Standardized training targets, shape ``(N, 1)``.
     input_dim : int, optional
         Dimensionality of the input space. Default is 2.
     lower_frac : float, optional
@@ -656,10 +658,10 @@ def build_matern32_kernel_global(
 
     Parameters
     ----------
-    X_stdized : numpy.ndarray of shape (N, 2)
-        Standardized training coordinates.
-    Y_stdized : numpy.ndarray of shape (N, 1)
-        Standardized training targets.
+    X_stdized : numpy.ndarray
+        Standardized training coordinates, shape ``(N, 2)``.
+    Y_stdized : numpy.ndarray
+        Standardized training targets, shape ``(N, 1)``.
     input_dim : int, optional
         Dimensionality of the input space. Default is 2.
     lower_frac : float, optional
@@ -913,10 +915,10 @@ def build_and_fit_gp(  # noqa: PLR0913, PLR0917
 
     Parameters
     ----------
-    X_train_stdized : numpy.ndarray of shape (N, D)
-        Standardized training coordinates.
-    Y_train_stdized : numpy.ndarray of shape (N, 1)
-        Standardized training targets.
+    X_train_stdized : numpy.ndarray
+        Standardized training coordinates, shape ``(N, D)``.
+    Y_train_stdized : numpy.ndarray
+        Standardized training targets, shape ``(N, 1)``.
     optimize_restarts : int, optional
         Number of multi-start optimization attempts. Default is 0.
     verbose : bool, optional
@@ -1059,8 +1061,9 @@ def get_predictions(
     ----------
     model : GPy.models.GPRegression
         Trained GP regression model.
-    X : numpy.ndarray of shape (N, D)
-        Input features in the same standardized space used during training.
+    X : numpy.ndarray
+        Input features in the same standardized space used during training,
+        shape ``(N, D)``.
     kvals_df : pandas.DataFrame or dict, optional
         Must contain 'x' and 'y'. If provided, predictions are reshaped into a
         pivoted 2D grid of shape (len(y_unique), len(x_unique)).
@@ -1363,9 +1366,9 @@ def bootstrap_assess_residuals_stats(  # noqa: PLR0913, PLR0914
 
     Parameters
     ----------
-    Y_true : array_like
+    Y_true : numpy.ndarray
         True target observations.
-    Y_pred : array_like
+    Y_pred : numpy.ndarray
         Predicted values from the GP.
     alpha : float, optional
         Significance threshold used for computing rejection rates.
@@ -1610,9 +1613,9 @@ def plot_residuals(
 
     Parameters
     ----------
-    Y_true : array_like
-        True observed target values. Will be reshaped to 1D.
-    Y_pred : array_like
+    Y_true : numpy.ndarray
+        True observed target values. Will be reshaped to 1-D.
+    Y_pred : numpy.ndarray
         Predicted target values from the model (same shape as ``Y_true``).
 
     Notes
@@ -1664,14 +1667,14 @@ def make_prediction_comparison_plot_2d(
 
     Parameters
     ----------
-    X_grid : numpy.ndarray (2D)
-        Meshgrid array of X coordinates, same shape as ``Z_true``.
-    Y_grid : numpy.ndarray (2D)
-        Meshgrid array of Y coordinates, same shape as ``Z_true``.
-    Z_true : numpy.ndarray (2D)
-        Ground truth values on the grid.
-    Z_pred : numpy.ndarray (2D)
-        Predicted values on the same grid.
+    X_grid : numpy.ndarray
+        2-D meshgrid array of X coordinates, same shape as ``Z_true``.
+    Y_grid : numpy.ndarray
+        2-D meshgrid array of Y coordinates, same shape as ``Z_true``.
+    Z_true : numpy.ndarray
+        2-D array of ground truth values on the grid.
+    Z_pred : numpy.ndarray
+        2-D array of predicted values on the same grid.
     title : str or None, optional
         Optional title prefix applied above both subplots.
 
@@ -1744,12 +1747,12 @@ def plot_array_with_coords(  # noqa: PLR0913, PLR0917
 
     Parameters
     ----------
-    x : array_like
-        X coordinates, either 1D (length ``Z.shape[1]``) or 2D (same shape as ``Z``).
-    y : array_like
+    x : numpy.ndarray
+        X coordinates, either 1-D (length ``Z.shape[1]``) or 2-D (same shape as ``Z``).
+    y : numpy.ndarray
         Y coordinates, same rules as ``x``.
-    Z : array_like
-        2D array of values to plot.
+    Z : numpy.ndarray
+        2-D array of values to plot.
     title : str, optional
         Plot title.
     cmap : str, optional
@@ -1857,12 +1860,12 @@ def update_gdf_with_predictions(
     ----------
     gdf : geopandas.GeoDataFrame
         Input GeoDataFrame containing point geometries.
-    Y_grid : numpy.ndarray (2D)
-        Predicted values arranged on a grid of shape ``(n_y, n_x)``.
-    x_grid : numpy.ndarray (2D)
-        X-coordinates for each grid cell; must match ``Y_grid.shape``.
-    y_grid : numpy.ndarray (2D)
-        Y-coordinates for each grid cell; must match ``Y_grid.shape``.
+    Y_grid : numpy.ndarray
+        Predicted values arranged on a 2-D grid of shape ``(n_y, n_x)``.
+    x_grid : numpy.ndarray
+        2-D X-coordinates for each grid cell; must match ``Y_grid.shape``.
+    y_grid : numpy.ndarray
+        2-D Y-coordinates for each grid cell; must match ``Y_grid.shape``.
 
     Returns
     -------
@@ -1961,12 +1964,12 @@ def backfill_gdf_at_height(  # noqa: PLR0913
         The Z slice to target.
     z_tol : float
         Allowed absolute difference between a point's ``z`` and ``z_value``.
-    X_grid : numpy.ndarray (2D)
-        2D array of X coordinates defining the grid.
-    Y_grid : numpy.ndarray (2D)
-        2D array of Y coordinates defining the grid.
-    backfilled_array : numpy.ndarray (2D)
-        2D array of predicted values corresponding to ``X_grid`` / ``Y_grid``.
+    X_grid : numpy.ndarray
+        2-D array of X coordinates defining the grid.
+    Y_grid : numpy.ndarray
+        2-D array of Y coordinates defining the grid.
+    backfilled_array : numpy.ndarray
+        2-D array of predicted values corresponding to ``X_grid`` / ``Y_grid``.
 
     Returns
     -------

@@ -15,7 +15,7 @@ def normalize_gdf(gdf, col, norm_to=1):
 
     Parameters
     ----------
-    gdf : gpd.GeoDataFrame
+    gdf : geopandas.GeoDataFrame
         The GeoDataFrame containing the column to normalize.
     col : str
         The name of the column in the GeoDataFrame to normalize.
@@ -25,7 +25,7 @@ def normalize_gdf(gdf, col, norm_to=1):
 
     Returns
     -------
-    gdf : gpd.GeoDataFrame
+    gdf : geopandas.GeoDataFrame
         The input GeoDataFrame with the normalized column.
 
     ..NOTE:: This function modifies the input GeoDataFrame in place,
@@ -49,7 +49,7 @@ def normalize_array(rasterized_array, method):
 
     Parameters
     ----------
-    rasterized_array : np.ndarray
+    rasterized_array : numpy.ndarray
         Input NumPy array to be normalized.
     method : str
         Method to use to normalize rasterized_array. Can be one of
@@ -57,7 +57,7 @@ def normalize_array(rasterized_array, method):
 
     Returns
     -------
-    normalized_array : np.ndarray
+    normalized_array : numpy.ndarray
         Normalized 2D or 3D NumPy array.
     """
     if method == "minmax":
@@ -104,15 +104,15 @@ def transform(array, method):
 
     Parameters
     ----------
-    array : np.ndarray
-        Input 2D or 3D rasterized np.array to transform
+    array : numpy.ndarray
+        Input 2-D or 3-D rasterized array to transform.
     method : str
         Method to transform data to relative favorability. Can be one
         of ['inverse', 'negate', 'ln', 'None', 'hill', 'valley']
 
     Returns
     -------
-    transformed_array : np.ndarray
+    transformed_array : numpy.ndarray
         Array with data values transformed to relative favorability
         values
     """

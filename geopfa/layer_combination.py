@@ -117,7 +117,7 @@ class VoterVeto:
 
     @staticmethod
     def voter(w, z, w0):
-        r"""
+        """
         Generalized voter for N-dimensional grids.
 
         Combine processed, transformed, and scaled data layers into a 'favorability'
@@ -125,17 +125,19 @@ class VoterVeto:
 
         Parameters
         ----------
-        w : ndarray, shape (n_layers,)
-            Array of weights, one per data layer.
-        z : np.ndarray, shape (n_layers, \*spatial_shape)
-            Array containing processed, transformed, and scaled data layers.
+        w : numpy.ndarray
+            Array of weights, one per data layer, shape ``(n_layers,)``.
+        z : numpy.ndarray
+            Array containing processed, transformed, and scaled data layers,
+            shape ``(n_layers, *spatial_shape)``.
         w0 : float
             Prior favorability term.
 
         Returns
         -------
-        PrX : np.ndarray, shape spatial_shape
-            Rasterized array of 'favorabilities' for an individual required resource component.
+        PrX : numpy.ndarray
+            Rasterized array of 'favorabilities' for an individual required
+            resource component, shape ``spatial_shape``.
         """
         w = np.asarray(w)
 
@@ -182,10 +184,10 @@ class VoterVeto:
 
         Parameters
         ----------
-        PrXs : np.array
+        PrXs : numpy.ndarray
             Array of rasterized 'favorability' arrays for each required component or
             criteria of a resource
-        w : np.array
+        w : numpy.ndarray
             Array of weights for each component or criteria of a resource
         veto : boolean
             Boolean value indicating whether or not the function should set indices
@@ -193,7 +195,7 @@ class VoterVeto:
 
         Returns
         -------
-        PrR : np.array
+        PrR : numpy.ndarray
             Array of rasterized 'favorability' arrays of a resource being present, taking into
             account all components (i.e., heat, fluid, perm, etc.).
         """
@@ -234,15 +236,15 @@ class VoterVeto:
 
     @staticmethod
     def prepare_for_combination(arr, nan_mode="propagate_shared"):
-        r"""
+        """
         Prepare a stack of layers/components for combination by handling NaNs.
 
         Parameters
         ----------
-        arr : np.ndarray
-            Array of shape (n_items, \*spatial_shape), where n_items is the number
-            of layers (at layer→component level), components (at component→criteria),
-            or criteria (at criteria→final).
+        arr : numpy.ndarray
+            Array of shape ``(n_items, *spatial_shape)``, where ``n_items`` is
+            the number of layers (at layer→component level), components (at
+            component→criteria), or criteria (at criteria→final).
         nan_mode : {"propagate_shared", "propagate_any"}
             Strategy for handling NaN values during aggregation:
 
@@ -258,11 +260,11 @@ class VoterVeto:
 
         Returns
         -------
-        filled : np.ndarray
-            Same shape as `arr`, with NaNs replaced according to `nan_mode`
+        filled : numpy.ndarray
+            Same shape as ``arr``, with NaNs replaced according to ``nan_mode``
             for the purpose of numerical combination.
-        mask_nan : np.ndarray (bool)
-            Boolean mask of shape `spatial_shape` indicating where the final
+        mask_nan : numpy.ndarray
+            Boolean mask of shape ``spatial_shape`` indicating where the final
             combined result should be set to NaN.
         """
         arr = np.asarray(arr, dtype=float)

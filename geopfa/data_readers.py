@@ -378,7 +378,7 @@ class GeospatialDataReaders:
         -------
         well_gdf : GeoDataFrame
             Ordered vertices as 3D Point geometries (one row per vertex).
-        values : np.ndarray or None
+        values : numpy.ndarray or None
             Per-vertex values aligned with rows (or None if value_col not provided).
         """
         df = pd.read_csv(csv_path)
