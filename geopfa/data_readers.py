@@ -32,8 +32,8 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        data : Geopandas DataFrame
-            Geopandas DataFrame containing contents of shapefile
+        data : geopandas.GeoDataFrame
+            GeoDataFrame containing contents of shapefile
         """
         data = gpd.read_file(path)
         return data
@@ -71,8 +71,8 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        gdf : Geopandas DataFrame
-            Geopandas DataFrame containing contents of CSV file
+        gdf : geopandas.GeoDataFrame
+            GeoDataFrame containing contents of CSV file
         """
         # Read the CSV file
         df = pd.read_csv(path)  # noqa: PD901
@@ -131,8 +131,8 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        data : Geopandas DataFrame
-            Geopandas DataFrame containing contents of raster file
+        data : geopandas.GeoDataFrame
+            GeoDataFrame containing contents of raster file
         """
         # TODO: Return geopandas dataframe instead of rasterio dataset object
         data = rasterio.open(path)
@@ -217,8 +217,8 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        gdf : Geopandas DataFrame
-            Geopandas DataFrame containing contents of TEC file
+        gdf : geopandas.GeoDataFrame
+            GeoDataFrame containing contents of TEC file
         """
 
         # Read all lines
@@ -376,7 +376,7 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        well_gdf : GeoDataFrame
+        well_gdf : geopandas.GeoDataFrame
             Ordered vertices as 3D Point geometries (one row per vertex).
         values : numpy.ndarray or None
             Per-vertex values aligned with rows (or None if value_col not provided).
@@ -482,7 +482,7 @@ class GeospatialDataReaders:
         ----------
         data_dir : str
             Path to directory where data is stored
-        pfa : dictionary
+        pfa : dict
             Config specifying criteria, components, and data layers'
             relationship to one another. Read in from json file.
         file_types : list
@@ -491,7 +491,7 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        pfa : dictionary
+        pfa : dict
             Updated pfa config which includes data
         """
         data_dir = Path(data_dir)
@@ -639,13 +639,13 @@ class GeospatialDataReaders:
         ----------
         data_dir : str
             Path to directory where data is stored
-        pfa : dictionary
+        pfa : dict
             Config specifying criteria, components, and data layers'
             relationship to one another. Read in from json file.
 
         Returns
         -------
-        pfa : dictionary
+        pfa : dict
             Updated pfa config which includes data
         """
         data_dir = Path(data_dir)
@@ -686,7 +686,7 @@ class GeospatialDataReaders:
 
         Parameters
         ----------
-        cls : class
+        cls : type
             The class that the method belongs to. This is typically
             passed automatically in class methods.
         data_dir : str
