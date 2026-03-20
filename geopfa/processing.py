@@ -119,12 +119,14 @@ class Cleaners:
         """
         Converts depth or elevation measurements from one reference system to another using GDAL Python Bindings.
 
-        Parameters:
+        Parameters
+        ----------
             gdf (GeoDataFrame): GeoDataFrame containing point geometry and Z values in the geometry.
             z_meas (str): Current measurement reference (e.g., 'm-msl', 'epsg:####', or 'ft-msl').
             target_z_meas (str): Target measurement reference (e.g., 'm-msl', 'epsg:####', or 'ft-msl').
 
-        Returns:
+        Returns
+        -------
             GeoDataFrame: A GeoDataFrame with updated geometry where the Z value is converted to the target reference.
         """
         METERS_TO_FEET = 3.28084
