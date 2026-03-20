@@ -175,14 +175,14 @@ class Cleaners:
 
         Parameters
         ----------
-        data : Pandas Series
+        data : pandas.Series
             Series of data values to filter
         quantile : int
             Number representing the quantile, which when exceeded, produces an outlier.
 
         Returns
         -------
-        data : Pandas Series
+        data : pandas.Series
             Filtered version of the input data, with values above specified quantile set to
             that quantile.
         """
@@ -196,14 +196,14 @@ class Cleaners:
 
         Parameters
         ----------
-        series : Pandas Series
+        series : pandas.Series
             Series of data values to filter.
         quantile : float
             Number representing the quantile, which when exceeded, produces an outlier.
 
         Returns
         -------
-        series : Pandas Series
+        series : pandas.Series
             Filtered version of the input data, with values above the specified quantile set to
             that quantile.
         """
@@ -218,7 +218,7 @@ class Cleaners:
 
         Parameters
         ----------
-        gdf : GeoDataFrame
+        gdf : geopandas.GeoDataFrame
             GeoDataFrame containing the data to filter.
         column : list of str
             Column name to apply the filter to.
@@ -227,7 +227,7 @@ class Cleaners:
 
         Returns
         -------
-        gdf_filtered : GeoDataFrame
+        gdf_filtered : geopandas.GeoDataFrame
             GeoDataFrame with the specified columns filtered.
         """
         if column in gdf.columns:
@@ -430,9 +430,9 @@ class Exclusions:
 
         Parameters
         ----------
-        gdf_points : GeoDataFrame
+        gdf_points : geopandas.GeoDataFrame
             GeoDataFrame containing point geometries and values.
-        gdf_exclusion_areas : GeoDataFrame
+        gdf_exclusion_areas : geopandas.GeoDataFrame
             GeoDataFrame containing polygon geometries representing exclusion areas.
         value_col : str, optional
             The column name in gdf_points that contains the values to be masked, by default 'value'.
@@ -536,9 +536,9 @@ class Exclusions:
 
         Parameters
         ----------
-        gdf_points : GeoDataFrame
+        gdf_points : geopandas.GeoDataFrame
             GeoDataFrame containing point geometries and values.
-        gdf_exclusion_areas : GeoDataFrame
+        gdf_exclusion_areas : geopandas.GeoDataFrame
             GeoDataFrame containing point geometries representing exclusion areas.
         buffer_distance : float
             The distance to buffer around exclusion points.
@@ -1009,8 +1009,9 @@ class Processing:
             Column in `dataset` to use for extrapolation input observations.
         training_size : float
             Percent of randomly select input observations to train on.
-        verbose : bol
+        verbose : bool
             Display training progress, assessment metrics, and final plots.
+
         Returns
         -------
         pfa : dict
@@ -1373,8 +1374,8 @@ class Processing:
         dip : float, optional
             Global dip angle in degrees from horizontal (0 to 90).
             If None or dip ~ 90°, extrusion is vertical.
-        target_z_meas : any, optional
-            Stored in layer_dict["z_meas"] for downstream use.
+        target_z_meas : str, optional
+            Stored in ``layer_dict["z_meas"]`` for downstream use.
         """
 
         # Unpack extent (note: your convention is [xmin, ymin, zmin, xmax, ymax, zmax])
@@ -1525,14 +1526,14 @@ class Processing:
 
         Parameters
         ----------
-        gdf_points : GeoDataFrame
+        gdf_points : geopandas.GeoDataFrame
             GeoDataFrame containing point data with x, y, z coordinates and fault numbers.
         fault_number_col : str
             Column name in the GeoDataFrame that contains fault numbers.
 
         Returns
         -------
-        gdf_surfaces : GeoDataFrame
+        gdf_surfaces : geopandas.GeoDataFrame
             GeoDataFrame containing surfaces (Polygons or MultiPolygons) for each fault.
         """
         fault_surfaces = []
@@ -1658,7 +1659,7 @@ class Processing:
 
         Parameters
         ----------
-        geom3d : shapely Polygon
+        geom3d : shapely.geometry.Polygon
             3D solid polygon geometry with z-coordinates in its vertices.
         z : float
             Target elevation for slicing the geometry.
@@ -1887,12 +1888,12 @@ class Processing:
 
         Parameters
         ----------
-        gdf_points : GeoDataFrame
+        gdf_points : geopandas.GeoDataFrame
             A GeoDataFrame containing point geometries for which distances will be calculated.
-        tree : STRtree
+        tree : shapely.STRtree
             A spatial index (STRtree) containing line geometries. This allows for efficient querying of the nearest line
             for each point.
-        intersection_tree : STRtree, optional
+        intersection_tree : shapely.STRtree, optional
             An optional spatial index (STRtree) containing intersection geometries. If provided, the function calculates
             the nearest distance to intersections as well. If not provided, the intersection distances are set to infinity.
 
@@ -2561,7 +2562,7 @@ class Processing:
 
         Parameters
         ----------
-        gdf_3d : GeoDataFrame
+        gdf_3d : geopandas.GeoDataFrame
             A GeoDataFrame containing 3D fault data with geometries (Polygons or MultiPolygons).
         fault_id_col : str
             The name of the column in `gdf_3d` that uniquely identifies faults.
@@ -2626,7 +2627,7 @@ class Processing:
 
         Parameters
         ----------
-        gdf : GeoDataFrame
+        gdf : geopandas.GeoDataFrame
             A GeoDataFrame containing 3D fault geometries (Point geometries).
         fault_id_col : str
             The column name representing fault IDs to group points into separate faults.
