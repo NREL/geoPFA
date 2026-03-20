@@ -62,8 +62,11 @@ bibtex_reference_style = "author_year"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
-    "pandas": ("https://pandas.pydata.org/pandas-docs/stable", None),
-    "matplotlib": ("https://matplotlib.org/stable", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "geopandas": ("https://geopandas.org/en/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "shapely": ("https://shapely.readthedocs.io/en/stable/", None),
 }
 
 # -- Napoleon configuration --
