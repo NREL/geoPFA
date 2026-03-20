@@ -69,6 +69,16 @@ intersphinx_mapping = {
     "shapely": ("https://shapely.readthedocs.io/en/stable/", None),
 }
 
+# -- Suppress cross-reference warnings for unresolvable types --
+nitpick_ignore_regex = [
+    (r"py:class", r"optional"),              # NumPy docstring convention ", optional"
+    (r"py:class", r"numpy\.ndarray"),        # role mismatch: registered as py:data
+    (r"py:class", r"numpy\.random\..*"),     # role mismatch in numpy inventory
+    (r"py:class", r"pandas\.DataFrame"),     # role/path mismatch in pandas inventory
+    (r"py:class", r"geopandas\.GeoDataFrame"),  # role/path mismatch in geopandas inventory
+    (r"py:class", r"GPy\..*"),               # no inventory available
+]
+
 # -- Napoleon configuration --
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
