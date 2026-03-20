@@ -117,7 +117,7 @@ class VoterVeto:
 
     @staticmethod
     def voter(w, z, w0):
-        """
+        r"""
         Generalized voter for N-dimensional grids.
 
         Combine processed, transformed, and scaled data layers into a 'favorability'
@@ -234,7 +234,7 @@ class VoterVeto:
 
     @staticmethod
     def prepare_for_combination(arr, nan_mode="propagate_shared"):
-        """
+        r"""
         Prepare a stack of layers/components for combination by handling NaNs.
 
         Parameters
