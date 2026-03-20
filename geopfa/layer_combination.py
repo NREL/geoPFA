@@ -127,7 +127,7 @@ class VoterVeto:
         ----------
         w : ndarray, shape (n_layers,)
             Array of weights, one per data layer.
-        z : np.ndarray, shape (n_layers, *spatial_shape)
+        z : np.ndarray, shape (n_layers, \*spatial_shape)
             Array containing processed, transformed, and scaled data layers.
         w0 : float
             Prior favorability term.
@@ -240,7 +240,7 @@ class VoterVeto:
         Parameters
         ----------
         arr : np.ndarray
-            Array of shape (n_items, *spatial_shape), where n_items is the number
+            Array of shape (n_items, \*spatial_shape), where n_items is the number
             of layers (at layer→component level), components (at component→criteria),
             or criteria (at criteria→final).
         nan_mode : {"propagate_shared", "propagate_any"}

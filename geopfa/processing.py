@@ -258,7 +258,7 @@ class Cleaners:
         Notes
         -----
         - If the geometry type is Polygon or LineString, the function uses the total bounds and
-        calculates the min/max z-coordinate separately.
+          calculates the min/max z-coordinate separately.
         - If the geometry type is Point, the function uses the coordinates directly.
         """
 
@@ -489,10 +489,10 @@ class Exclusions:
         Notes
         ------
         - The exclusion areas are applied sequentially, with each subsequent exclusion potentially
-        modifying the previously excluded points.
-        - The exclusion areas are stored in shapefiles within the `pfa['exclusions']` structure,
-        and each area is associated with a `set_to` value indicating what the probability/favorability
-        should be set to inside the exclusion area.
+          modifying the previously excluded points.
+        - The exclusion areas are stored in shapefiles within the ``pfa['exclusions']`` structure,
+          and each area is associated with a ``set_to`` value indicating what the probability/favorability
+          should be set to inside the exclusion area.
         """
 
         c = 0
@@ -1172,8 +1172,9 @@ class Processing:
         Classifies a point based on its location relative to a series of polygons and their corresponding buffers.
 
         This function checks if a point is inside a polygon or within the buffer surrounding the polygon.
-        - If the point is inside the polygon, it returns the `polygon_value`.
-        - If the point is not inside the polygon but is within the buffer area, it returns the `buffer_value`.
+
+        - If the point is inside the polygon, it returns the ``polygon_value``.
+        - If the point is not inside the polygon but is within the buffer area, it returns the ``buffer_value``.
         - If the point is outside both the polygon and buffer, it returns a default value of 1.0.
 
         Parameters
@@ -1276,11 +1277,12 @@ class Processing:
 
         Notes
         ------
-        - The function generates a grid of points within the provided extent using `numpy` and classifies the
-        points based on spatial relationships to the polygons and buffers.
-        - The polygon geometries and their buffers are extracted from the `pfa` dictionary and processed with
-        vectorized GeoPandas operations for performance optimization.
-        - The results are stored back in the `pfa` dictionary, with the classifications as part of the layer's model data.
+        - The function generates a grid of points within the provided extent using ``numpy`` and classifies
+          the points based on spatial relationships to the polygons and buffers.
+        - The polygon geometries and their buffers are extracted from the ``pfa`` dictionary and processed
+          with vectorized GeoPandas operations for performance optimization.
+        - The results are stored back in the ``pfa`` dictionary, with the classifications as part of the
+          layer's model data.
         """
 
         gdf_polygons = pfa["criteria"][criteria]["components"][component][
@@ -1899,17 +1901,18 @@ class Processing:
         tuple
             A tuple containing two pandas Series:
             - nearest_line_distances: The nearest distance from each point to the nearest line.
-            - nearest_intersection_distances: The nearest distance from each point to the nearest intersection (or infinity
-            if no intersection tree is provided).
+            - nearest_intersection_distances: The nearest distance from each point to the nearest
+              intersection (or infinity if no intersection tree is provided).
 
         Notes
         ------
-        - The function uses an inner helper `get_nearest_line_distance` to query the spatial index (`tree`) and calculate the
-        distance between a point and its nearest line.
-        - If no line is found for a point, the distance is set to infinity (`float('inf')`).
-        - When an `intersection_tree` is provided, it computes the minimum distance between a point and the intersection geometries.
-        - The function returns `float('inf')` for intersection distances if no intersections are found or if the `intersection_tree`
-        is not provided.
+        - The function uses an inner helper ``get_nearest_line_distance`` to query the spatial
+          index (``tree``) and calculate the distance between a point and its nearest line.
+        - If no line is found for a point, the distance is set to infinity (``float('inf')``).
+        - When an ``intersection_tree`` is provided, it computes the minimum distance between a
+          point and the intersection geometries.
+        - The function returns ``float('inf')`` for intersection distances if no intersections are
+          found or if the ``intersection_tree`` is not provided.
 
         """
 
