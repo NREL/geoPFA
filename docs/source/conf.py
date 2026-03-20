@@ -70,6 +70,17 @@ intersphinx_mapping = {
 }
 
 # -- Suppress cross-reference warnings for unresolvable types --
+#
+# A few residual mismatches remain that cannot be fixed in docstrings:
+#
+# - "optional" is standard NumPy docstring convention (e.g. "float, optional")
+#   and Napoleon always tries to cross-reference it as a class.
+# - numpy.ndarray and numpy.random.Generator are registered under different
+#   roles (py:data, py:attr) in NumPy's inventory, but Napoleon emits py:class.
+# - geopandas.GeoDataFrame and pandas.DataFrame are either registered under a
+#   different role or a different qualified path in their inventories.
+# - GPy has no Sphinx inventory at all.
+#
 nitpick_ignore_regex = [
     (r"py:class", r"optional"),              # NumPy docstring convention ", optional"
     (r"py:class", r"numpy\.ndarray"),        # role mismatch: registered as py:data
