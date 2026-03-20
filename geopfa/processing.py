@@ -119,12 +119,14 @@ class Cleaners:
         """
         Converts depth or elevation measurements from one reference system to another using GDAL Python Bindings.
 
-        Parameters:
+        Parameters
+        ----------
             gdf (GeoDataFrame): GeoDataFrame containing point geometry and Z values in the geometry.
             z_meas (str): Current measurement reference (e.g., 'm-msl', 'epsg:####', or 'ft-msl').
             target_z_meas (str): Target measurement reference (e.g., 'm-msl', 'epsg:####', or 'ft-msl').
 
-        Returns:
+        Returns
+        -------
             GeoDataFrame: A GeoDataFrame with updated geometry where the Z value is converted to the target reference.
         """
         METERS_TO_FEET = 3.28084
@@ -173,14 +175,14 @@ class Cleaners:
 
         Parameters
         ----------
-        data : Pandas Series
+        data : pandas.Series
             Series of data values to filter
         quantile : int
             Number representing the quantile, which when exceeded, produces an outlier.
 
         Returns
         -------
-        data : Pandas Series
+        data : pandas.Series
             Filtered version of the input data, with values above specified quantile set to
             that quantile.
         """
@@ -194,14 +196,14 @@ class Cleaners:
 
         Parameters
         ----------
-        series : Pandas Series
+        series : pandas.Series
             Series of data values to filter.
         quantile : float
             Number representing the quantile, which when exceeded, produces an outlier.
 
         Returns
         -------
-        series : Pandas Series
+        series : pandas.Series
             Filtered version of the input data, with values above the specified quantile set to
             that quantile.
         """
@@ -216,7 +218,7 @@ class Cleaners:
 
         Parameters
         ----------
-        gdf : GeoDataFrame
+        gdf : geopandas.GeoDataFrame
             GeoDataFrame containing the data to filter.
         column : list of str
             Column name to apply the filter to.
@@ -225,7 +227,7 @@ class Cleaners:
 
         Returns
         -------
-        gdf_filtered : GeoDataFrame
+        gdf_filtered : geopandas.GeoDataFrame
             GeoDataFrame with the specified columns filtered.
         """
         if column in gdf.columns:
@@ -256,7 +258,7 @@ class Cleaners:
         Notes
         -----
         - If the geometry type is Polygon or LineString, the function uses the total bounds and
-        calculates the min/max z-coordinate separately.
+          calculates the min/max z-coordinate separately.
         - If the geometry type is Point, the function uses the coordinates directly.
         """
 
@@ -428,9 +430,9 @@ class Exclusions:
 
         Parameters
         ----------
-        gdf_points : GeoDataFrame
+        gdf_points : geopandas.GeoDataFrame
             GeoDataFrame containing point geometries and values.
-        gdf_exclusion_areas : GeoDataFrame
+        gdf_exclusion_areas : geopandas.GeoDataFrame
             GeoDataFrame containing polygon geometries representing exclusion areas.
         value_col : str, optional
             The column name in gdf_points that contains the values to be masked, by default 'value'.
@@ -465,7 +467,7 @@ class Exclusions:
         defined by geometries stored in the `pfa['exclusions']` dictionary, and the function sets the
         `pr_excl` attribute in `pfa` to store the modified probability values.
 
-        Parameters:
+        Parameters
         ----------
         pfa : dict
             A dictionary containing the exclusion components and point data, including:
@@ -478,19 +480,19 @@ class Exclusions:
             The label of the probability or favorability data in the `pfa` dictionary to be updated.
             Defaults to 'pr'.
 
-        Returns:
+        Returns
         -------
         dict
             The updated `pfa` dictionary, where `pfa['pr_excl']` contains the probability/favorability
             values after exclusion masks have been applied.
 
-        Notes:
+        Notes
         ------
         - The exclusion areas are applied sequentially, with each subsequent exclusion potentially
-        modifying the previously excluded points.
-        - The exclusion areas are stored in shapefiles within the `pfa['exclusions']` structure,
-        and each area is associated with a `set_to` value indicating what the probability/favorability
-        should be set to inside the exclusion area.
+          modifying the previously excluded points.
+        - The exclusion areas are stored in shapefiles within the ``pfa['exclusions']`` structure,
+          and each area is associated with a ``set_to`` value indicating what the probability/favorability
+          should be set to inside the exclusion area.
         """
 
         c = 0
@@ -534,9 +536,9 @@ class Exclusions:
 
         Parameters
         ----------
-        gdf_points : GeoDataFrame
+        gdf_points : geopandas.GeoDataFrame
             GeoDataFrame containing point geometries and values.
-        gdf_exclusion_areas : GeoDataFrame
+        gdf_exclusion_areas : geopandas.GeoDataFrame
             GeoDataFrame containing point geometries representing exclusion areas.
         buffer_distance : float
             The distance to buffer around exclusion points.
@@ -1007,8 +1009,9 @@ class Processing:
             Column in `dataset` to use for extrapolation input observations.
         training_size : float
             Percent of randomly select input observations to train on.
-        verbose : bol
+        verbose : bool
             Display training progress, assessment metrics, and final plots.
+
         Returns
         -------
         pfa : dict
@@ -1170,11 +1173,12 @@ class Processing:
         Classifies a point based on its location relative to a series of polygons and their corresponding buffers.
 
         This function checks if a point is inside a polygon or within the buffer surrounding the polygon.
-        - If the point is inside the polygon, it returns the `polygon_value`.
-        - If the point is not inside the polygon but is within the buffer area, it returns the `buffer_value`.
+
+        - If the point is inside the polygon, it returns the ``polygon_value``.
+        - If the point is not inside the polygon but is within the buffer area, it returns the ``buffer_value``.
         - If the point is outside both the polygon and buffer, it returns a default value of 1.0.
 
-        Parameters:
+        Parameters
         ----------
         args : tuple
             A tuple containing the following elements:
@@ -1189,7 +1193,7 @@ class Processing:
             - buffer_value : float
                 The value to return if the point is inside a buffer but outside the polygon.
 
-        Returns:
+        Returns
         -------
         float
             The classification value based on the point's location:
@@ -1197,7 +1201,7 @@ class Processing:
             - `buffer_value` if the point is inside a buffer but outside the polygon.
             - 1.0 if the point is outside both the polygon and buffer.
 
-        Notes:
+        Notes
         ------
         - The function assumes that the `polygons` and `buffers` lists are of the same length and that each buffer corresponds to the polygon at the same index.
         - It stops and returns a value as soon as the point is classified within a polygon or buffer.
@@ -1239,7 +1243,7 @@ class Processing:
         The classifications are performed using vectorized operations for efficiency, and the results are stored
         in the `pfa` dictionary under the specified `criteria`, `component`, and `layer`.
 
-        Parameters:
+        Parameters
         ----------
         pfa : dict
             A dictionary containing spatial data, including:
@@ -1265,20 +1269,21 @@ class Processing:
         background_value : float
             The classification value to assign to points outside both the polygon and buffer areas.
 
-        Returns:
+        Returns
         -------
         dict
             The updated `pfa` dictionary, where the specified layer's grid points are classified based on their
             spatial relationship to the polygons and buffers. The classification is stored in the `model` attribute
             of the layer, with the 'classification' column representing the assigned values.
 
-        Notes:
+        Notes
         ------
-        - The function generates a grid of points within the provided extent using `numpy` and classifies the
-        points based on spatial relationships to the polygons and buffers.
-        - The polygon geometries and their buffers are extracted from the `pfa` dictionary and processed with
-        vectorized GeoPandas operations for performance optimization.
-        - The results are stored back in the `pfa` dictionary, with the classifications as part of the layer's model data.
+        - The function generates a grid of points within the provided extent using ``numpy`` and classifies
+          the points based on spatial relationships to the polygons and buffers.
+        - The polygon geometries and their buffers are extracted from the ``pfa`` dictionary and processed
+          with vectorized GeoPandas operations for performance optimization.
+        - The results are stored back in the ``pfa`` dictionary, with the classifications as part of the
+          layer's model data.
         """
 
         gdf_polygons = pfa["criteria"][criteria]["components"][component][
@@ -1369,8 +1374,8 @@ class Processing:
         dip : float, optional
             Global dip angle in degrees from horizontal (0 to 90).
             If None or dip ~ 90°, extrusion is vertical.
-        target_z_meas : any, optional
-            Stored in layer_dict["z_meas"] for downstream use.
+        target_z_meas : str, optional
+            Stored in ``layer_dict["z_meas"]`` for downstream use.
         """
 
         # Unpack extent (note: your convention is [xmin, ymin, zmin, xmax, ymax, zmax])
@@ -1521,14 +1526,14 @@ class Processing:
 
         Parameters
         ----------
-        gdf_points : GeoDataFrame
+        gdf_points : geopandas.GeoDataFrame
             GeoDataFrame containing point data with x, y, z coordinates and fault numbers.
         fault_number_col : str
             Column name in the GeoDataFrame that contains fault numbers.
 
         Returns
         -------
-        gdf_surfaces : GeoDataFrame
+        gdf_surfaces : geopandas.GeoDataFrame
             GeoDataFrame containing surfaces (Polygons or MultiPolygons) for each fault.
         """
         fault_surfaces = []
@@ -1654,7 +1659,7 @@ class Processing:
 
         Parameters
         ----------
-        geom3d : shapely Polygon
+        geom3d : shapely.geometry.Polygon
             3D solid polygon geometry with z-coordinates in its vertices.
         z : float
             Target elevation for slicing the geometry.
@@ -1804,7 +1809,9 @@ class Processing:
             ny (int): Number of grid cells in the y direction.
             crs: Coordinate reference system for the GeoDataFrame.
 
-        Returns:
+        Returns
+        -------
+        geopandas.GeoDataFrame
             GeoDataFrame containing centroids of the grid cells.
         """
         xmin, ymin, xmax, ymax = extent
@@ -1834,13 +1841,13 @@ class Processing:
         of intersecting at a single point), the midpoint of the overlapping segment is taken
         as the intersection point.
 
-        Parameters:
+        Parameters
         -----------
         gdf_lines : geopandas.GeoDataFrame
             A GeoDataFrame containing line geometries (e.g., faults) stored in the 'geometry' column.
             It is assumed that these are LineString geometries.
 
-        Returns:
+        Returns
         --------
         gdf_intersections : geopandas.GeoDataFrame
             A GeoDataFrame containing the points where the input lines intersect.
@@ -1881,33 +1888,34 @@ class Processing:
         in the `tree` (a spatial index of line geometries). Optionally, it can also compute the nearest distance to intersections
         (if an `intersection_tree` is provided).
 
-        Parameters:
+        Parameters
         ----------
-        gdf_points : GeoDataFrame
+        gdf_points : geopandas.GeoDataFrame
             A GeoDataFrame containing point geometries for which distances will be calculated.
-        tree : STRtree
+        tree : shapely.STRtree
             A spatial index (STRtree) containing line geometries. This allows for efficient querying of the nearest line
             for each point.
-        intersection_tree : STRtree, optional
+        intersection_tree : shapely.STRtree, optional
             An optional spatial index (STRtree) containing intersection geometries. If provided, the function calculates
             the nearest distance to intersections as well. If not provided, the intersection distances are set to infinity.
 
-        Returns:
+        Returns
         -------
         tuple
             A tuple containing two pandas Series:
             - nearest_line_distances: The nearest distance from each point to the nearest line.
-            - nearest_intersection_distances: The nearest distance from each point to the nearest intersection (or infinity
-            if no intersection tree is provided).
+            - nearest_intersection_distances: The nearest distance from each point to the nearest
+              intersection (or infinity if no intersection tree is provided).
 
-        Notes:
+        Notes
         ------
-        - The function uses an inner helper `get_nearest_line_distance` to query the spatial index (`tree`) and calculate the
-        distance between a point and its nearest line.
-        - If no line is found for a point, the distance is set to infinity (`float('inf')`).
-        - When an `intersection_tree` is provided, it computes the minimum distance between a point and the intersection geometries.
-        - The function returns `float('inf')` for intersection distances if no intersections are found or if the `intersection_tree`
-        is not provided.
+        - The function uses an inner helper ``get_nearest_line_distance`` to query the spatial
+          index (``tree``) and calculate the distance between a point and its nearest line.
+        - If no line is found for a point, the distance is set to infinity (``float('inf')``).
+        - When an ``intersection_tree`` is provided, it computes the minimum distance between a
+          point and the intersection geometries.
+        - The function returns ``float('inf')`` for intersection distances if no intersections are
+          found or if the ``intersection_tree`` is not provided.
 
         """
 
@@ -1972,7 +1980,7 @@ class Processing:
         using specified weights. The result is stored in the 'pfa' dictionary under the specified criteria,
         component, and layer.
 
-        Parameters:
+        Parameters
         ----------
         pfa : dict
             The PFA (Potential Field Analysis) dictionary that contains geospatial data for various criteria,
@@ -1994,7 +2002,7 @@ class Processing:
         weight_intersection : float, optional (default=0.3)
             The weight assigned to the distance from the nearest line intersection.
 
-        Returns:
+        Returns
         -------
         pfa : dict
             The updated PFA dictionary with a new distance model stored in the specified layer.
@@ -2077,17 +2085,18 @@ class Processing:
 
         Aggregation Modes
         -----------------
-        - "mean" :
+
+        ``"mean"``
             Averages the influence from all points at each voxel.
             Useful for sparse datasets or when you want an overall
             picture of distributed influence.
 
-        - "max" :
+        ``"max"``
             Selects only the single strongest influence at each voxel.
             Helps highlight individual points outside clusters, avoiding
             dilution by nearby high-density areas.
 
-        - "knearest" :
+        ``"knearest"``
             Sums the influence from the k nearest points to each voxel.
             Provides a balance between focusing on dominant single points
             and capturing the effect of clusters. Setting k=1 behaves
@@ -2458,7 +2467,7 @@ class Processing:
         sorting the data by X, Y, and Z coordinates, and aggregating data by grouping on X and Y. The resulting
         2D GeoDataFrame replaces the original 3D data in the `pfa` dictionary.
 
-        Parameters:
+        Parameters
         ----------
         pfa : dict
             A nested dictionary containing geospatial data organized by criteria, components, and layers.
@@ -2470,18 +2479,18 @@ class Processing:
         layer : str
             The key in `pfa['criteria'][criteria]['components'][component]['layers']` identifying the specific 3D layer.
 
-        Returns:
+        Returns
         -------
         dict
             The updated `pfa` dictionary with the 3D layer converted to a 2D representation. The resulting 2D GeoDataFrame
             is stored in `pfa['criteria'][criteria]['components'][component]['layers'][layer]['data']`.
 
-        Raises:
+        Raises
         ------
         ValueError
             If the `geometry` column in the GeoDataFrame is not of type `Point` or contains invalid geometries.
 
-        Notes:
+        Notes
         ------
         - Empty geometries (e.g., `POINT EMPTY`) are filtered out before processing.
         - Sorting is performed by X, Y, and Z coordinates. Empty points are handled gracefully.
@@ -2554,19 +2563,19 @@ class Processing:
         """
         Create a 2D representation of 3D faults by extracting the trace at the top of each fault.
 
-        Parameters:
+        Parameters
         ----------
-        gdf_3d : GeoDataFrame
+        gdf_3d : geopandas.GeoDataFrame
             A GeoDataFrame containing 3D fault data with geometries (Polygons or MultiPolygons).
         fault_id_col : str
             The name of the column in `gdf_3d` that uniquely identifies faults.
 
-        Returns:
+        Returns
         -------
         GeoDataFrame
             A GeoDataFrame containing 2D fault traces (LineStrings) for the top of each fault.
 
-        Notes:
+        Notes
         ------
         - The Z-coordinate is extracted for the "top" of each fault.
         - The resulting GeoDataFrame is 2D (ignoring Z-coordinates in the output geometries).
@@ -2619,9 +2628,9 @@ class Processing:
         """
         Extracts a 2D representation of faults by taking a slice at the bottom of the model.
 
-        Parameters:
+        Parameters
         ----------
-        gdf : GeoDataFrame
+        gdf : geopandas.GeoDataFrame
             A GeoDataFrame containing 3D fault geometries (Point geometries).
         fault_id_col : str
             The column name representing fault IDs to group points into separate faults.
@@ -2629,7 +2638,7 @@ class Processing:
             A Z-value threshold used to select the bottom slice of the model. Points with
             Z-values within this threshold from the minimum Z will be included.
 
-        Returns:
+        Returns
         -------
         GeoDataFrame
             A GeoDataFrame with LineString geometries representing the bottom traces of each fault.

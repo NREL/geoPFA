@@ -27,13 +27,13 @@ class GeospatialDataReaders:
 
         Parameters
         ----------
-        path : 'str'
+        path : str
             Path to shapefile
 
         Returns
         -------
-        data : Geopandas DataFrame
-            Geopandas DataFrame containing contents of shapefile
+        data : geopandas.GeoDataFrame
+            GeoDataFrame containing contents of shapefile
         """
         data = gpd.read_file(path)
         return data
@@ -51,18 +51,18 @@ class GeospatialDataReaders:
 
         Parameters
         ----------
-        path : 'str'
+        path : str
             Path to csv file
-        crs : 'str' or 'int'
+        crs : str or int
             String or integer version of coordinate reference system
             associated with the CSV file.
-        x_col : 'str'
+        x_col : str
             Name of x geometry column if no combined geometry column
             is provided.
-        y_col : 'str'
+        y_col : str
             Name of y geometry column if no combined geometry column
             is provided.
-        z_col : 'str'
+        z_col : str
             Name of z geometry column if 3D, and if no combined geometry
             column is provided.
         geometry_column_name : str
@@ -71,8 +71,8 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        gdf : Geopandas DataFrame
-            Geopandas DataFrame containing contents of CSV file
+        gdf : geopandas.GeoDataFrame
+            GeoDataFrame containing contents of CSV file
         """
         # Read the CSV file
         df = pd.read_csv(path)  # noqa: PD901
@@ -126,13 +126,13 @@ class GeospatialDataReaders:
 
         Parameters
         ----------
-        path : 'str'
+        path : str
             Path to raster file
 
         Returns
         -------
-        data : Geopandas DataFrame
-            Geopandas DataFrame containing contents of raster file
+        data : geopandas.GeoDataFrame
+            GeoDataFrame containing contents of raster file
         """
         # TODO: Return geopandas dataframe instead of rasterio dataset object
         data = rasterio.open(path)
@@ -189,26 +189,27 @@ class GeospatialDataReaders:
         geopandas dataframe.
 
         Assumes:
-            - First row: title (ignored)
-            - Second row: Tecplot-style VARIABLES declaration, e.g.
-            VARIABLES = "X" "Y" "Z" "P(Pa)" ...
-            - Third row: assumptions / zone line (ignored)
-            - Data begins on row 4
+
+        - First row: title (ignored)
+        - Second row: Tecplot-style VARIABLES declaration, e.g.
+          ``VARIABLES = "X" "Y" "Z" "P(Pa)" ...``
+        - Third row: assumptions / zone line (ignored)
+        - Data begins on row 4
 
         Parameters
         ----------
-        path : 'str'
+        path : str
             Path to TEC file.
-        crs : 'str' or 'int'
+        crs : str or int
             String or integer version of coordinate reference system
             associated with the TEC file.
-        x_col : 'str'
+        x_col : str
             Name of x geometry column if no combined geometry column
             is provided.
-        y_col : 'str'
+        y_col : str
             Name of y geometry column if no combined geometry column
             is provided.
-        z_col : 'str'
+        z_col : str
             Name of z geometry column if 3D, and if no combined geometry
             column is provided.
         geometry_column_name : str
@@ -217,8 +218,8 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        gdf : Geopandas DataFrame
-            Geopandas DataFrame containing contents of TEC file
+        gdf : geopandas.GeoDataFrame
+            GeoDataFrame containing contents of TEC file
         """
 
         # Read all lines
@@ -343,42 +344,42 @@ class GeospatialDataReaders:
 
         Parameters
         ----------
-        csv_path : 'str'
+        csv_path : str
             Path to the CSV file containing well path vertices.
-        x_col : 'str'
+        x_col : str
             Column name for X (or longitude).
-        y_col : 'str'
+        y_col : str
             Column name for Y (or latitude).
-        z_col : 'str', optional
+        z_col : str, optional
             Column name for Z (depth or elevation). If omitted, Z=0.
-        well_name_col : 'str', optional
+        well_name_col : str, optional
             Column name for well name; stored in output.
-        value_col : 'str', optional
+        value_col : str, optional
             Column name for per-vertex values (e.g., Temperature, GR).
         source_crs : 'int or str', optional
             Input CRS for X/Y. Example: 32613 or 4326.
         to_crs : 'int or str', optional
             Output CRS for reprojection.
-        sort_by : 'str', optional
+        sort_by : str, optional
             Column to sort by before building points (e.g., 'MD_m').
-        md_col : 'str', optional
+        md_col : str, optional
             If provided and sort_by is None, rows are sorted by this column.
-        dropna_any : 'bool'
+        dropna_any : bool
             If True, drop rows with any NaN in X/Y/Z; else only drop rows with all NaNs.
-        deduplicate_consecutive : 'bool'
+        deduplicate_consecutive : bool
             If True, drop consecutive duplicate XY Z vertices.
-        z_meas : 'str', optional
+        z_meas : str, optional
             Vertical reference of Z in the CSV (e.g., 'depth', 'm-msl', 'epsg:5703').
-        target_z_meas : 'str', optional
+        target_z_meas : str, optional
             Desired vertical reference (e.g., 'm-msl', 'ft-msl', 'epsg:6360').
-        convert_z_after : 'bool'
+        convert_z_after : bool
             If True and z_meas/target_z_meas provided, converts Z via convert_z_measurements().
 
         Returns
         -------
-        well_gdf : GeoDataFrame
+        well_gdf : geopandas.GeoDataFrame
             Ordered vertices as 3D Point geometries (one row per vertex).
-        values : np.ndarray or None
+        values : numpy.ndarray or None
             Per-vertex values aligned with rows (or None if value_col not provided).
         """
         df = pd.read_csv(csv_path)
@@ -482,7 +483,7 @@ class GeospatialDataReaders:
         ----------
         data_dir : str
             Path to directory where data is stored
-        pfa : dictionary
+        pfa : dict
             Config specifying criteria, components, and data layers'
             relationship to one another. Read in from json file.
         file_types : list
@@ -491,7 +492,7 @@ class GeospatialDataReaders:
 
         Returns
         -------
-        pfa : dictionary
+        pfa : dict
             Updated pfa config which includes data
         """
         data_dir = Path(data_dir)
@@ -639,13 +640,13 @@ class GeospatialDataReaders:
         ----------
         data_dir : str
             Path to directory where data is stored
-        pfa : dictionary
+        pfa : dict
             Config specifying criteria, components, and data layers'
             relationship to one another. Read in from json file.
 
         Returns
         -------
-        pfa : dictionary
+        pfa : dict
             Updated pfa config which includes data
         """
         data_dir = Path(data_dir)
@@ -684,9 +685,9 @@ class GeospatialDataReaders:
         `DN` field (keeping only entries where `DN > 0`), and reprojects the geometries to the target CRS.
         The processed shapefiles are stored back into the `pfa` dictionary under the relevant component and layer.
 
-        Parameters:
+        Parameters
         ----------
-        cls : class
+        cls : type
             The class that the method belongs to. This is typically
             passed automatically in class methods.
         data_dir : str
@@ -703,14 +704,14 @@ class GeospatialDataReaders:
             exclusion shapefiles will be reprojected. This can be a CRS
             string (e.g., 'EPSG:4326') or a CRS dictionary format.
 
-        Returns:
+        Returns
         -------
         dict
             The updated `pfa` dictionary, where the processed exclusion
             areas are stored under
             `pfa['exclusions']['components'][exclusion_component]['layers'][layer]['model']`.
 
-        Notes:
+        Notes
         ------
         - The function assumes that the exclusion shapefiles are stored
         in the `data_dir` under a subdirectory named 'exclusion' and
