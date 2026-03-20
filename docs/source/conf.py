@@ -40,12 +40,18 @@ exclude_patterns = []
 
 
 # -- Extension configuration -------------------------------------------------
-# -- Autodoc & Autosummary configuration --
-autosummary_generate = True  # Turn on sphinx.ext.autosummary
-autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
-autodoc_member_order = "bysource"
-autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
-add_module_names = False  # Remove namespaces from class/method signatures
+
+# -- Autodoc configuration --
+autoclass_content = "both"          # Merge __init__ docstring into the class page
+autodoc_member_order = "bysource"   # Keep methods in source-code order
+autodoc_inherit_docstrings = True   # Inherit docstrings from base classes
+autodoc_typehints = "none"
+add_module_names = False            # Drop "geopfa." prefix from signatures
+
+# -- Autosummary configuration --
+autosummary_generate = True                   # Auto-generate stub pages
+autosummary_generate_overwrite = True         # Regenerate stubs on every build
+autosummary_imported_members = False          # Skip re-exported names
 
 # -- BibTeX configuration --
 bibtex_bibfiles = ["references.bib"]
