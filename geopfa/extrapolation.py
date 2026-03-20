@@ -907,11 +907,12 @@ def build_and_fit_gp(  # noqa: PLR0913, PLR0917
     stabilized multi-kernel combination (RBF + Matern32 + optional Bias/White).
 
     This method improves extrapolation stability by:
-        - Constraining ARD lengthscales based on global radius,
-        - Distributing inducing points across the domain via KMeans,
-        - Anchoring the prior with a constant-mean mapping,
-        - Adding bias and white kernels to reduce drift,
-        - Using a Gamma prior on the Gaussian likelihood noise variance.
+
+    - Constraining ARD lengthscales based on global radius,
+    - Distributing inducing points across the domain via KMeans,
+    - Anchoring the prior with a constant-mean mapping,
+    - Adding bias and white kernels to reduce drift,
+    - Using a Gamma prior on the Gaussian likelihood noise variance.
 
     Parameters
     ----------
@@ -1349,11 +1350,12 @@ def bootstrap_assess_residuals_stats(  # noqa: PLR0913, PLR0914
 
     This function repeatedly draws bootstrap samples of residuals and computes
     standard diagnostic tests:
-        - **Shapiro-Wilk** (normality, small/medium N)
-        - **D'Agostino K²** (normality via skewness & kurtosis)
-        - **Jarque-Bera** (normality via joint skew/kurtosis)
-        - **Levene** (homoscedasticity / equal variance)
-        - **Ljung-Box** (no autocorrelation at lag 10)
+
+    - **Shapiro-Wilk** (normality, small/medium N)
+    - **D'Agostino K²** (normality via skewness & kurtosis)
+    - **Jarque-Bera** (normality via joint skew/kurtosis)
+    - **Levene** (homoscedasticity / equal variance)
+    - **Ljung-Box** (no autocorrelation at lag 10)
 
     Per-test p-values are collected across bootstrap samples, and summary
     statistics (mean/median p-value, rejection rate) are returned.

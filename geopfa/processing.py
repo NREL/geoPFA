@@ -1810,6 +1810,8 @@ class Processing:
             crs: Coordinate reference system for the GeoDataFrame.
 
         Returns
+        -------
+        geopandas.GeoDataFrame
             GeoDataFrame containing centroids of the grid cells.
         """
         xmin, ymin, xmax, ymax = extent
@@ -2083,17 +2085,18 @@ class Processing:
 
         Aggregation Modes
         -----------------
-        - "mean" :
+
+        ``"mean"``
             Averages the influence from all points at each voxel.
             Useful for sparse datasets or when you want an overall
             picture of distributed influence.
 
-        - "max" :
+        ``"max"``
             Selects only the single strongest influence at each voxel.
             Helps highlight individual points outside clusters, avoiding
             dilution by nearby high-density areas.
 
-        - "knearest" :
+        ``"knearest"``
             Sums the influence from the k nearest points to each voxel.
             Provides a balance between focusing on dominant single points
             and capturing the effect of clusters. Setting k=1 behaves

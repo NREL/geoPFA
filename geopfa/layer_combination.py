@@ -248,13 +248,13 @@ class VoterVeto:
         nan_mode : {"propagate_shared", "propagate_any"}
             Strategy for handling NaN values during aggregation:
 
-            - "propagate_shared":
+            ``"propagate_shared"``
                 Propagates NaNs through combined layers only where *all* contributing
                 inputs are NaN. That is, NaNs appear in combined layers only at
                 pixels where all input layers are NaN. NaNs present in only a subset
                 of inputs are treated as neutral (non-contributing) evidence.
 
-            - "propagate_any":
+            ``"propagate_any"``
                 Propagates NaNs through combined layers whenever *any* contributing
                 input is NaN.
 
@@ -371,13 +371,13 @@ class VoterVeto:
         nan_mode : {"propagate_shared", "propagate_any"}
             Strategy for handling NaN values during aggregation:
 
-            - "propagate_shared":
+            ``"propagate_shared"``
                 Propagates NaNs through combined layers only where *all* contributing
                 inputs are NaN. That is, NaNs appear in combined layers only at
                 pixels where all input layers are NaN. NaNs present in only a subset
                 of inputs are treated as neutral (non-contributing) evidence.
 
-            - "propagate_any":
+            ``"propagate_any"``
                 Propagates NaNs through combined layers whenever *any* contributing
                 input is NaN.
 

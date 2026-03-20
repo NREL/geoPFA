@@ -189,11 +189,12 @@ class GeospatialDataReaders:
         geopandas dataframe.
 
         Assumes:
-            - First row: title (ignored)
-            - Second row: Tecplot-style VARIABLES declaration, e.g.
-            VARIABLES = "X" "Y" "Z" "P(Pa)" ...
-            - Third row: assumptions / zone line (ignored)
-            - Data begins on row 4
+
+        - First row: title (ignored)
+        - Second row: Tecplot-style VARIABLES declaration, e.g.
+          ``VARIABLES = "X" "Y" "Z" "P(Pa)" ...``
+        - Third row: assumptions / zone line (ignored)
+        - Data begins on row 4
 
         Parameters
         ----------
