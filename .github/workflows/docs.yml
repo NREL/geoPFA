@@ -35,7 +35,9 @@ jobs:
           environments: doc
 
       - name: Build HTML
-        run: pixi run -e doc python-docs  # This errors on warnings
+        run: |
+          pixi reinstall -e doc geoPFA
+          pixi run -e doc python-docs  # This errors on warnings
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
