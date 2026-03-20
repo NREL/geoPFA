@@ -1065,8 +1065,8 @@ def get_predictions(
         Input features in the same standardized space used during training,
         shape ``(N, D)``.
     kvals_df : pandas.DataFrame or dict, optional
-        Must contain 'x' and 'y'. If provided, predictions are reshaped into a
-        pivoted 2D grid of shape (len(y_unique), len(x_unique)).
+        Must contain ``'x'`` and ``'y'``. If provided, predictions are reshaped
+        into a pivoted 2-D grid of shape (len(y_unique), len(x_unique))
     Y_mean : float or None, optional
         Mean of Y from the training dataset (for de-standardizing predictions).
     Y_std : float or None, optional
@@ -1075,18 +1075,12 @@ def get_predictions(
     Returns
     -------
     numpy.ndarray or tuple
-        If ``kvals_df`` is None:
-            (Y_pred_flat, Y_std_flat)
-        If ``kvals_df`` is provided:
-            (Y_pred_grid, Y_std_grid, x_unique, y_unique)
-
-        Where:
-            - ``Y_pred_flat`` : shape (N,)
-            - ``Y_std_flat``  : shape (N,)
-            - ``Y_pred_grid`` : shape (ny, nx)
-            - ``Y_std_grid``  : shape (ny, nx)
-            - ``x_unique``    : sorted unique x coordinates (from pivot index)
-            - ``y_unique``    : sorted unique y coordinates (from grid index)
+        If ``kvals_df`` is None, returns ``(Y_pred_flat, Y_std_flat)``
+        where both arrays have shape ``(N,)``.
+        If ``kvals_df`` is provided, returns
+        ``(Y_pred_grid, Y_std_grid, x_unique, y_unique)`` where the grids
+        have shape ``(ny, nx)`` and the coordinate arrays contain the sorted
+        unique values from the pivot.
 
     Notes
     -----
@@ -1150,7 +1144,7 @@ def check_param_limits_hit_from_constraints(
         indexing parameters via ``model[name]``.
     constraints : dict
         Dictionary describing parameter bounds (e.g., from ``build_and_fit_gp`` or
-        ``build_combined_kernel``). Expected format:
+        ``build_combined_kernel``). Expected format::
             {
                 "rbf": {
                     "variance": {"value": ..., "lower": ..., "upper": ...},
