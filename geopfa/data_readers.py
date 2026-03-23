@@ -358,7 +358,7 @@ class GeospatialDataReaders:
             Column name for per-vertex values (e.g., Temperature, GR).
         source_crs : 'int or str', optional
             Input CRS for X/Y. Example: 32613 or 4326.
-        to_crs : 'int or str', optional
+        to_crs : int or str, optional
             Output CRS for reprojection.
         sort_by : str, optional
             Column to sort by before building points (e.g., 'MD_m').
