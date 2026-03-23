@@ -55,7 +55,7 @@ class GeospatialDataPlotters:
                 with suppress(Exception):
                     merged = linemerge(geoms)
             if isinstance(
-                merged, (shapely.LineString, shapely.MultiLineString)
+                merged, shapely.LineString | shapely.MultiLineString
             ):
                 parts = (
                     merged.geoms
@@ -71,7 +71,7 @@ class GeospatialDataPlotters:
                 return np.vstack(arrs) if arrs else None
             return None
         # plain shapely lines
-        if isinstance(_well, (shapely.LineString, shapely.MultiLineString)):
+        if isinstance(_well, shapely.LineString | shapely.MultiLineString):
             parts = (
                 _well.geoms
                 if isinstance(_well, shapely.MultiLineString)

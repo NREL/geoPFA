@@ -1134,7 +1134,7 @@ def check_param_limits_hit_from_constraints(
     model: GPy.core.GP,
     constraints: dict,
 ) -> list[tuple]:
-    """
+    r"""
     Identify kernel parameters whose optimized values lie at or extremely
     near their constrained lower or upper bounds.
 
@@ -1146,6 +1146,7 @@ def check_param_limits_hit_from_constraints(
     constraints : dict
         Dictionary describing parameter bounds (e.g., from ``build_and_fit_gp`` or
         ``build_combined_kernel``). Expected format::
+
             {
                 "rbf": {
                     "variance": {"value": ..., "lower": ..., "upper": ...},
@@ -1161,10 +1162,10 @@ def check_param_limits_hit_from_constraints(
     Returns
     -------
     list of tuple
-        A list of entries:
-            (parameter_name_in_model, current_value_array, (lower, upper))
+        A list of entries like
+        ``(parameter_name_in_model, current_value_array, (lower, upper))``
         Each item corresponds to a parameter whose value is at/near its
-        bounds (|value - bound| <= 1e-6). Returns an empty list if none.
+        bounds (:math:`|value - bound| \leq 10^{-6}`). Returns an empty list if none.
 
     Notes
     -----
