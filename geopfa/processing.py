@@ -1166,57 +1166,6 @@ class Processing:
 
         return pfa
 
-    # Define a helper function to classify each point
-    @staticmethod
-    def classify_point(args):
-        """
-        Classifies a point based on its location relative to a series of polygons and their corresponding buffers.
-
-        This function checks if a point is inside a polygon or within the buffer surrounding the polygon.
-
-        - If the point is inside the polygon, it returns the ``polygon_value``.
-        - If the point is not inside the polygon but is within the buffer area, it returns the ``buffer_value``.
-        - If the point is outside both the polygon and buffer, it returns a default value of 1.0.
-
-        Parameters
-        ----------
-        args : tuple
-            A tuple containing the following elements:
-            - point : shapely.geometry.Point
-                The point to be classified.
-            - polygons : list of shapely.geometry.Polygon
-                A list of polygons to check for point containment.
-            - buffers : list of shapely.geometry.Polygon
-                A list of buffer polygons corresponding to each polygon in `polygons`.
-            - polygon_value : float
-                The value to return if the point is inside a polygon.
-            - buffer_value : float
-                The value to return if the point is inside a buffer but outside the polygon.
-
-        Returns
-        -------
-        float
-            The classification value based on the point's location:
-            - `polygon_value` if the point is inside a polygon.
-            - `buffer_value` if the point is inside a buffer but outside the polygon.
-            - 1.0 if the point is outside both the polygon and buffer.
-
-        Notes
-        ------
-        - The function assumes that the `polygons` and `buffers` lists are of the same length and that each buffer corresponds to the polygon at the same index.
-        - It stops and returns a value as soon as the point is classified within a polygon or buffer.
-        """
-
-        point, polygons, buffers, polygon_value, buffer_value = args
-        for polygon, buffer in zip(polygons, buffers):
-            if polygon.contains(point):  # Inside the polygon
-                return polygon_value
-            if buffer.contains(
-                point
-            ):  # Inside the buffer but outside the polygon
-                return buffer_value
-        return 1.0  # Outside both polygon and buffer
-
     @staticmethod
     def mark_buffer_areas(
         pfa,
@@ -2519,9 +2468,11 @@ class Processing:
         gdf_3d = gdf_3d.sort_values(
             by=["geometry"],
             key=lambda col: col.apply(
-                lambda geom: (geom.x, geom.y, geom.z)
-                if not geom.is_empty
-                else (float("nan"), float("nan"), float("nan"))
+                lambda geom: (
+                    (geom.x, geom.y, geom.z)
+                    if not geom.is_empty
+                    else (float("nan"), float("nan"), float("nan"))
+                )
             ),
         ).reset_index(drop=True)
 
