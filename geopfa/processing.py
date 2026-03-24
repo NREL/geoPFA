@@ -3742,3 +3742,107 @@ class Processing:
             "data"
         ] = fault_traces_gdf
         return pfa
+
+    @staticmethod
+    def interpolate_points(
+        pfa,
+        criteria,
+        component,
+        layer,
+        nx,
+        ny,
+        nz=None,
+        extent=None,
+        interp_method="linear",
+    ):
+        """
+        Function to interpolate, or go from points to either a 2D image
+        or a 3D image (voxel grid), depending on user input.
+
+        This function serves as a unified interface for interpolation.
+        If `nz` is provided, 3D interpolation is performed.
+        If `nz` is None, 2D interpolation is performed.
+
+        Parameters
+        ----------
+        pfa : dict
+            Config specifying criteria, components, and data layers' relationship to one another.
+            Includes data layers' associated GeoDataFrames.
+        criteria : str
+            Criteria associated with data to interpolate.
+        component : str
+            Component associated with data to interpolate.
+        layer : str
+            Layer associated with data to interpolate.
+        nx : int
+            Number of points in the x-direction.
+        ny : int
+            Number of points in the y-direction.
+        nz : int, optional
+            Number of points in the z-direction.
+            If provided, 3D interpolation is performed.
+            If None (default), 2D interpolation is performed.
+        extent : list or tuple, optional
+            Spatial extent defining the interpolation grid.
+            - For 2D interpolation: length 4
+            [x_min, y_min, x_max, y_max]
+            - For 3D interpolation: length 6
+            [x_min, y_min, z_min, x_max, y_max, z_max]
+            If None, the extent is inferred from the input data.
+        interp_method : str
+            Method to use for interpolation.
+            For 2D: supports 'nearest', 'linear', or 'cubic'.
+            For 3D: supported methods depend on the underlying 3D function
+            (typically 'nearest' or 'linear').
+
+        Returns
+        -------
+        pfa : dict
+            Updated pfa config which includes the interpolated model
+            stored in the specified layer.
+
+        Notes
+        -----
+        - This function dispatches internally to either
+        `interpolate_points_2d()` or `interpolate_points_3d()`.
+        - Dimensionality is determined solely by whether `nz` is provided.
+        - For large 3D grids, consider using
+        `fast_interpolate_points_3d()` directly for improved
+        performance and memory efficiency.
+        """
+
+        if nz is not None:
+            if extent is not None and len(extent) != 6:
+                raise ValueError(
+                    "3D interpolation requires extent of length 6 "
+                    "[xmin, ymin, zmin, xmax, ymax, zmax]"
+                )
+
+            return Processing.interpolate_points_3d(
+                pfa,
+                criteria,
+                component,
+                layer,
+                nx,
+                ny,
+                nz=nz,
+                extent=extent,
+                method=interp_method,
+            )
+
+        if extent is not None and len(extent) != 4:
+            raise ValueError(
+                "2D interpolation requires extent of length 4 "
+                "[xmin, ymin, xmax, ymax]"
+            )
+
+        return Processing.interpolate_points_2d(
+            pfa,
+            criteria,
+            component,
+            layer,
+            nx,
+            ny,
+            extent=extent,
+            interp_method=interp_method,
+        )
