@@ -5,6 +5,7 @@ Set of methods to read in data in various formats.
 import os
 from pathlib import Path
 from contextlib import suppress
+import json5
 
 import geopandas as gpd
 import pandas as pd
@@ -16,6 +17,49 @@ import rasterio
 import re
 from itertools import starmap
 from geopfa.processing import Processing
+
+
+def safe_json_load(path):
+    """
+    Load a JSON configuration file with support for comments and relaxed syntax.
+
+    This function uses json5 parsing, allowing:
+    - Single-line comments (//, #)
+    - Trailing commas
+    - More flexible formatting than strict JSON
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the JSON configuration file.
+
+    Returns
+    -------
+    dict
+        Parsed JSON object.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    ValueError
+        If the file cannot be parsed.
+    """
+    fp = Path(path)
+
+    # Explicit file existence check (clear error)
+    if not fp.exists():
+        raise FileNotFoundError(f"JSON file not found: {fp}")
+
+    try:
+        with fp.open("r", encoding="utf-8") as f:
+            data = json5.load(f)
+    except Exception as e:
+        raise ValueError(f"Failed to parse JSON file: {fp}") from e
+
+    print(f"Successfully loaded JSON file from: {fp}")
+
+    return data
 
 
 class GeospatialDataReaders:

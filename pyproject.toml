@@ -119,6 +119,7 @@ test = { features = ["test"], solve-group = "default" }
 
 [tool.pixi.pypi-dependencies]
 geoPFA = { path = ".", editable = true }
+json5 = "*"
 
 [tool.pixi.dependencies]
 contextily = "==1.6.2"
