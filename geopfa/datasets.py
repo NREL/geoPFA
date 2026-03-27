@@ -114,8 +114,10 @@ def fetch_insulation(dataset: str) -> pd.DataFrame:
     return _get_dataset("insulation.zip", dataset)
 
 
-def fetch_producibility(dataset: str) -> pd.DataFrame:
-    """Fetch producibility sample dataset.
+def fetch_reservoir(dataset: str) -> pd.DataFrame:
+    """Fetch reservoir sample dataset.
+
+    Note "reservoir" used to be "producibility". See .zip.
 
     Currently available:
     - density_joint_inv_processed
@@ -142,11 +144,11 @@ def fetch_producibility(dataset: str) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        DataFrame containing the requested producibility dataset.
+        DataFrame containing the requested reservoir dataset.
 
     Examples
     --------
-    >>> from geoPFA.datasets import fetch_producibility
-    >>> geology = fetch_producibility("geology")
+    >>> from geoPFA.datasets import fetch_reservoir
+    >>> geology = fetch_reservoir("geology")
     """
     return _get_dataset("producibility.zip", dataset)
