@@ -256,8 +256,9 @@ class Cleaners:
             Multi*, or GeometryCollection geometries.
         dim : {"auto", 2, 3}, optional
             Controls dimensionality of returned extent.
-            - "auto" (default): returns 3D extent only if ALL geometries
-            contain Z values. Otherwise returns 2D extent.
+            - "auto" (default): returns 2D extent if all geometries
+            are 2D. Returns 3D extent if ANY geometries contain Z
+            values; warns if mixed 2D/3D.
             - 2: always return 2D extent [xmin, ymin, xmax, ymax],
             even if geometries contain Z values.
             - 3: force 3D extent [xmin, ymin, zmin, xmax, ymax, zmax].
@@ -266,7 +267,8 @@ class Cleaners:
         Returns
         -------
         extent : list
-            Length 4 (2D) or length 6 (3D).
+            2D: [xmin, ymin, xmax, ymax]
+            3D: [xmin, ymin, zmin, xmax, ymax, zmax]
 
         Raises
         ------
