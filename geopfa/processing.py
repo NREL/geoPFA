@@ -1,5 +1,11 @@
 """
-Set of interp_methods to process data from various formats into 2d images.
+Processing utilities for preparing geothermal favorability layers.
+
+This module provides classes and functions to transform raw geospatial data
+gridded datasets suitable for consistent spatial analysis. Operations largely
+act on the `pfa` dictionary (built with the data_readers module) and include
+data cleaning, interpolation, and other various preprocessing functions for
+PFA layer combination.
 """
 
 import time
