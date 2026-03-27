@@ -412,9 +412,10 @@ class Cleaners:
         else:
             xmin, ymin, zmin, xmax, ymax, zmax = extent
 
-        if xmax <= xmin or ymax <= ymin:
+        if xmax <= xmin or ymax <= ymin or zmax <= zmin:
             raise ValueError(
-                "Invalid extent: xmax/xmin or ymax/ymin ordering is incorrect."
+                "Invalid extent: xmax/xmin, ymax/ymin, or zmin/zmax "
+                "ordering is incorrect."
             )
 
         bbox = shapely.geometry.box(xmin, ymin, xmax, ymax)
