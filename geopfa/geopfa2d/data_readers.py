@@ -6,10 +6,10 @@ All functionalities from this module were moved to
 
 import warnings
 
-import geopfa.data_readers
+import geopfa.io.data_readers
 
 
-class GeospatialDataReaders(geopfa.data_readers.GeospatialDataReaders):
+class GeospatialDataReaders(geopfa.io.data_readers.GeospatialDataReaders):
     """Alias for geopfa.data_readers.GeospatialDataReaders
 
     .. deprecated:: 0.1.0
