@@ -218,3 +218,143 @@ class GeospatialDataWriters:
             ) from e
 
         print(f"Processed PFA configuration saved to: {output_path}\n")
+
+    @staticmethod
+    def export_favorability_models(  # noqa: PLR0913, PLR0917
+        pfa,
+        output_dir,
+        target_crs="EPSG:4326",
+        fmt="shp",
+        level="all",
+        criteria=None,
+        component=None,
+    ):
+        """
+        Export favorability models (combined, criteria, component).
+
+        Parameters
+        ----------
+        pfa : dict
+            PFA dictionary after running do_voter_veto.
+        output_dir : str or Path
+            Directory to write outputs to.
+        target_crs : str, optional
+            CRS to export to.
+        fmt : {"shp", "csv", "both"}, optional
+            Output file format.
+        level : {"all", "combined", "criteria", "component"}, optional
+            Controls which levels of the PFA favorability hierarchy are exported.
+            - "combined"
+                Export only the final combined favorability model (pfa["pr_norm"] or pfa["pr"]).
+            - "criteria"
+                Export one or more criteria-level models (pfa["criteria"][...]["pr_norm"]).
+                If ``criteria`` is provided, only that criterion is exported; otherwise,
+                all criteria are exported.
+            - "component"
+                Export component-level models within a criterion
+                (pfa["criteria"][...]["components"][...]["pr_norm"]).
+                Requires ``criteria`` to be specified. If ``component`` is provided,
+                only that component is exported; otherwise, all components within the
+                specified criterion are exported.
+            - "all"
+                Export combined, all criteria-level, and all component-level models.
+        criteria : str, optional
+            If provided, only export this criterion.
+        component : str, optional
+            If provided, only export this component (requires criteria).
+
+        Notes
+        -----
+        - Uses "pr_norm" if available, otherwise falls back to "pr".
+        - Outputs are consistently named using "model" convention.
+        """
+
+        if component and not criteria:
+            raise ValueError(
+                "Must specify 'criteria' when filtering by component."
+            )
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        def _get_gdf(d):
+            if "pr_norm" in d and d["pr_norm"] is not None:
+                return d["pr_norm"]
+            if "pr" in d and d["pr"] is not None:
+                return d["pr"]
+            return None
+
+        def _write_all(gdf, base_path):
+            if fmt in {"shp", "both"}:
+                GeospatialDataWriters.write_shapefile(
+                    gdf, base_path.with_suffix(".shp"), target_crs
+                )
+            if fmt in {"csv", "both"}:
+                GeospatialDataWriters.write_csv(
+                    gdf, base_path.with_suffix(".csv"), target_crs
+                )
+            if fmt not in {"shp", "csv", "both"}:
+                raise ValueError(f"Invalid format: {fmt}")
+
+        print("\nExporting favorability models...\n")
+
+        # --- combined ---
+        if level in {"all", "combined"}:
+            gdf = _get_gdf(pfa)
+            if gdf is None:
+                raise ValueError("No combined favorability model found.")
+
+            out_fp = output_dir / "combined_favorability_model"
+            _write_all(gdf, out_fp)
+
+            print(f"Combined model written to: {out_fp}")
+
+        # --- criteria + components ---
+        if level in {"all", "criteria", "component"}:
+            for crit_name, crit_data in pfa.get("criteria", {}).items():
+                if criteria and crit_name != criteria:
+                    continue
+
+                # ---- criteria-level ----
+                if level in {"all", "criteria"}:
+                    gdf = _get_gdf(crit_data)
+                    if gdf is not None:
+                        crit_out_dir = (
+                            output_dir
+                            / f"{crit_name}_criteria_favorability_models"
+                        )
+                        crit_out_dir.mkdir(exist_ok=True)
+
+                        out_fp = (
+                            crit_out_dir
+                            / f"{crit_name}_criteria_favorability_model"
+                        )
+                        _write_all(gdf, out_fp)
+
+                        print(f"\tWrote {crit_name} criteria model")
+
+                # ---- component-level ----
+                if level in {"all", "component"}:
+                    for comp_name, comp_data in crit_data.get(
+                        "components", {}
+                    ).items():
+                        if component and comp_name != component:
+                            continue
+
+                        gdf = _get_gdf(comp_data)
+                        if gdf is not None:
+                            comp_out_dir = (
+                                output_dir
+                                / f"{comp_name}_component_favorability_models"
+                            )
+                            comp_out_dir.mkdir(exist_ok=True)
+
+                            out_fp = (
+                                comp_out_dir
+                                / f"{comp_name}_component_favorability_model"
+                            )
+                            _write_all(gdf, out_fp)
+
+                            print(f"\t\tWrote {comp_name} component model")
+
+        print("\nFinished exporting favorability models.\n")
