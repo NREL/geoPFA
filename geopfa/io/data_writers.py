@@ -220,7 +220,7 @@ class GeospatialDataWriters:
         print(f"Processed PFA configuration saved to: {output_path}\n")
 
     @staticmethod
-    def export_favorability_models(  # noqa: PLR0913, PLR0917
+    def export_favorability_models(  # noqa: PLR0912, PLR0913, PLR0917
         pfa,
         output_dir,
         target_crs="EPSG:4326",
@@ -228,6 +228,7 @@ class GeospatialDataWriters:
         level="all",
         criteria=None,
         component=None,
+        key="pr_norm",
     ):
         """
         Export favorability models (combined, criteria, component).
@@ -262,11 +263,13 @@ class GeospatialDataWriters:
             If provided, only export this criterion.
         component : str, optional
             If provided, only export this component (requires criteria).
+        key : {"pr_norm", "pr"}, optional
+            Optionally choose pr_norm (normalized probability) or pr (probability) model
+            to export. Defaults to pr_norm.
 
         Notes
         -----
-        - Uses "pr_norm" if available, otherwise falls back to "pr".
-        - Outputs are consistently named using "model" convention.
+        - Falls back to "pr" if "pr_norm" not available.
         """
 
         if component and not criteria:
@@ -274,15 +277,28 @@ class GeospatialDataWriters:
                 "Must specify 'criteria' when filtering by component."
             )
 
+        if key not in {"pr_norm", "pr"}:
+            raise ValueError(f"Invalid key: {key}. Must be 'pr_norm' or 'pr'.")
+
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        def _get_gdf(d):
-            if "pr_norm" in d and d["pr_norm"] is not None:
-                return d["pr_norm"]
-            if "pr" in d and d["pr"] is not None:
+        def _get_gdf(d, context=""):
+            # Preferred key
+            if key in d and d[key] is not None:
+                return d[key]
+
+            # Fallback logic (only if user asked for pr_norm)
+            if key == "pr_norm" and "pr" in d and d["pr"] is not None:
+                print(
+                    f"Warning: '{context}' missing 'pr_norm'. Falling back to 'pr'."
+                )
                 return d["pr"]
-            return None
+
+            # Hard failure
+            raise ValueError(
+                f"Missing '{key}' (and fallback) for {context or 'object'}."
+            )
 
         def _write_all(gdf, base_path):
             if fmt in {"shp", "both"}:
@@ -300,7 +316,7 @@ class GeospatialDataWriters:
 
         # --- combined ---
         if level in {"all", "combined"}:
-            gdf = _get_gdf(pfa)
+            gdf = _get_gdf(pfa, context="combined model")
             if gdf is None:
                 raise ValueError("No combined favorability model found.")
 
@@ -317,7 +333,9 @@ class GeospatialDataWriters:
 
                 # ---- criteria-level ----
                 if level in {"all", "criteria"}:
-                    gdf = _get_gdf(crit_data)
+                    gdf = _get_gdf(
+                        crit_data, context=f"criteria '{crit_name}'"
+                    )
                     if gdf is not None:
                         crit_out_dir = (
                             output_dir
@@ -341,7 +359,10 @@ class GeospatialDataWriters:
                         if component and comp_name != component:
                             continue
 
-                        gdf = _get_gdf(comp_data)
+                        gdf = _get_gdf(
+                            comp_data,
+                            context=f"component '{crit_name}/{comp_name}'",
+                        )
                         if gdf is not None:
                             comp_out_dir = (
                                 output_dir
