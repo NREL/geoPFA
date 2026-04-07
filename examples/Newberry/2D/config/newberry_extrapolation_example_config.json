@@ -1,0 +1,63 @@
+{
+    "criteria": {
+        "geologic": {
+            "weight": 1,
+            "components": {
+                "heat": {
+                    "weight": 0.4,
+                    "layers": {
+                        "mt_resistivity_joint_inv": {
+                            "weight": 0.112,
+                            "units": "ohm-m",
+                            "is_3d": "yes",
+                            "data_col": "Resistivity(Ohm-m)",
+                            "x_col": "East(m)",
+                            "y_col": "North(m)",
+                            "z_col": "Depth to mean sea level(feet)",
+                            "crs": "26910",
+                            "transformation_method": "negate",
+                            "processing_method": "interpolate"
+                        },
+                        "velocity_model_vs": {
+                            "weight": 0.158,
+                            "units": "dv/v",
+                            "is_3d": "yes",
+                            "data_col": "vs",
+                            "x_col": "X",
+                            "y_col": "Y",
+                            "z_col": "z",
+                            "crs": "26910",
+                            "transformation_method": "negate",
+                            "processing_method": "interpolate"
+                        },
+                        "velocity_model_vpvs": {
+                            "weight": 0.158,
+                            "units": "ratio",
+                            "is_3d": "yes",
+                            "data_col": "vpvs",
+                            "x_col": "X",
+                            "y_col": "Y",
+                            "z_col": "z",
+                            "crs": "26910",
+                            "transformation_method": "None",
+                            "processing_method": "interpolate"
+                        },
+                        "velocity_model_vp": {
+                            "weight": 0.124,
+                            "units": "dv/v",
+                            "is_3d": "yes",
+                            "data_col": "vp",
+                            "x_col": "X",
+                            "y_col": "Y",
+                            "z_col": "z",
+                            "crs": "26910",
+                            "transformation_method": "None",
+                            "processing_method": "interpolate"
+                        }
+                    },
+                    "pr0": 0.8
+                }
+            }
+        }
+    }
+}
