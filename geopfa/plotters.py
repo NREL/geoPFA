@@ -306,11 +306,113 @@ class GeospatialDataPlotters:
         view_se=(20, -45),
     ):
         """
-        Plots 3D geospatial data with four directional views (NW, NE, SW, SE) in a 2x2 grid.
+        Plot 3D geospatial data from a GeoDataFrame using one or more directional views.
 
-        The two colorbars live in a separate right-hand column:
-            - Top:  main dataset colorbar (col / units)
-            - Bottom: well-path colorbar (well_units), if well values exist
+        This function visualizes 3D point or polygon data across up to four user-defined
+        view angles (NW, NE, SW, SE). Each active view is rendered as a separate subplot
+        with a consistent spatial extent. A single main title is applied to the figure,
+        and each subplot is labeled with its viewing direction.
+
+        Color-mapped data (e.g., favorability) and optional well-path data can be displayed
+        simultaneously, each with its own horizontal colorbar positioned below the plots.
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            Input geospatial dataset containing 3D geometries (Point, Polygon, or MultiPolygon).
+            Coordinates are expected to include Z values.
+
+        col : str or None
+            Column in `gdf` used for coloring the primary dataset. If None or "none",
+            geometries are plotted in a uniform color.
+
+        units : str
+            Label for the primary dataset colorbar.
+
+        title : str
+            Main title for the entire figure (displayed once at the top).
+
+        Overlay and Additional Geometry
+        ------------------------------
+        area_outline : GeoDataFrame, optional
+            Polygon geometry plotted as an outline above the data (e.g., study boundary).
+
+        overlay : GeoDataFrame, optional
+            Additional point data plotted as a secondary scatter layer.
+
+        well_path : geometry-like, optional
+            Well trajectory input used to generate 3D well points.
+
+        well_path_values : array-like, optional
+            Values associated with well points (e.g., temperature). If provided, wells
+            are colored by these values; otherwise plotted in black.
+
+        well_units : str, default "Temperature (°C)"
+            Label for the well data colorbar.
+
+        well_cmap : str, default "magma"
+            Colormap used for well data.
+
+        well_vmin, well_vmax : float, optional
+            Color scaling bounds for well data.
+
+        show_well_colorbar : bool, default True
+            Whether to display the well colorbar.
+
+        Main Data Styling
+        ----------------
+        cmap : str, default "jet"
+            Colormap for the primary dataset.
+
+        vmin, vmax : float, optional
+            Color scaling bounds for the primary dataset.
+
+        markersize : float, default 15
+            Marker size for scatter plots.
+
+        show_main_colorbar : bool, default True
+            Whether to display the main dataset colorbar.
+
+        Axes, Limits, and Labels
+        ------------------------
+        xlabel, ylabel, zlabel : str or "default"
+            Axis labels. If "default", labels are inferred from CRS when available.
+
+        xlim, ylim, zlim : tuple, optional
+            Axis limits for each dimension.
+
+        extent : tuple, optional
+            Combined spatial extent (xmin, ymin, zmin, xmax, ymax, zmax).
+            Overrides individual axis limits if provided (except zlim if explicitly set).
+
+        Slicing and Filtering
+        ---------------------
+        x_slice, y_slice, z_slice : float, optional
+            Maximum coordinate thresholds used to filter data prior to plotting.
+            Only points with coordinates <= these values are retained.
+
+        filter_threshold : float, optional
+            Minimum value of `col` required for a point to be plotted.
+
+        Views / Camera Angles
+        ---------------------
+        view_nw, view_ne, view_sw, view_se : tuple or None
+            Viewing angles specified as (elevation, azimuth). Any view set to None
+            is excluded. At least one view must be provided.
+
+        Figure Layout
+        -------------
+        figsize : tuple, default (12, 10)
+            Base figure size (width, height). Width scales with number of subplots.
+
+        Notes
+        -----
+        - Subplots are dynamically generated based on active views (1-4).
+        - All subplots share consistent axis scaling and styling.
+        - Colorbars are rendered at the figure level (not per subplot) to ensure
+        consistent sizing and avoid layout distortion.
+        - The main colorbar is placed above the well colorbar.
+        - If no valid data remains after filtering/slicing, the function exits early.
         """
 
         # ---------- active views ----------
@@ -612,10 +714,10 @@ class GeospatialDataPlotters:
         fig = plt.gcf()
 
         # main title
-        fig.suptitle(title, fontsize=14)
+        fig.suptitle(title, fontsize=14, y=0.95)
 
         # leave room at top and bottom
-        plt.subplots_adjust(bottom=0.2, top=0.88)
+        plt.subplots_adjust(bottom=0.2, top=0.92)
 
         # main colorbar
         if main_mappable is not None and show_main_colorbar:
