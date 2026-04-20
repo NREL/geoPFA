@@ -1,7 +1,7 @@
 """Transition module
 
 All functionalities from this module were moved to
-:mod:`~geopfa.data_readers`.
+:mod:`~geopfa.io.data_readers`.
 """
 
 import warnings

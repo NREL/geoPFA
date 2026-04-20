@@ -30,7 +30,7 @@ def safe_json_load(path):
 
     Parameters
     ----------
-    path : str or Path
+    path : str or pathlib.Path
         Path to the JSON configuration file.
 
     Returns
