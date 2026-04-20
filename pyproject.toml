@@ -222,6 +222,7 @@ select = [
   "W", # Warning
   ]
 ignore = [
+  "PD901", # Generic variable name df
   "A001", # Shadowing built-in
   "ARG004",  # Unused argument
   "B904",  # Use of assert
