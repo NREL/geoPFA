@@ -119,7 +119,7 @@ class GeospatialDataReaders:
             GeoDataFrame containing contents of CSV file
         """
         # Read the CSV file
-        df = pd.read_csv(path)  # noqa: PD901
+        df = pd.read_csv(path)
 
         # Validate input geometry columns
         if sum([(x_col is None), (y_col is None)]) == 1:
@@ -139,7 +139,7 @@ class GeospatialDataReaders:
 
         # Create geometry from a combined geometry column
         if x_col is None and y_col is None and z_col is None:
-            df = df.rename(columns={geometry_column_name: "geometry"})  # noqa: PD901
+            df = df.rename(columns={geometry_column_name: "geometry"})
             df["geometry"] = df["geometry"].apply(wkt.loads)
             gdf = gpd.GeoDataFrame(df, crs=crs)
 
@@ -221,7 +221,7 @@ class GeospatialDataReaders:
         return gdf
 
     @staticmethod
-    def read_tec(  # noqa: PLR0917
+    def read_tec(  # noqa: PLR0912, PLR0913, PLR0917
         path,
         crs,
         x_col=None,
@@ -271,7 +271,7 @@ class GeospatialDataReaders:
         with path.open(encoding="utf-8") as f:
             lines = f.readlines()
 
-        if len(lines) < 4:
+        if len(lines) < 4:  # noqa: PLR2004
             raise ValueError(
                 "File must contain at least title, header, assumptions, and data rows."
             )
@@ -336,7 +336,7 @@ class GeospatialDataReaders:
 
         # Create geometry from a combined geometry column (rare for TEC, but supported)
         if x_col is None and y_col is None and z_col is None:
-            df = df.rename(columns={geometry_column_name: "geometry"})  # noqa: PD901
+            df = df.rename(columns={geometry_column_name: "geometry"})
             df["geometry"] = df["geometry"].apply(wkt.loads)
             gdf = gpd.GeoDataFrame(df, crs=crs)
 
@@ -366,7 +366,7 @@ class GeospatialDataReaders:
         return gdf
 
     @staticmethod
-    def read_well_path_csv(
+    def read_well_path_csv(  # noqa: PLR0912, PLR0913
         csv_path,
         x_col,
         y_col,
@@ -446,7 +446,7 @@ class GeospatialDataReaders:
         df = df.loc[mask].reset_index(drop=True)
         coords = coords[mask]
 
-        if coords.shape[0] < 2:
+        if coords.shape[0] < 2:  # noqa: PLR2004
             raise ValueError(
                 "Not enough valid vertices to define a well path."
             )
@@ -465,7 +465,7 @@ class GeospatialDataReaders:
             keep[1:] = (np.abs(np.diff(coords, axis=0)) > 0).any(axis=1)
             df = df.loc[keep].reset_index(drop=True)
             coords = coords[keep]
-            if len(coords) < 2:
+            if len(coords) < 2:  # noqa: PLR2004
                 raise ValueError(
                     "Well path collapsed to one vertex after de-duplication."
                 )
@@ -516,7 +516,7 @@ class GeospatialDataReaders:
         return well_gdf, values
 
     @staticmethod
-    def validate_pfa_data(pfa, *, key="data", strict=False, verbose=True):
+    def validate_pfa_data(pfa, *, key="data", strict=False, verbose=True):  # noqa: PLR0912
         """
         Validate that all layers in the PFA structure contain populated data.
 
@@ -616,9 +616,9 @@ class GeospatialDataReaders:
         return issues
 
     @classmethod
-    def gather_data(
+    def gather_data(  # noqa: PLR0912
         cls, data_dir, pfa, file_types, validate=False, strict=False
-    ):  # noqa: PLR0912
+    ):
         """Function to read in data layers associated with each component of each criteria.
         Note that data must be stored in a directory with the following structure which matches
         the config: criteria/component/layers. Criteria directory, component directory, and
