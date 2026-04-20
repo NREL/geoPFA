@@ -10,10 +10,10 @@ import geopfa.io.data_readers
 
 
 class GeospatialDataReaders(geopfa.io.data_readers.GeospatialDataReaders):
-    """Alias for geopfa.data_readers.GeospatialDataReaders
+    """Alias for geopfa.io.data_readers.GeospatialDataReaders
 
     .. deprecated:: 0.1.0
-       :class:`~geopfa.data_readers.GeospatialDataReaders` instead.
+       :class:`~geopfa.io.data_readers.GeospatialDataReaders` instead.
     """
 
     def __init__(self, *args, **kwargs):
