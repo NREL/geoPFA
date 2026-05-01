@@ -396,9 +396,13 @@ class GeospatialDataPlotters:
 
         Views / Camera Angles
         ---------------------
-        view_nw, view_ne, view_sw, view_se : tuple or None
-            Viewing angles specified as (elevation, azimuth). Any view set to None
-            is excluded. At least one view must be provided.
+        view_nw, view_ne, view_sw, view_se : tuple(float, float) or None
+            Optional camera angles for rendering directional 3D views, specified as
+            (elevation, azimuth) and passed to matplotlib.axes.Axes.view_init.
+
+            The suffixes indicate the approximate camera/viewpoint direction
+            (for example, view_nw is a view from the northwest). Any view set to
+            None is excluded. At least one view must be provided.
 
         Figure Layout
         -------------
@@ -709,7 +713,7 @@ class GeospatialDataPlotters:
         for ax, (name, view) in zip(axes, active_views.items()):
             ax.view_init(*view)
             _plot_on(ax)
-            ax.set_title(f"Looking {name.upper()}")
+            ax.set_title(f"View from {name.upper()}")
 
         fig = plt.gcf()
 
