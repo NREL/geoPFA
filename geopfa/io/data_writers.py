@@ -45,44 +45,52 @@ class GeospatialDataWriters:
     """Write geopandas dataframes to various geospatial data formats"""
 
     @staticmethod
-    def write_shapefile(gdf, path, target_crs="EPSG:4326"):
+    def write_shapefile(gdf, path, target_crs=None):
         """Writes geopandas dataframe to a shapefile.
 
         Parameters
         ----------
-        path : 'str'
-            Path to shapefile to write to
         gdf : Geopandas DataFrame
             Geopandas DataFrame containing data to write to the shapefile
-        target_crs : 'int'
-            Integer value associated with the CRS you with to write to.
-            Defaults to 4326
+        path : 'str'
+            Path to shapefile to write to
+        target_crs : str, int, or pyproj.CRS
+            CRS to export to. Must be specified explicitly.
         """
         GenericFunctions.ensure_directory_exists(path)
 
+        if target_crs is None:
+            raise ValueError("target_crs must be specified explicitly.")
+
         if gdf.crs is None:
-            gdf = gdf.set_crs(target_crs)
+            raise ValueError(
+                "Input GeoDataFrame has no CRS. Set gdf.crs before exporting."
+            )
 
         gdf.to_crs(target_crs).to_file(path)
 
     @staticmethod
-    def write_csv(gdf, path, target_crs="EPSG:4326"):
+    def write_csv(gdf, path, target_crs=None):
         """Writes geopandas dataframe to a CSV file.
 
         Parameters
         ----------
-        path : 'str'
-            Path to shapefile to write to
         gdf : Geopandas DataFrame
-            Geopandas DataFrame containing data to write to the shapefile
-        target_crs : 'int'
-            Integer value associated with the CRS you with to write to.
-            Defaults to 4326
+            Geopandas DataFrame containing data to write to the CSV
+        path : 'str'
+            Path to CSV to write to
+        target_crs : str, int, or pyproj.CRS
+            CRS to export to. Must be specified explicitly.
         """
         GenericFunctions.ensure_directory_exists(path)
 
+        if target_crs is None:
+            raise ValueError("target_crs must be specified explicitly.")
+
         if gdf.crs is None:
-            gdf = gdf.set_crs(target_crs)
+            raise ValueError(
+                "Input GeoDataFrame has no CRS. Set gdf.crs before exporting."
+            )
 
         gdf.to_crs(target_crs).to_csv(path, index=False)
 
@@ -220,11 +228,11 @@ class GeospatialDataWriters:
         print(f"Processed PFA configuration saved to: {output_path}\n")
 
     @staticmethod
-    def export_favorability_models(  # noqa: PLR0912, PLR0913, PLR0917
+    def export_favorability_models(  # noqa: PLR0912, PLR0913, PLR0915, PLR0917
         pfa,
         output_dir,
-        target_crs="EPSG:4326",
-        fmt="shp",
+        target_crs=None,
+        fmt="csv",
         level="all",
         criteria=None,
         component=None,
@@ -279,6 +287,9 @@ class GeospatialDataWriters:
 
         if key not in {"pr_norm", "pr"}:
             raise ValueError(f"Invalid key: {key}. Must be 'pr_norm' or 'pr'.")
+
+        if target_crs is None:
+            raise ValueError("target_crs must be specified. ")
 
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
