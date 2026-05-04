@@ -294,31 +294,142 @@ class GeospatialDataPlotters:
         x_slice=None,
         y_slice=None,
         z_slice=None,
-        # Well-path colorbar settings
         well_units="Temperature (°C)",
         well_cmap="magma",
         show_well_colorbar=True,
-        well_vmin=None,  # independent well-path vmin
-        well_vmax=None,  # independent well-path vmax
-        # Main (favorability) colorbar settings
+        well_vmin=None,
+        well_vmax=None,
         show_main_colorbar=True,
-        # View controls: azimuths approximate "looking toward" each compass direction
-        view_nw=(20, 135),  # from SE looking toward NW
-        view_ne=(20, 45),  # from SW looking toward NE
-        view_sw=(20, -135),  # from NE looking toward SW
-        view_se=(20, -45),  # from NW looking toward SE
-        # Layout control: relative width of colorbar column
-        cbar_width=0.08,
+        view_nw=(20, 135),
+        view_ne=(20, 45),
+        view_sw=(20, -135),
+        view_se=(20, -45),
     ):
         """
-        Plots 3D geospatial data with four directional views (NW, NE, SW, SE) in a 2x2 grid.
+        Plot 3D geospatial data from a GeoDataFrame using one or more directional views.
 
-        The two colorbars live in a separate right-hand column:
-            - Top:  main dataset colorbar (col / units)
-            - Bottom: well-path colorbar (well_units), if well values exist
+        This function visualizes 3D point or polygon data across up to four user-defined
+        view angles (NW, NE, SW, SE). Each active view is rendered as a separate subplot
+        with a consistent spatial extent. A single main title is applied to the figure,
+        and each subplot is labeled with its viewing direction.
 
-        Parameters are otherwise identical to your previous version.
+        Color-mapped data (e.g., favorability) and optional well-path data can be displayed
+        simultaneously, each with its own horizontal colorbar positioned below the plots.
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            Input geospatial dataset containing 3D geometries (Point, Polygon, or MultiPolygon).
+            Coordinates are expected to include Z values.
+
+        col : str or None
+            Column in `gdf` used for coloring the primary dataset. If None or "none",
+            geometries are plotted in a uniform color.
+
+        units : str
+            Label for the primary dataset colorbar.
+
+        title : str
+            Main title for the entire figure (displayed once at the top).
+
+        Overlay and Additional Geometry
+        ------------------------------
+        area_outline : GeoDataFrame, optional
+            Polygon geometry plotted as an outline above the data (e.g., study boundary).
+
+        overlay : GeoDataFrame, optional
+            Additional point data plotted as a secondary scatter layer.
+
+        well_path : geometry-like, optional
+            Well trajectory input used to generate 3D well points.
+
+        well_path_values : array-like, optional
+            Values associated with well points (e.g., temperature). If provided, wells
+            are colored by these values; otherwise plotted in black.
+
+        well_units : str, default "Temperature (°C)"
+            Label for the well data colorbar.
+
+        well_cmap : str, default "magma"
+            Colormap used for well data.
+
+        well_vmin, well_vmax : float, optional
+            Color scaling bounds for well data.
+
+        show_well_colorbar : bool, default True
+            Whether to display the well colorbar.
+
+        Main Data Styling
+        ----------------
+        cmap : str, default "jet"
+            Colormap for the primary dataset.
+
+        vmin, vmax : float, optional
+            Color scaling bounds for the primary dataset.
+
+        markersize : float, default 15
+            Marker size for scatter plots.
+
+        show_main_colorbar : bool, default True
+            Whether to display the main dataset colorbar.
+
+        Axes, Limits, and Labels
+        ------------------------
+        xlabel, ylabel, zlabel : str or "default"
+            Axis labels. If "default", labels are inferred from CRS when available.
+
+        xlim, ylim, zlim : tuple, optional
+            Axis limits for each dimension.
+
+        extent : tuple, optional
+            Combined spatial extent (xmin, ymin, zmin, xmax, ymax, zmax).
+            Overrides individual axis limits if provided (except zlim if explicitly set).
+
+        Slicing and Filtering
+        ---------------------
+        x_slice, y_slice, z_slice : float, optional
+            Maximum coordinate thresholds used to filter data prior to plotting.
+            Only points with coordinates <= these values are retained.
+
+        filter_threshold : float, optional
+            Minimum value of `col` required for a point to be plotted.
+
+        Views / Camera Angles
+        ---------------------
+        view_nw, view_ne, view_sw, view_se : tuple(float, float) or None
+            Optional camera angles for rendering directional 3D views, specified as
+            (elevation, azimuth) and passed to matplotlib.axes.Axes.view_init.
+
+            The suffixes indicate the approximate camera/viewpoint direction
+            (for example, view_nw is a view from the northwest). Any view set to
+            None is excluded. At least one view must be provided.
+
+        Figure Layout
+        -------------
+        figsize : tuple, default (12, 10)
+            Base figure size (width, height). Width scales with number of subplots.
+
+        Notes
+        -----
+        - Subplots are dynamically generated based on active views (1-4).
+        - All subplots share consistent axis scaling and styling.
+        - Colorbars are rendered at the figure level (not per subplot) to ensure
+        consistent sizing and avoid layout distortion.
+        - The main colorbar is placed above the well colorbar.
+        - If no valid data remains after filtering/slicing, the function exits early.
         """
+
+        # ---------- active views ----------
+        active_views = {
+            "nw": view_nw,
+            "ne": view_ne,
+            "sw": view_sw,
+            "se": view_se,
+        }
+        active_views = {k: v for k, v in active_views.items() if v is not None}
+        if len(active_views) == 0:
+            print("No active views provided.")
+            return
 
         # ---------- helpers ----------
         def _apply_slice_pts(arr):
@@ -384,7 +495,7 @@ class GeospatialDataPlotters:
         else:
             filtered_colors = "blue"
 
-        # well points + values
+        # well data
         well_pts = _apply_slice_pts(
             GeospatialDataPlotters._build_well_pts(well_path)
         )
@@ -392,7 +503,7 @@ class GeospatialDataPlotters:
             None if well_path_values is None else np.asarray(well_path_values)
         )
 
-        # do we actually have usable well values?
+        # check usable values
         has_well_values = (
             well_pts is not None
             and len(well_pts) > 0
@@ -400,41 +511,27 @@ class GeospatialDataPlotters:
             and np.isfinite(well_vals).any()
         )
 
-        # ---------- figure layout: 2x2 views + right colorbar column ----------
-        # Grid: 2 rows x 3 columns
-        #   [ NW | NE | main_cbar ]
-        #   [ SW | SE | well_cbar ]
+        # ---------- figure ----------
+        n = len(active_views)
+        fig_w, fig_h = figsize
+        _, axes = plt.subplots(
+            1,
+            n,
+            figsize=(fig_w * n / 2, fig_h),
+            subplot_kw={"projection": "3d"},
+        )
 
-        fig = plt.figure(figsize=figsize, constrained_layout=True)
-        gs = GridSpec(2, 3, figure=fig, width_ratios=[1, 1, cbar_width])
+        if n == 1:
+            axes = [axes]
 
-        ax_nw = fig.add_subplot(gs[0, 0], projection="3d")
-        ax_ne = fig.add_subplot(gs[0, 1], projection="3d")
-        ax_sw = fig.add_subplot(gs[1, 0], projection="3d")
-        ax_se_ax = fig.add_subplot(gs[1, 1], projection="3d")
-
-        cax_main = fig.add_subplot(gs[0, 2])  # main colorbar
-        cax_well = fig.add_subplot(gs[1, 2])  # well colorbar
-
-        # make cbar axes frameless but keep ticks/labels visible
-        for cax in (cax_main, cax_well):
-            for spine in cax.spines.values():
-                spine.set_visible(False)
-
-        # hide well cbar axis entirely if we know we won't use it
-        if not (show_well_colorbar and has_well_values):
-            cax_well.set_axis_off()
-
-        # set view angles
-        ax_nw.view_init(*view_nw)
-        ax_ne.view_init(*view_ne)
-        ax_sw.view_init(*view_sw)
-        ax_se_ax.view_init(*view_se)
+        main_mappable = None
+        well_mappable = None
 
         # ---------- shared per-panel plotting ----------
         def _plot_on(  # noqa: PLR0912, PLR0914, PLR0915
-            ax, add_main_cbar=False, add_well_cbar=False
+            ax,
         ):
+            sc = None
             # main geometries
             if not gdf_filtered.empty:
                 gtype0 = gdf_filtered.geometry.iloc[0].geom_type
@@ -442,12 +539,18 @@ class GeospatialDataPlotters:
                     xs, ys, zs = zip(
                         *[geom.coords[0] for geom in gdf_filtered.geometry]
                     )
-                    if isinstance(filtered_colors, str):
-                        ax.scatter(
-                            xs, ys, zs, s=markersize, color=filtered_colors
+                    if col is not None and str(col).lower() != "none":
+                        sc = ax.scatter(
+                            xs,
+                            ys,
+                            zs,
+                            s=markersize,
+                            c=gdf_filtered[col],
+                            cmap=cmap_main_obj,
+                            norm=norm_main,
                         )
                     else:
-                        ax.scatter(xs, ys, zs, s=markersize, c=filtered_colors)
+                        sc = ax.scatter(xs, ys, zs, s=markersize, color="blue")
                 elif gtype0 in {"Polygon", "MultiPolygon"}:
                     for geom in gdf_filtered.geometry:
                         if geom.geom_type == "Polygon":
@@ -476,6 +579,9 @@ class GeospatialDataPlotters:
                                     facecolor="lightblue",
                                 )
                             )
+            nonlocal main_mappable
+            if main_mappable is None and sc is not None:
+                main_mappable = sc
 
             # overlay
             if (
@@ -530,6 +636,10 @@ class GeospatialDataPlotters:
                         alpha=0.9,
                         zorder=5,
                     )
+
+            nonlocal well_mappable
+            if well_mappable is None and sc_well is not None:
+                well_mappable = sc_well
 
             # area outline
             if (
@@ -599,46 +709,40 @@ class GeospatialDataPlotters:
 
             ax.grid(True)
 
-            # main colorbar (only once, into dedicated axis)
-            if (
-                add_main_cbar
-                and (col is not None and str(col).lower() != "none")
-                and not gdf_filtered.empty
-            ):
-                sm = plt.cm.ScalarMappable(cmap=cmap_main_obj, norm=norm_main)
-                cax_main.cla()
-                cb = plt.colorbar(sm, cax=cax_main)
-                cb.set_label(units)
-                cb.locator = MaxNLocator(nbins=6)
-                cb.update_ticks()
-                cb.ax.tick_params(labelsize=9)
+        # apply views
+        for ax, (name, view) in zip(axes, active_views.items()):
+            ax.view_init(*view)
+            _plot_on(ax)
+            ax.set_title(f"View from {name.upper()}")
 
-            # well colorbar (only once, if we truly have well values and user wants it)
-            if (
-                add_well_cbar
-                and show_well_colorbar
-                and has_well_values
-                and sc_well is not None
-            ):
-                cax_well.cla()
-                cbw = plt.colorbar(sc_well, cax=cax_well)
-                cbw.set_label(well_units)
-                cbw.locator = MaxNLocator(nbins=6)
-                cbw.update_ticks()
-                cbw.ax.tick_params(labelsize=9)
-                cbw.ax.yaxis.set_ticks_position("left")
-                cbw.ax.yaxis.set_label_position("left")
+        fig = plt.gcf()
 
-        # plot all panels; add colorbars only once (NW panel)
-        _plot_on(ax_nw, add_main_cbar=show_main_colorbar, add_well_cbar=True)
-        _plot_on(ax_ne, add_main_cbar=False, add_well_cbar=False)
-        _plot_on(ax_sw, add_main_cbar=False, add_well_cbar=False)
-        _plot_on(ax_se_ax, add_main_cbar=False, add_well_cbar=False)
+        # main title
+        fig.suptitle(title, fontsize=14, y=0.95)
 
-        # clearer view labels
-        ax_nw.set_title(f"{title} — looking NW")
-        ax_ne.set_title(f"{title} — looking NE")
-        ax_sw.set_title(f"{title} — looking SW")
-        ax_se_ax.set_title(f"{title} — looking SE")
+        # leave room at top and bottom
+        plt.subplots_adjust(bottom=0.2, top=0.92)
+
+        # main colorbar
+        if main_mappable is not None and show_main_colorbar:
+            cbar = fig.colorbar(
+                main_mappable,
+                ax=axes,
+                orientation="horizontal",
+                fraction=0.05,
+                pad=0.08,
+            )
+            cbar.ax.set_title(units, fontsize=10, pad=6)
+
+        # well colorbar (below main)
+        if well_mappable is not None and show_well_colorbar:
+            cbar_w = fig.colorbar(
+                well_mappable,
+                ax=axes,
+                orientation="horizontal",
+                fraction=0.05,
+                pad=0.28,
+            )
+            cbar_w.ax.set_title(f"{well_units} (well)", fontsize=10, pad=6)
 
         plt.show()

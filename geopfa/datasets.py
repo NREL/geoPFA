@@ -1,152 +1,63 @@
-"""Functions to fetch sample datasets for geoPFA."""
+"""Functions to fetch sample data for geoPFA."""
 
-import pandas as pd
+from pathlib import Path
+import shutil
+
 import pooch
 from pooch.processors import Unzip
-from pathlib import Path
 
-dogbert = pooch.create(
+
+dogbert_newberry = pooch.create(
     path=pooch.os_cache("geoPFA"),
-    base_url="https://github.com/NREL/geoPFA/releases/download/{version}/",
-    version="v0.0.5",
+    base_url="https://github.com/NatLabRockies/geoPFA/releases/download/{version}/",
+    version="v0.0.20",
     registry={
-        "heat.zip": "sha256:fc7abec6d035f7be6e31b6071ee016afa629fcb1764dc506156cc535909d9055",
-        "insulation.zip": "sha256:2b16eacf32be347cf0767ee3a450eed76a92b2a654e5d249ff2fef09fab381c0",
-        "producibility.zip": "sha256:5d72eb75815f86ddbb4e19bea5664c9deb27d308debb40c92068a45bbb3a94ca",
+        "newberry_tutorial_data.zip": "sha256:d9168678b1e63f52a2e73b18d8b26e93ac502b3025e197391ccb26f3081f6c4c",
     },
 )
 
 
-def _get_dataset(filename: str, dataset: str) -> pd.DataFrame:
-    """Fetch dataset from zip file.
-
-    Parameters
-    ----------
-    filename : str
-        Name of the zip file to fetch.
-    dataset : str
-        Name of the dataset to fetch.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the requested dataset.
+def setup_newberry_tutorial_data(target_dir: Path) -> None:
     """
-    fnames = dogbert.fetch(filename, processor=Unzip())
-    inventory = {Path(f).stem: f for f in fnames}
+    Download and extract the Newberry tutorial dataset into a target directory.
 
-    try:
-        data = pd.read_parquet(inventory[dataset])
-    except KeyError:
-        source = dogbert.registry[filename]
-        raise KeyError(
-            f"Dataset {dataset} not included in {dogbert.get_url(filename)}."
-        )
-
-    return data
-
-
-def fetch_heat(dataset: str) -> pd.DataFrame:
-    """Fetch heat sample dataset.
-
-    Currently available:
-    - density_joint_inv_processed
-    - density_joint_inv
-    - earthquakes_processed
-    - earthquakes
-    - mt_resistivity_joint_inv_processed
-    - mt_resistivity_joint_inv
-    - temperature_model_500m_processed
-    - temperature_model_500m
-    - velocity_model_vp_processed
-    - velocity_model_vp
-    - velocity_model_vpvs_processed
-    - velocity_model_vpvs
-    - velocity_model_vs_processed
-    - velocity_model_vs
-
-    Parameters
-    ----------
-    dataset : str
-        Name of the dataset to fetch.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the requested heat dataset.
-
-    Examples
-    --------
-    >>> from geoPFA.datasets import fetch_heat
-    >>> temperature = fetch_heat("temperature_model_500m")
+    The contents of the zip are copied into `target_dir` exactly as structured.
     """
-    return _get_dataset("heat.zip", dataset)
+    filename = "newberry_tutorial_data.zip"
 
+    target_dir = Path(target_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
 
-def fetch_insulation(dataset: str) -> pd.DataFrame:
-    """Fetch insulation sample dataset.
+    extracted_files = dogbert_newberry.fetch(filename, processor=Unzip())
 
-    Currently available:
-    - density_joint_inv_processed
-    - density_joint_inv
-    - earthquakes_processed
-    - earthquakes
-    - mt_resistivity_joint_inv_processed
-    - mt_resistivity_joint_inv
-    - velocity_model_vp_processed
-    - velocity_model_vp
+    if not extracted_files:
+        raise RuntimeError(f"No files extracted from {filename}")
 
-    Parameters
-    ----------
-    dataset : str
-        Name of the dataset to fetch.
+    extracted_paths = [Path(p).resolve() for p in extracted_files]
 
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the requested insulation dataset.
+    # Find the common extraction root of all extracted files
+    common_root = Path(
+        __import__("os").path.commonpath([str(p) for p in extracted_paths])
+    )
 
-    Examples
-    --------
-    >>> from geoPFA.datasets import fetch_insulation
-    >>> velocity = fetch_insulation("velocity_model_vp")
-    """
-    return _get_dataset("insulation.zip", dataset)
+    # If the zip contains a single top-level folder (for example "data/"),
+    # unwrap that folder so we do not create data/data/.
+    top_level_items = list(common_root.iterdir())
+    if len(top_level_items) == 1 and top_level_items[0].is_dir():
+        source_dir = top_level_items[0]
+    else:
+        source_dir = common_root
 
+    # Copy the full directory structure into target_dir
+    for item in source_dir.iterdir():
+        dest = target_dir / item.name
 
-def fetch_producibility(dataset: str) -> pd.DataFrame:
-    """Fetch producibility sample dataset.
+        if dest.exists():
+            continue
 
-    Currently available:
-    - density_joint_inv_processed
-    - density_joint_inv
-    - earthquakes_processed
-    - earthquakes
-    - faults_3d_processed
-    - faults_3d
-    - geology
-    - mt_resistivity_joint_inv_processed
-    - mt_resistivity_joint_inv
-    - velocity_model_vp_processed
-    - velocity_model_vp
-    - velocity_model_vpvs_processed
-    - velocity_model_vpvs
-    - velocity_model_vs_processed
-    - velocity_model_vs
+        if item.is_dir():
+            shutil.copytree(item, dest)
+        else:
+            shutil.copy2(item, dest)
 
-    Parameters
-    ----------
-    dataset : str
-        Name of the dataset to fetch.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing the requested producibility dataset.
-
-    Examples
-    --------
-    >>> from geoPFA.datasets import fetch_producibility
-    >>> geology = fetch_producibility("geology")
-    """
-    return _get_dataset("producibility.zip", dataset)
+    print(f"Data extracted to: {target_dir}")

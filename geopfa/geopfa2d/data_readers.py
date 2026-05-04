@@ -1,19 +1,19 @@
 """Transition module
 
 All functionalities from this module were moved to
-:mod:`~geopfa.data_readers`.
+:mod:`~geopfa.io.data_readers`.
 """
 
 import warnings
 
-import geopfa.data_readers
+import geopfa.io.data_readers
 
 
-class GeospatialDataReaders(geopfa.data_readers.GeospatialDataReaders):
-    """Alias for geopfa.data_readers.GeospatialDataReaders
+class GeospatialDataReaders(geopfa.io.data_readers.GeospatialDataReaders):
+    """Alias for geopfa.io/data_readers.GeospatialDataReaders
 
     .. deprecated:: 0.1.0
-       :class:`~geopfa.data_readers.GeospatialDataReaders` instead.
+       :class:`~geopfa.io.data_readers.GeospatialDataReaders` instead.
     """
 
     def __init__(self, *args, **kwargs):

@@ -5,6 +5,7 @@ Set of methods to read in data in various formats.
 import os
 from pathlib import Path
 from contextlib import suppress
+import json5
 
 import geopandas as gpd
 import pandas as pd
@@ -16,6 +17,49 @@ import rasterio
 import re
 from itertools import starmap
 from geopfa.processing import Processing
+
+
+def safe_json_load(path):
+    """
+    Load a JSON configuration file with support for comments and relaxed syntax.
+
+    This function uses json5 parsing, allowing:
+    - Single-line comments (//, #)
+    - Trailing commas
+    - More flexible formatting than strict JSON
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path to the JSON configuration file.
+
+    Returns
+    -------
+    dict
+        Parsed JSON object.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    ValueError
+        If the file cannot be parsed.
+    """
+    fp = Path(path)
+
+    # Explicit file existence check (clear error)
+    if not fp.exists():
+        raise FileNotFoundError(f"JSON file not found: {fp}")
+
+    try:
+        with fp.open("r", encoding="utf-8") as f:
+            data = json5.load(f)
+    except Exception as e:
+        raise ValueError(f"Failed to parse JSON file: {fp}") from e
+
+    print(f"Successfully loaded JSON file from: {fp}")
+
+    return data
 
 
 class GeospatialDataReaders:
@@ -75,7 +119,7 @@ class GeospatialDataReaders:
             GeoDataFrame containing contents of CSV file
         """
         # Read the CSV file
-        df = pd.read_csv(path)  # noqa: PD901
+        df = pd.read_csv(path)
 
         # Validate input geometry columns
         if sum([(x_col is None), (y_col is None)]) == 1:
@@ -95,7 +139,7 @@ class GeospatialDataReaders:
 
         # Create geometry from a combined geometry column
         if x_col is None and y_col is None and z_col is None:
-            df = df.rename(columns={geometry_column_name: "geometry"})  # noqa: PD901
+            df = df.rename(columns={geometry_column_name: "geometry"})
             df["geometry"] = df["geometry"].apply(wkt.loads)
             gdf = gpd.GeoDataFrame(df, crs=crs)
 
@@ -177,7 +221,7 @@ class GeospatialDataReaders:
         return gdf
 
     @staticmethod
-    def read_tec(  # noqa: PLR0917
+    def read_tec(  # noqa: PLR0912, PLR0913, PLR0917
         path,
         crs,
         x_col=None,
@@ -227,7 +271,7 @@ class GeospatialDataReaders:
         with path.open(encoding="utf-8") as f:
             lines = f.readlines()
 
-        if len(lines) < 4:
+        if len(lines) < 4:  # noqa: PLR2004
             raise ValueError(
                 "File must contain at least title, header, assumptions, and data rows."
             )
@@ -292,7 +336,7 @@ class GeospatialDataReaders:
 
         # Create geometry from a combined geometry column (rare for TEC, but supported)
         if x_col is None and y_col is None and z_col is None:
-            df = df.rename(columns={geometry_column_name: "geometry"})  # noqa: PD901
+            df = df.rename(columns={geometry_column_name: "geometry"})
             df["geometry"] = df["geometry"].apply(wkt.loads)
             gdf = gpd.GeoDataFrame(df, crs=crs)
 
@@ -322,7 +366,7 @@ class GeospatialDataReaders:
         return gdf
 
     @staticmethod
-    def read_well_path_csv(
+    def read_well_path_csv(  # noqa: PLR0912, PLR0913
         csv_path,
         x_col,
         y_col,
@@ -402,7 +446,7 @@ class GeospatialDataReaders:
         df = df.loc[mask].reset_index(drop=True)
         coords = coords[mask]
 
-        if coords.shape[0] < 2:
+        if coords.shape[0] < 2:  # noqa: PLR2004
             raise ValueError(
                 "Not enough valid vertices to define a well path."
             )
@@ -421,7 +465,7 @@ class GeospatialDataReaders:
             keep[1:] = (np.abs(np.diff(coords, axis=0)) > 0).any(axis=1)
             df = df.loc[keep].reset_index(drop=True)
             coords = coords[keep]
-            if len(coords) < 2:
+            if len(coords) < 2:  # noqa: PLR2004
                 raise ValueError(
                     "Well path collapsed to one vertex after de-duplication."
                 )
@@ -471,13 +515,119 @@ class GeospatialDataReaders:
 
         return well_gdf, values
 
+    @staticmethod
+    def validate_pfa_data(pfa, *, key="data", strict=False, verbose=True):  # noqa: PLR0912
+        """
+        Validate that all layers in the PFA structure contain populated data.
+
+        Parameters
+        ----------
+        pfa : dict
+            The PFA dictionary containing criteria/components/layers.
+        key : str, optional
+            Key to validate in each layer. Typically "data" (raw) or "model" (processed).
+        strict : bool, optional
+            If True, raise ValueError when issues are found.
+            If False, print warnings and continue.
+        verbose : bool, optional
+            If True, print validation summary.
+
+        Returns
+        -------
+        issues : list of dict
+            List of issues found. Each entry contains:
+            {criteria, component, layer, issue}
+        """
+
+        issues = []
+
+        for criteria, crit_data in pfa.get("criteria", {}).items():
+            for component, comp_data in crit_data.get(
+                "components", {}
+            ).items():
+                for layer, layer_data in comp_data.get("layers", {}).items():
+                    # --- Missing key ---
+                    if key not in layer_data:
+                        issues.append(
+                            {
+                                "criteria": criteria,
+                                "component": component,
+                                "layer": layer,
+                                "issue": f"missing '{key}'",
+                            }
+                        )
+                        continue
+
+                    data_obj = layer_data[key]
+
+                    # --- None ---
+                    if data_obj is None:
+                        issues.append(
+                            {
+                                "criteria": criteria,
+                                "component": component,
+                                "layer": layer,
+                                "issue": f"'{key}' is None",
+                            }
+                        )
+                        continue
+
+                    # --- Empty check ---
+                    is_empty = False
+
+                    try:
+                        if hasattr(data_obj, "empty"):
+                            is_empty = data_obj.empty
+                        elif hasattr(data_obj, "__len__"):
+                            is_empty = len(data_obj) == 0
+                    except Exception:
+                        # If we can't evaluate emptiness, assume OK
+                        is_empty = False
+
+                    if is_empty:
+                        issues.append(
+                            {
+                                "criteria": criteria,
+                                "component": component,
+                                "layer": layer,
+                                "issue": f"'{key}' is empty",
+                            }
+                        )
+
+        # --- Reporting ---
+        if verbose:
+            if issues:
+                print(f"\nValidation issues found for '{key}':")
+                for item in issues:
+                    print(
+                        f" - {item['criteria']} / "
+                        f"{item['component']} / "
+                        f"{item['layer']} --> {item['issue']}"
+                    )
+            else:
+                print(f"\nAll layers contain valid '{key}'.")
+
+        # --- Strict mode ---
+        if issues and strict:
+            raise ValueError(
+                f"PFA validation failed: {len(issues)} issue(s) found for '{key}'."
+            )
+
+        return issues
+
     @classmethod
-    def gather_data(cls, data_dir, pfa, file_types):  # noqa: PLR0912
+    def gather_data(  # noqa: PLR0912
+        cls, data_dir, pfa, file_types, validate=False, strict=False
+    ):
         """Function to read in data layers associated with each component of each criteria.
         Note that data must be stored in a directory with the following structure which matches
         the config: criteria/component/layers. Criteria directory, component directory, and
         data file names must match the critera, components, and layers specified in the pfa,
         and file extensions must match those specified in file_types.
+
+        If ``validate=True``, a post-load validation step checks that each layer
+        contains populated data. This helps catch missing files, naming mismatches,
+        or failed reads early in the workflow.
 
         Parameters
         ----------
@@ -489,6 +639,13 @@ class GeospatialDataReaders:
         file_types : list
             List of file types to look for when gathering data. File
             types excluded from list will be ignored.
+        validate : bool, optional
+            If True, validate that all configured layers were successfully loaded
+            and contain non-empty data. Uses ``validate_pfa_data`` internally.
+        strict : bool, optional
+            If True and validation is enabled, raise a ValueError if any layers
+            are missing data or contain empty datasets. If False, issues are
+            reported as warnings.
 
         Returns
         -------
@@ -626,15 +783,25 @@ class GeospatialDataReaders:
                             " not currently compatible with geoPFA."
                         )
 
+        if validate:
+            cls.validate_pfa_data(pfa, key="data", strict=strict)
+
         return pfa
 
     @classmethod
-    def gather_processed_data(cls, data_dir, pfa, crs):
+    def gather_processed_data(
+        cls, data_dir, pfa, crs, validate=False, strict=False
+    ):
         """Function to read in processed data layers associated with each component of each criteria.
         Note that data must be stored in a directory with the following structure which matches
         the config: criteria/component/layers. Criteria directory, component directory, and
         data file names must match the critera, components, and layers specified in the pfa,
         and file extensions must match those specified in file_types.
+
+        If ``validate=True``, a post-load validation step ensures that all expected
+        layers contain valid processed data. This is useful for verifying that
+        preprocessing steps completed successfully and that all required outputs
+        are present.
 
         Parameters
         ----------
@@ -643,6 +810,13 @@ class GeospatialDataReaders:
         pfa : dict
             Config specifying criteria, components, and data layers'
             relationship to one another. Read in from json file.
+        validate : bool, optional
+            If True, validate that all processed layers were successfully loaded
+            and contain non-empty data under the ``"model"`` key.
+        strict : bool, optional
+            If True and validation is enabled, raise a ValueError if any layers
+            are missing processed data or contain empty datasets. If False, issues
+            are reported as warnings.
 
         Returns
         -------
@@ -673,6 +847,10 @@ class GeospatialDataReaders:
                             COMPONENT_DIR / f"{layer}_processed.csv",
                             crs,
                         )
+
+        if validate:
+            cls.validate_pfa_data(pfa, key="model", strict=strict)
+
         return pfa
 
     @classmethod

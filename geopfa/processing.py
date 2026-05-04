@@ -298,6 +298,11 @@ class Cleaners:
 
         xmin, ymin, xmax, ymax = gdf.total_bounds
 
+        if xmax <= xmin or ymax <= ymin:
+            raise ValueError(
+                "Invalid extent: xmax/xmin or ymax/ymin ordering is incorrect."
+            )
+
         # Always return 2D if explicitly requested
         if dim == 2:
             return [xmin, ymin, xmax, ymax]
@@ -363,7 +368,13 @@ class Cleaners:
                 )
             return [xmin, ymin, xmax, ymax]
 
-        return [xmin, ymin, min(z_values), xmax, ymax, max(z_values)]
+        zmin = min(z_values)
+        zmax = max(z_values)
+
+        if zmax <= zmin:
+            raise ValueError("Invalid extent: zmax must be greater than zmin.")
+
+        return [xmin, ymin, zmin, xmax, ymax, zmax]
 
     @staticmethod
     def set_extent(gdf: gpd.GeoDataFrame, extent):
@@ -412,22 +423,19 @@ class Cleaners:
         else:
             xmin, ymin, zmin, xmax, ymax, zmax = extent
 
-        if xmax <= xmin or ymax <= ymin or zmax <= zmin:
+        if xmax <= xmin or ymax <= ymin:
             raise ValueError(
-                "Invalid extent: xmax/xmin, ymax/ymin, or zmin/zmax "
-                "ordering is incorrect."
+                "Invalid extent: xmax/xmin or ymax/ymin ordering is incorrect."
             )
+
+        if len(extent) == 6 and zmax <= zmin:
+            raise ValueError("Invalid extent: zmax must be greater than zmin.")
 
         bbox = shapely.geometry.box(xmin, ymin, xmax, ymax)
         gdf_xy = gdf.clip(bbox)
 
         if len(extent) == 4:
             return gdf_xy
-
-        # 3D case
-        xmin, ymin, zmin, xmax, ymax, zmax = extent
-        bbox = shapely.geometry.box(xmin, ymin, xmax, ymax)
-        gdf_xy = gdf.clip(bbox)
 
         has_z_flags = gdf_xy.geometry.apply(
             lambda geom: getattr(geom, "has_z", False) if geom else False
@@ -443,7 +451,7 @@ class Cleaners:
             return gdf_xy
 
         def z_overlap(geom):
-            if not geom.has_z:
+            if not getattr(geom, "has_z", False):
                 return False
 
             zs = []
@@ -3590,7 +3598,7 @@ class Processing:
         Notes:
         ------
         - Empty geometries (e.g., `POINT EMPTY`) are filtered out before processing.
-        - Sorting is performed by X, Y, and Z coordinates. Empty points are handled gracefully.
+        - Sorting is performed by X, Y, and Z coordinates.
         - Aggregation sums the values in the specified data column while keeping a representative geometry for each (X, Y) pair.
         - The units of the data are updated to reflect the aggregation performed.
         """
@@ -3610,37 +3618,28 @@ class Processing:
             raise ValueError("Geometry column must contain Point geometries.")
 
         # Filter out empty geometries
-        gdf_3d = gdf_3d[~gdf_3d.geometry.is_empty].reset_index(drop=True)
+        gdf_3d = (
+            gdf_3d[~gdf_3d.geometry.is_empty].copy().reset_index(drop=True)
+        )
 
-        # Sort geometries by X, Y, Z, handling empty points gracefully
-        gdf_3d = gdf_3d.sort_values(
-            by=["geometry"],
-            key=lambda col: col.apply(
-                lambda geom: (
-                    (geom.x, geom.y, geom.z)
-                    if not geom.is_empty
-                    else (float("nan"), float("nan"), float("nan"))
-                )
-            ),
-        ).reset_index(drop=True)
+        gdf_3d["x"] = gdf_3d.geometry.x
+        gdf_3d["y"] = gdf_3d.geometry.y
+        gdf_3d["z"] = gdf_3d.geometry.z
+
+        # Sort geometries by X, Y, Z
+        gdf_3d = gdf_3d.sort_values(by=["x", "y", "z"]).reset_index(drop=True)
 
         # Step 1: Aggregate by unique (X, Y, Z) points
-        gdf_3d = gdf_3d.groupby(
-            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y, geom.z)),
-            as_index=False,
-        ).agg(
+        gdf_3d = gdf_3d.groupby(["x", "y", "z"], as_index=False).agg(
             {
                 "geometry": "first",  # Keep the representative geometry
                 col: "sum",  # Sum the data column for unique (X, Y, Z)
             }
         )
         gdf_3d = gdf_3d.set_geometry("geometry")
-        gdf_3d.set_crs(crs, inplace=True)
+
         # Step 2: Collapse Z dimension to (X, Y)
-        gdf_2d = gdf_3d.groupby(
-            gdf_3d.geometry.apply(lambda geom: (geom.x, geom.y)),
-            as_index=False,
-        ).agg(
+        gdf_2d = gdf_3d.groupby(["x", "y"], as_index=False).agg(
             {
                 "geometry": "first",  # Keep the representative geometry
                 col: "sum",  # Sum across Z for unique (X, Y)
