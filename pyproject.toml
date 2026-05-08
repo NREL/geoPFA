@@ -46,9 +46,11 @@ dependencies = [
   "gpy>=1.13.2",
   "statsmodels>=0.14",
   "tqdm>=4.67",
+  "pyvista>=0.43",
 ]
 [project.optional-dependencies]
 dev = ["ipython>=8.29.0", "twine>=5.1", "pre-commit>=4.0"]
+interactive = ["pyvista[jupyter]>=0.43"]
 doc = [
   "furo>=2025.12.19,<2026",
   "myst-parser>=5.0",
@@ -110,9 +112,13 @@ test = { features = ["test"], solve-group = "default" }
 [tool.pixi.pypi-dependencies]
 geoPFA = { path = ".", editable = true }
 json5 = "*"
+trame = ">=2.5.2"
+trame-vtk = ">=2.0.7"
+trame-vuetify = ">=2.3.1"
 
 [tool.pixi.dependencies]
 contextily = ">=1.7.0,<2"
+pyvista = ">=0.43"
 gdal = ">=3.10.2,<4"
 geopandas = ">=0.14.4,<2"
 jupyterlab = ">=4.3.4,<5"
