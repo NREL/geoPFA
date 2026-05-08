@@ -51,6 +51,9 @@ dependencies = [
 [project.optional-dependencies]
 interactive = ["pyvista[jupyter]>=0.43"]
 dev = ["ipython>=8.29.0", "twine>=5.1", "pre-commit>=4.0"]
+
+interactive = ["pyvista[jupyter]>=0.43"]
+
 doc = [
   "furo>=2025.12.19,<2026",
   "myst-parser>=5.0",
