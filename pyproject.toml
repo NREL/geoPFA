@@ -323,6 +323,9 @@ ignore = [
   "F821", # Undefined name `MultiLineString`
   "S110", # `try`-`except`-`pass` detected, consider logging the exception
 ]
+"geopfa/geopfa3d/conceptual_modeling.py" = [
+  "S110", # `try`-`except`-`pass` detected, consider logging the exception
+]
 "geopfa/data_readers.py" = [
   "PLR2004", # Magic value used in comparison, consider using a constant variable
   "PD901",   # Avoid using the generic variable name `df` for DataFrames

@@ -11,8 +11,9 @@ from shapely.geometry import LineString, MultiLineString
 # ---------------------------------------------------------------------------
 
 def _coords3_from_point(pt):
-    z = getattr(pt, "z", None)
-    if z is None:
+    try:
+        z = pt.z
+    except Exception:
         c0 = pt.coords[0]
         z = c0[2] if len(c0) == 3 else 0.0
     return (pt.x, pt.y, z)
@@ -35,7 +36,7 @@ def _build_well_pts(well):
                 merged = linemerge(geoms)
             except Exception:
                 pass
-        if isinstance(merged, (LineString, MultiLineString)):
+        if isinstance(merged, LineString | MultiLineString):
             parts = merged.geoms if isinstance(merged, MultiLineString) else [merged]
             arrs = []
             for ls in parts:
@@ -45,7 +46,7 @@ def _build_well_pts(well):
                 arrs.append(arr)
             return np.vstack(arrs) if arrs else None
         return None
-    if isinstance(well, (LineString, MultiLineString)):
+    if isinstance(well, LineString | MultiLineString):
         parts = well.geoms if isinstance(well, MultiLineString) else [well]
         arrs = []
         for ls in parts:
@@ -569,7 +570,7 @@ class ConceptualModeling:
 
         # build per-component contour level arrays
         contour_by_comp = {}
-        if isinstance(contour_levels, (list, tuple)) and len(contour_levels) == len(cols):
+        if isinstance(contour_levels, list | tuple) and len(contour_levels) == len(cols):
             for cname, lev in zip(cols, contour_levels):
                 vmin_c, vmax_c = scalar_ranges[cname]
                 arr = np.atleast_1d(np.asarray(lev, dtype=float))
