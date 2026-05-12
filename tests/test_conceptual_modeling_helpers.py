@@ -1,13 +1,15 @@
 import numpy as np
 import geopandas as gpd
+import pytest
 from shapely.geometry import LineString, MultiLineString, Point
 
-from geopfa.geopfa3d.conceptual_modeling import (
+from geopfa.conceptual_modeling import (
     _apply_slices,
     _build_well_pts,
     _camera_from_view,
     _coords3_from_point,
     _infer_spacing,
+    _require_3d,
 )
 
 
@@ -151,3 +153,24 @@ def test_camera_from_view_focal_is_center():
     result = _camera_from_view(bounds, elev_deg=45, azim_deg=45)
     focal = result[1]
     assert np.allclose(focal, [5.0, 5.0, 5.0])
+
+
+# ---------------------------------------------------------------------------
+# _require_3d
+# ---------------------------------------------------------------------------
+
+def test_require_3d_passes_for_3d_points():
+    gdf = gpd.GeoDataFrame({"geometry": [Point(0, 0, 1), Point(1, 1, 2)]})
+    _require_3d(gdf, "test")  # should not raise
+
+
+def test_require_3d_raises_for_2d_points():
+    gdf = gpd.GeoDataFrame({"geometry": [Point(0, 0), Point(1, 1)]})
+    with pytest.raises(ValueError, match="Z coordinates"):
+        _require_3d(gdf, "test")
+
+
+def test_require_3d_raises_for_mixed_2d_3d():
+    gdf = gpd.GeoDataFrame({"geometry": [Point(0, 0, 1), Point(1, 1)]})
+    with pytest.raises(ValueError, match="Z coordinates"):
+        _require_3d(gdf, "test")

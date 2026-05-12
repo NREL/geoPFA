@@ -1,9 +1,18 @@
-# -*- coding: utf-8 -*-
-"""3D conceptual model visualization for PFA outputs using PyVista."""
+"""3D conceptual model visualization for PFA outputs using PyVista.
+
+All public methods in this module require Point-Z (3-D) geometries.
+Passing 2-D geometries raises a ValueError.  For 2-D map views use
+``GeospatialDataPlotters`` in ``geopfa.plotters``.  2-D conceptual
+modeling may be implemented in a future release.
+"""
+
+import warnings
+from contextlib import suppress
 
 import numpy as np
 import pyvista as pv
 from shapely.geometry import LineString, MultiLineString
+from shapely.ops import linemerge
 
 
 # ---------------------------------------------------------------------------
@@ -15,11 +24,21 @@ def _coords3_from_point(pt):
         z = pt.z
     except Exception:
         c0 = pt.coords[0]
-        z = c0[2] if len(c0) == 3 else 0.0
+        z = c0[2] if len(c0) == 3 else 0.0  # noqa: PLR2004
     return (pt.x, pt.y, z)
 
 
-def _build_well_pts(well):
+def _require_3d(gdf, fn_name):
+    """Raise ValueError if any geometry in *gdf* lacks a Z coordinate."""
+    if not all(getattr(g, "has_z", False) for g in gdf.geometry):
+        raise ValueError(
+            f"{fn_name}: all geometries must have Z coordinates. "
+            "This module renders 3-D iso-surfaces and requires Point-Z data. "
+            "For 2-D maps use GeospatialDataPlotters in geopfa.plotters."
+        )
+
+
+def _build_well_pts(well):  # noqa: PLR0911
     """Return an (N, 3) float array from a well-path GeoDataFrame or geometry."""
     if well is None:
         return None
@@ -31,17 +50,14 @@ def _build_well_pts(well):
         geoms = list(well.geometry)
         merged = geoms[0]
         if len(geoms) > 1:
-            try:
-                from shapely.ops import linemerge
+            with suppress(Exception):
                 merged = linemerge(geoms)
-            except Exception:
-                pass
         if isinstance(merged, LineString | MultiLineString):
             parts = merged.geoms if isinstance(merged, MultiLineString) else [merged]
             arrs = []
             for ls in parts:
                 arr = np.asarray(ls.coords, dtype=float)
-                if arr.shape[1] == 2:
+                if arr.shape[1] == 2:  # noqa: PLR2004
                     arr = np.c_[arr, np.zeros(len(arr))]
                 arrs.append(arr)
             return np.vstack(arrs) if arrs else None
@@ -51,7 +67,7 @@ def _build_well_pts(well):
         arrs = []
         for ls in parts:
             arr = np.asarray(ls.coords, dtype=float)
-            if arr.shape[1] == 2:
+            if arr.shape[1] == 2:  # noqa: PLR2004
                 arr = np.c_[arr, np.zeros(len(arr))]
             arrs.append(arr)
         return np.vstack(arrs) if arrs else None
@@ -93,7 +109,7 @@ def _camera_from_view(bounds, elev_deg, azim_deg):
     ]
 
 
-def _build_image_data(xs, ys, zs, extent=None):
+def _build_image_data(xs, ys, zs, extent=None):  # noqa: PLR0914
     """Build a PyVista ImageData grid from point cloud coordinates.
 
     Returns the grid plus the integer index arrays (ix, iy, iz) that map each
@@ -151,7 +167,7 @@ def _build_outline_mesh(area_outline, zmax):
     return mesh
 
 
-def _add_well_to_plotter(p, wp, well_path_values, well_units, well_cmap,
+def _add_well_to_plotter(p, wp, well_path_values, well_units, well_cmap,  # noqa: PLR0913, PLR0917
                          well_vmin, well_vmax, markersize, show_colorbar,
                          bar_x, bar_y, bar_width, bar_height,
                          colorbar_title_font_size=14, colorbar_label_font_size=12):
@@ -214,7 +230,7 @@ class ConceptualModeling:
     """
 
     @staticmethod
-    def plot_isosurface(
+    def plot_isosurface(  # noqa: PLR0912, PLR0913, PLR0914, PLR0915
         gdf,
         col,
         units,
@@ -279,7 +295,7 @@ class ConceptualModeling:
         cmap : str, optional
             Colormap for the iso-surface.
         opacity : float, optional
-            Opacity of the iso-surface (0–1).
+            Opacity of the iso-surface (0-1).
         markersize : float, optional
             Sphere size for well-path points.
         vmin, vmax : float, optional
@@ -297,20 +313,16 @@ class ConceptualModeling:
             Keys: ``"grid"``, ``"iso"``, ``"plotter"``.
         """
         if gdf is None or len(gdf) == 0:
-            print("plot_isosurface: empty GeoDataFrame.")
+            warnings.warn("plot_isosurface: empty GeoDataFrame.", stacklevel=2)
             return None
         if col not in gdf.columns:
             raise ValueError(f"plot_isosurface: column '{col}' not found.")
         if not all(g.geom_type == "Point" for g in gdf.geometry):
             raise ValueError("plot_isosurface: expects Point-Z geometries.")
+        _require_3d(gdf, "plot_isosurface")
 
-        xs = np.array([p.x for p in gdf.geometry], float)
-        ys = np.array([p.y for p in gdf.geometry], float)
-        zs = np.array(
-            [getattr(p, "z", p.coords[0][2] if len(p.coords[0]) == 3 else 0.0)
-             for p in gdf.geometry],
-            float,
-        )
+        coords = np.array([_coords3_from_point(p) for p in gdf.geometry], dtype=float)
+        xs, ys, zs = coords[:, 0], coords[:, 1], coords[:, 2]
         vals = gdf[col].astype(float).to_numpy()
 
         mask = np.ones(len(xs), dtype=bool)
@@ -323,7 +335,7 @@ class ConceptualModeling:
         xs, ys, zs, vals = xs[mask], ys[mask], zs[mask], vals[mask]
 
         if len(xs) == 0:
-            print("plot_isosurface: no data after slicing.")
+            warnings.warn("plot_isosurface: no data after slicing.", stacklevel=2)
             return None
 
         vmin_use = float(np.nanmin(vals)) if vmin is None else float(vmin)
@@ -378,18 +390,14 @@ class ConceptualModeling:
                 p.add_mesh(outline_mesh, color="black", line_width=2, show_scalar_bar=False)
 
         p.add_mesh(grid.outline(), color="black", line_width=1, show_scalar_bar=False)
-        try:
+        with suppress(Exception):
             p.show_bounds(grid="front", location="outer", all_edges=True,
                           ticks="outside", font_size=colorbar_label_font_size)
-        except Exception:
-            pass
         if hasattr(p, "add_axes"):
             p.add_axes()
 
-        try:
+        with suppress(Exception):
             p.camera_position = _camera_from_view(grid.bounds, *view)
-        except Exception:
-            pass
         p.reset_camera()
 
         if off_screen:
@@ -401,7 +409,7 @@ class ConceptualModeling:
         return {"grid": grid, "iso": iso, "plotter": p}
 
     @staticmethod
-    def plot_conceptual_model(
+    def plot_conceptual_model(  # noqa: PLR0912, PLR0913, PLR0914, PLR0915
         gdf,
         cols,
         units,
@@ -479,7 +487,7 @@ class ConceptualModeling:
         component_colors : list of str, optional
             One colour per column.  Defaults to red / dodgerblue / goldenrod / …
         opacity : float, optional
-            Opacity of iso-surfaces (0–1).
+            Opacity of iso-surfaces (0-1).
         markersize : float, optional
             Sphere size for well-path points.
         vmin, vmax : float, optional
@@ -497,10 +505,11 @@ class ConceptualModeling:
             Keys: ``"grid"``, ``"grid_clipped"``, ``"iso_components"``,
             ``"high_vol"``, ``"plotter"``.
         """
-        if isinstance(cols, str):
-            cols = [cols]
-        else:
-            cols = list(cols)
+        if gdf is None or gdf.empty:
+            warnings.warn("plot_conceptual_model: empty GeoDataFrame.", stacklevel=2)
+            return None
+
+        cols = [cols] if isinstance(cols, str) else list(cols)
         if not cols:
             raise ValueError("plot_conceptual_model: 'cols' must contain at least one column.")
         for c in cols:
@@ -509,20 +518,12 @@ class ConceptualModeling:
 
         single = len(cols) == 1
         main_col = cols[0]
-
-        if gdf is None or gdf.empty:
-            print("plot_conceptual_model: empty GeoDataFrame.")
-            return None
         if not all(g.geom_type == "Point" for g in gdf.geometry):
             raise ValueError("plot_conceptual_model: expects Point-Z geometries.")
+        _require_3d(gdf, "plot_conceptual_model")
 
-        xs_full = np.array([p.x for p in gdf.geometry], float)
-        ys_full = np.array([p.y for p in gdf.geometry], float)
-        zs_full = np.array(
-            [getattr(p, "z", p.coords[0][2] if len(p.coords[0]) == 3 else 0.0)
-             for p in gdf.geometry],
-            float,
-        )
+        coords_full = np.array([_coords3_from_point(p) for p in gdf.geometry], dtype=float)
+        xs_full, ys_full, zs_full = coords_full[:, 0], coords_full[:, 1], coords_full[:, 2]
 
         mask = np.ones(len(xs_full), dtype=bool)
         if x_slice is not None:
@@ -533,7 +534,7 @@ class ConceptualModeling:
             mask &= zs_full <= z_slice
 
         if not mask.any():
-            print("plot_conceptual_model: no data after slicing.")
+            warnings.warn("plot_conceptual_model: no data after slicing.", stacklevel=2)
             return None
 
         xs, ys, zs = xs_full[mask], ys_full[mask], zs_full[mask]
@@ -549,7 +550,7 @@ class ConceptualModeling:
 
         grid_c = grid.clip_box(list(grid.bounds), invert=False)
         if grid_c.n_points == 0:
-            print("plot_conceptual_model: no points after clipping.")
+            warnings.warn("plot_conceptual_model: no points after clipping.", stacklevel=2)
             return None
 
         scalar_ranges = {}
@@ -587,8 +588,8 @@ class ConceptualModeling:
                 contour_by_comp[cname] = np.unique(np.round(arr, 6))
 
         if component_colors is None:
-            _defaults = ["red", "dodgerblue", "goldenrod", "purple", "turquoise"]
-            component_colors = [_defaults[i % len(_defaults)] for i in range(len(cols))]
+            defaults = ["red", "dodgerblue", "goldenrod", "purple", "turquoise"]
+            component_colors = [defaults[i % len(defaults)] for i in range(len(cols))]
 
         bar_y, bar_width, bar_height = 0.11, 0.028, 0.74
 
@@ -654,18 +655,14 @@ class ConceptualModeling:
                 p.add_mesh(outline_mesh, color="black", line_width=2, show_scalar_bar=False)
 
         p.add_mesh(grid_c.outline(), color="black", line_width=1, show_scalar_bar=False)
-        try:
+        with suppress(Exception):
             p.show_bounds(grid="front", location="outer", all_edges=True,
                           ticks="outside", font_size=colorbar_label_font_size)
-        except Exception:
-            pass
         if hasattr(p, "add_axes"):
             p.add_axes()
 
-        try:
+        with suppress(Exception):
             p.camera_position = _camera_from_view(grid_c.bounds, *view)
-        except Exception:
-            pass
         p.reset_camera()
 
         if off_screen:
