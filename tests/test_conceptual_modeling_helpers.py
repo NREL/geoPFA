@@ -4,6 +4,7 @@ import pytest
 from shapely.geometry import LineString, MultiLineString, Point
 
 from geopfa.conceptual_modeling import (
+
     _apply_slices,
     _build_well_pts,
     _camera_from_view,
@@ -173,4 +174,4 @@ def test_require_3d_raises_for_2d_points():
 def test_require_3d_raises_for_mixed_2d_3d():
     gdf = gpd.GeoDataFrame({"geometry": [Point(0, 0, 1), Point(1, 1)]})
     with pytest.raises(ValueError, match="Z coordinates"):
-        _require_3d(gdf, "test")
+	_require_3d(gdf, "test")
