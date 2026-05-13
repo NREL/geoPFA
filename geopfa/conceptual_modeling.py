@@ -19,6 +19,7 @@ from shapely.ops import linemerge
 # Module-level helpers
 # ---------------------------------------------------------------------------
 
+
 def _coords3_from_point(pt):
     try:
         z = pt.z
@@ -46,14 +47,20 @@ def _build_well_pts(well):  # noqa: PLR0911
         if len(well.geometry) == 0:
             return None
         if all(g.geom_type == "Point" for g in well.geometry):
-            return np.array([_coords3_from_point(p) for p in well.geometry], dtype=float)
+            return np.array(
+                [_coords3_from_point(p) for p in well.geometry], dtype=float
+            )
         geoms = list(well.geometry)
         merged = geoms[0]
         if len(geoms) > 1:
             with suppress(Exception):
                 merged = linemerge(geoms)
         if isinstance(merged, LineString | MultiLineString):
-            parts = merged.geoms if isinstance(merged, MultiLineString) else [merged]
+            parts = (
+                merged.geoms
+                if isinstance(merged, MultiLineString)
+                else [merged]
+            )
             arrs = []
             for ls in parts:
                 arr = np.asarray(ls.coords, dtype=float)
@@ -96,11 +103,15 @@ def _infer_spacing(arr):
 
 def _camera_from_view(bounds, elev_deg, azim_deg):
     xmin, xmax, ymin, ymax, zmin, zmax = bounds
-    center = np.array([(xmin + xmax) / 2, (ymin + ymax) / 2, (zmin + zmax) / 2])
+    center = np.array(
+        [(xmin + xmax) / 2, (ymin + ymax) / 2, (zmin + zmax) / 2]
+    )
     diag_xy = np.hypot(xmax - xmin, ymax - ymin) or 1.0
     az = np.deg2rad(azim_deg)
     el = np.deg2rad(elev_deg)
-    dir_vec = np.array([-np.cos(az) * np.cos(el), -np.sin(az) * np.cos(el), np.sin(el)])
+    dir_vec = np.array(
+        [-np.cos(az) * np.cos(el), -np.sin(az) * np.cos(el), np.sin(el)]
+    )
     dir_vec /= np.linalg.norm(dir_vec)
     return [
         (center + dir_vec * 2.2 * diag_xy).tolist(),
@@ -151,13 +162,17 @@ def _build_outline_mesh(area_outline, zmax):
     for geom in area_outline.geometry:
         if geom is None:
             continue
-        polys = list(geom.geoms) if geom.geom_type == "MultiPolygon" else [geom]
+        polys = (
+            list(geom.geoms) if geom.geom_type == "MultiPolygon" else [geom]
+        )
         for poly in polys:
             coords = np.array(poly.exterior.coords, dtype=float)
             n = len(coords)
             pts = np.c_[coords[:, 0], coords[:, 1], np.full(n, zmax)]
             all_points.append(pts)
-            all_lines.extend([[2, offset + i, offset + i + 1] for i in range(n - 1)])
+            all_lines.extend(
+                [[2, offset + i, offset + i + 1] for i in range(n - 1)]
+            )
             offset += n
     if not all_points:
         return None
@@ -167,34 +182,50 @@ def _build_outline_mesh(area_outline, zmax):
     return mesh
 
 
-def _add_well_to_plotter(p, wp, well_path_values, well_units, well_cmap,  # noqa: PLR0913, PLR0917
-                         well_vmin, well_vmax, markersize, show_colorbar,
-                         bar_x, bar_y, bar_width, bar_height,
-                         colorbar_title_font_size=14, colorbar_label_font_size=12):
+def _add_well_to_plotter(  # noqa: PLR0913, PLR0917
+    p,
+    wp,
+    well_path_values,
+    well_units,
+    well_cmap,
+    well_vmin,
+    well_vmax,
+    markersize,
+    show_colorbar,
+    bar_x,
+    bar_y,
+    bar_width,
+    bar_height,
+    colorbar_title_font_size=14,
+    colorbar_label_font_size=12,
+):
     """Add a well-path point cloud to an existing PyVista plotter."""
     if wp is None or len(wp) == 0:
         return
     well_poly = pv.PolyData(wp)
-    has_values = (
-        well_path_values is not None
-        and np.any(np.isfinite(well_path_values))
+    has_values = well_path_values is not None and np.any(
+        np.isfinite(well_path_values)
     )
     if has_values:
         wv = np.asarray(well_path_values, float)[: len(wp)]
         well_poly[well_units] = wv
         w_vmin = np.nanmin(wv) if well_vmin is None else well_vmin
         w_vmax = np.nanmax(wv) if well_vmax is None else well_vmax
-        sbar = {
-            "title": well_units,
-            "n_labels": 6,
-            "vertical": True,
-            "position_x": bar_x,
-            "position_y": bar_y,
-            "width": bar_width,
-            "height": bar_height,
-            "title_font_size": colorbar_title_font_size,
-            "label_font_size": colorbar_label_font_size,
-        } if show_colorbar else {"title": ""}
+        sbar = (
+            {
+                "title": well_units,
+                "n_labels": 6,
+                "vertical": True,
+                "position_x": bar_x,
+                "position_y": bar_y,
+                "width": bar_width,
+                "height": bar_height,
+                "title_font_size": colorbar_title_font_size,
+                "label_font_size": colorbar_label_font_size,
+            }
+            if show_colorbar
+            else {"title": ""}
+        )
         p.add_mesh(
             well_poly,
             scalars=well_units,
@@ -217,6 +248,7 @@ def _add_well_to_plotter(p, wp, well_path_values, well_units, well_cmap,  # noqa
 # ---------------------------------------------------------------------------
 # Public class
 # ---------------------------------------------------------------------------
+
 
 class ConceptualModeling:
     """Visualization tools for 3D conceptual geothermal resource models.
@@ -321,7 +353,9 @@ class ConceptualModeling:
             raise ValueError("plot_isosurface: expects Point-Z geometries.")
         _require_3d(gdf, "plot_isosurface")
 
-        coords = np.array([_coords3_from_point(p) for p in gdf.geometry], dtype=float)
+        coords = np.array(
+            [_coords3_from_point(p) for p in gdf.geometry], dtype=float
+        )
         xs, ys, zs = coords[:, 0], coords[:, 1], coords[:, 2]
         vals = gdf[col].astype(float).to_numpy()
 
@@ -335,12 +369,18 @@ class ConceptualModeling:
         xs, ys, zs, vals = xs[mask], ys[mask], zs[mask], vals[mask]
 
         if len(xs) == 0:
-            warnings.warn("plot_isosurface: no data after slicing.", stacklevel=2)
+            warnings.warn(
+                "plot_isosurface: no data after slicing.", stacklevel=2
+            )
             return None
 
         vmin_use = float(np.nanmin(vals)) if vmin is None else float(vmin)
         vmax_use = float(np.nanmax(vals)) if vmax is None else float(vmax)
-        if not np.isfinite(vmin_use) or not np.isfinite(vmax_use) or vmin_use == vmax_use:
+        if (
+            not np.isfinite(vmin_use)
+            or not np.isfinite(vmax_use)
+            or vmin_use == vmax_use
+        ):
             vmin_use, vmax_use = 0.0, 1.0
 
         grid, ix, iy, iz, (nx, ny, nz) = _build_image_data(xs, ys, zs, extent)
@@ -375,11 +415,23 @@ class ConceptualModeling:
                 },
             )
 
-        wp = _apply_slices(_build_well_pts(well_path), x_slice, y_slice, z_slice)
+        wp = _apply_slices(
+            _build_well_pts(well_path), x_slice, y_slice, z_slice
+        )
         _add_well_to_plotter(
-            p, wp, well_path_values, well_units, well_cmap,
-            well_vmin, well_vmax, markersize, show_colorbar=True,
-            bar_x=0.905, bar_y=bar_y, bar_width=bar_width, bar_height=bar_height,
+            p,
+            wp,
+            well_path_values,
+            well_units,
+            well_cmap,
+            well_vmin,
+            well_vmax,
+            markersize,
+            show_colorbar=True,
+            bar_x=0.905,
+            bar_y=bar_y,
+            bar_width=bar_width,
+            bar_height=bar_height,
             colorbar_title_font_size=colorbar_title_font_size,
             colorbar_label_font_size=colorbar_label_font_size,
         )
@@ -387,12 +439,24 @@ class ConceptualModeling:
         if area_outline is not None:
             outline_mesh = _build_outline_mesh(area_outline, grid.bounds[5])
             if outline_mesh is not None:
-                p.add_mesh(outline_mesh, color="black", line_width=2, show_scalar_bar=False)
+                p.add_mesh(
+                    outline_mesh,
+                    color="black",
+                    line_width=2,
+                    show_scalar_bar=False,
+                )
 
-        p.add_mesh(grid.outline(), color="black", line_width=1, show_scalar_bar=False)
+        p.add_mesh(
+            grid.outline(), color="black", line_width=1, show_scalar_bar=False
+        )
         with suppress(Exception):
-            p.show_bounds(grid="front", location="outer", all_edges=True,
-                          ticks="outside", font_size=colorbar_label_font_size)
+            p.show_bounds(
+                grid="front",
+                location="outer",
+                all_edges=True,
+                ticks="outside",
+                font_size=colorbar_label_font_size,
+            )
         if hasattr(p, "add_axes"):
             p.add_axes()
 
@@ -506,24 +570,38 @@ class ConceptualModeling:
             ``"high_vol"``, ``"plotter"``.
         """
         if gdf is None or gdf.empty:
-            warnings.warn("plot_conceptual_model: empty GeoDataFrame.", stacklevel=2)
+            warnings.warn(
+                "plot_conceptual_model: empty GeoDataFrame.", stacklevel=2
+            )
             return None
 
         cols = [cols] if isinstance(cols, str) else list(cols)
         if not cols:
-            raise ValueError("plot_conceptual_model: 'cols' must contain at least one column.")
+            raise ValueError(
+                "plot_conceptual_model: 'cols' must contain at least one column."
+            )
         for c in cols:
             if c not in gdf.columns:
-                raise ValueError(f"plot_conceptual_model: column '{c}' not found.")
+                raise ValueError(
+                    f"plot_conceptual_model: column '{c}' not found."
+                )
 
         single = len(cols) == 1
         main_col = cols[0]
         if not all(g.geom_type == "Point" for g in gdf.geometry):
-            raise ValueError("plot_conceptual_model: expects Point-Z geometries.")
+            raise ValueError(
+                "plot_conceptual_model: expects Point-Z geometries."
+            )
         _require_3d(gdf, "plot_conceptual_model")
 
-        coords_full = np.array([_coords3_from_point(p) for p in gdf.geometry], dtype=float)
-        xs_full, ys_full, zs_full = coords_full[:, 0], coords_full[:, 1], coords_full[:, 2]
+        coords_full = np.array(
+            [_coords3_from_point(p) for p in gdf.geometry], dtype=float
+        )
+        xs_full, ys_full, zs_full = (
+            coords_full[:, 0],
+            coords_full[:, 1],
+            coords_full[:, 2],
+        )
 
         mask = np.ones(len(xs_full), dtype=bool)
         if x_slice is not None:
@@ -534,7 +612,9 @@ class ConceptualModeling:
             mask &= zs_full <= z_slice
 
         if not mask.any():
-            warnings.warn("plot_conceptual_model: no data after slicing.", stacklevel=2)
+            warnings.warn(
+                "plot_conceptual_model: no data after slicing.", stacklevel=2
+            )
             return None
 
         xs, ys, zs = xs_full[mask], ys_full[mask], zs_full[mask]
@@ -550,7 +630,10 @@ class ConceptualModeling:
 
         grid_c = grid.clip_box(list(grid.bounds), invert=False)
         if grid_c.n_points == 0:
-            warnings.warn("plot_conceptual_model: no points after clipping.", stacklevel=2)
+            warnings.warn(
+                "plot_conceptual_model: no points after clipping.",
+                stacklevel=2,
+            )
             return None
 
         scalar_ranges = {}
@@ -558,7 +641,9 @@ class ConceptualModeling:
             cv = grid_c[cname]
             cv = cv[np.isfinite(cv)]
             scalar_ranges[cname] = (
-                (float(cv.min()), float(cv.max())) if cv.size else (np.nan, np.nan)
+                (float(cv.min()), float(cv.max()))
+                if cv.size
+                else (np.nan, np.nan)
             )
 
         vmin_main, vmax_main = scalar_ranges[main_col]
@@ -566,12 +651,18 @@ class ConceptualModeling:
             vmin_main = float(vmin)
         if vmax is not None:
             vmax_main = float(vmax)
-        if not np.isfinite(vmin_main) or not np.isfinite(vmax_main) or vmin_main == vmax_main:
+        if (
+            not np.isfinite(vmin_main)
+            or not np.isfinite(vmax_main)
+            or vmin_main == vmax_main
+        ):
             vmin_main, vmax_main = 0.0, 1.0
 
         # build per-component contour level arrays
         contour_by_comp = {}
-        if isinstance(contour_levels, list | tuple) and len(contour_levels) == len(cols):
+        if isinstance(contour_levels, list | tuple) and len(
+            contour_levels
+        ) == len(cols):
             for cname, lev in zip(cols, contour_levels):
                 vmin_c, vmax_c = scalar_ranges[cname]
                 arr = np.atleast_1d(np.asarray(lev, dtype=float))
@@ -588,8 +679,16 @@ class ConceptualModeling:
                 contour_by_comp[cname] = np.unique(np.round(arr, 6))
 
         if component_colors is None:
-            defaults = ["red", "dodgerblue", "goldenrod", "purple", "turquoise"]
-            component_colors = [defaults[i % len(defaults)] for i in range(len(cols))]
+            defaults = [
+                "red",
+                "dodgerblue",
+                "goldenrod",
+                "purple",
+                "turquoise",
+            ]
+            component_colors = [
+                defaults[i % len(defaults)] for i in range(len(cols))
+            ]
 
         bar_y, bar_width, bar_height = 0.11, 0.028, 0.74
 
@@ -603,7 +702,9 @@ class ConceptualModeling:
             levels = contour_by_comp.get(cname, np.array([], dtype=float))
             if levels.size == 0 or not np.isfinite(grid_c[cname]).any():
                 continue
-            iso = grid_c.contour(isosurfaces=list(map(float, levels)), scalars=cname)
+            iso = grid_c.contour(
+                isosurfaces=list(map(float, levels)), scalars=cname
+            )
             if iso.n_points > 0:
                 if single:
                     p.add_mesh(
@@ -634,17 +735,35 @@ class ConceptualModeling:
                 iso_components[cname] = iso
 
         if filter_threshold is not None and np.isfinite(vmin_main):
-            hv = grid_c.threshold(filter_threshold, scalars=main_col, invert=False)
+            hv = grid_c.threshold(
+                filter_threshold, scalars=main_col, invert=False
+            )
             if hv.n_cells > 0:
                 high_vol = hv
-                p.add_mesh(high_vol, opacity=0.20, color="white", show_scalar_bar=False)
+                p.add_mesh(
+                    high_vol,
+                    opacity=0.20,
+                    color="white",
+                    show_scalar_bar=False,
+                )
 
-        wp = _apply_slices(_build_well_pts(well_path), x_slice, y_slice, z_slice)
+        wp = _apply_slices(
+            _build_well_pts(well_path), x_slice, y_slice, z_slice
+        )
         _add_well_to_plotter(
-            p, wp, well_path_values, well_units, well_cmap,
-            well_vmin, well_vmax, markersize,
+            p,
+            wp,
+            well_path_values,
+            well_units,
+            well_cmap,
+            well_vmin,
+            well_vmax,
+            markersize,
             show_colorbar=show_well_colorbar,
-            bar_x=0.875, bar_y=bar_y, bar_width=bar_width, bar_height=bar_height,
+            bar_x=0.875,
+            bar_y=bar_y,
+            bar_width=bar_width,
+            bar_height=bar_height,
             colorbar_title_font_size=colorbar_title_font_size,
             colorbar_label_font_size=colorbar_label_font_size,
         )
@@ -652,12 +771,27 @@ class ConceptualModeling:
         if area_outline is not None:
             outline_mesh = _build_outline_mesh(area_outline, grid_c.bounds[5])
             if outline_mesh is not None:
-                p.add_mesh(outline_mesh, color="black", line_width=2, show_scalar_bar=False)
+                p.add_mesh(
+                    outline_mesh,
+                    color="black",
+                    line_width=2,
+                    show_scalar_bar=False,
+                )
 
-        p.add_mesh(grid_c.outline(), color="black", line_width=1, show_scalar_bar=False)
+        p.add_mesh(
+            grid_c.outline(),
+            color="black",
+            line_width=1,
+            show_scalar_bar=False,
+        )
         with suppress(Exception):
-            p.show_bounds(grid="front", location="outer", all_edges=True,
-                          ticks="outside", font_size=colorbar_label_font_size)
+            p.show_bounds(
+                grid="front",
+                location="outer",
+                all_edges=True,
+                ticks="outside",
+                font_size=colorbar_label_font_size,
+            )
         if hasattr(p, "add_axes"):
             p.add_axes()
 

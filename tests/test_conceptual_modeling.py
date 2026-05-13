@@ -6,11 +6,25 @@ from shapely.geometry import Point
 from geopfa.conceptual_modeling import ConceptualModeling
 from tests.fixtures.gdf_builders import make_point_z_gdf
 
+# PyVista plotting requires vtkRenderingMatplotlib, which is absent on some
+# platforms (e.g. Windows CI). Detect once and skip rendering tests there.
+try:
+    import pyvista.plotting
+    _pv_plotting_available = True
+except Exception:
+    _pv_plotting_available = False
+
+_needs_pv_plotting = pytest.mark.skipif(
+    not _pv_plotting_available,
+    reason="vtkRenderingMatplotlib not available on this platform",
+)
+
 
 # ---------------------------------------------------------------------------
 # plot_isosurface
 # ---------------------------------------------------------------------------
 
+@_needs_pv_plotting
 def test_plot_isosurface_smoke(tmp_path):
     gdf = make_point_z_gdf()
     result = ConceptualModeling.plot_isosurface(
@@ -55,6 +69,7 @@ def test_plot_isosurface_2d_geom_raises():
 # plot_conceptual_model
 # ---------------------------------------------------------------------------
 
+@_needs_pv_plotting
 def test_plot_conceptual_model_single_col_smoke(tmp_path):
     gdf = make_point_z_gdf()
     result = ConceptualModeling.plot_conceptual_model(
@@ -70,6 +85,7 @@ def test_plot_conceptual_model_single_col_smoke(tmp_path):
     assert {"grid", "grid_clipped", "iso_components", "plotter"} <= result.keys()
 
 
+@_needs_pv_plotting
 def test_plot_conceptual_model_multi_col_smoke(tmp_path):
     gdf = make_point_z_gdf()
     gdf["value2"] = np.random.default_rng(1).random(len(gdf))
