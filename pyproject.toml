@@ -112,7 +112,7 @@ geoPFA = { path = ".", editable = true }
 json5 = "*"
 
 [tool.pixi.dependencies]
-contextily = "==1.6.2"
+contextily = ">=1.7.0,<2"
 gdal = ">=3.10.2,<4"
 geopandas = ">=0.14.4,<2"
 jupyterlab = ">=4.3.4,<5"
