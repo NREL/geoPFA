@@ -172,7 +172,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.46.4-h54a6638_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/proj-9.6.2-h18fbb6c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/prometheus-cpp-1.3.0-ha5d0236_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.1.0-py312h66e93f0_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-7.2.2-py312h5253ce2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-hb9d3cd8_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-21.0.0-py312h7900ff3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-21.0.0-py312hc195796_3_cpu.conda
@@ -640,7 +640,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pillow-12.2.0-py312h4e908a4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/proj-9.6.2-hdbeaa80_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prometheus-cpp-1.3.0-h0967b3e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.1.0-py312h0bf5046_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-7.2.2-py312hb3ab3e3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pthread-stubs-0.4-hd74edd7_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-21.0.0-py312h1f38498_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-core-21.0.0-py312hae6ed00_3_cpu.conda
@@ -951,7 +951,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pillow-12.2.0-py312h31f0997_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.46.4-h5112557_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/proj-9.6.2-h7990399_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.1.0-py312h4389bb4_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-7.2.2-py312he5662c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthread-stubs-0.4-h0e40799_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-21.0.0-py312h2e8e312_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-core-21.0.0-py312h85419b5_3_cpu.conda
@@ -1171,7 +1171,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.46.4-h54a6638_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/proj-9.6.2-h18fbb6c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/prometheus-cpp-1.3.0-ha5d0236_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.1.0-py312h66e93f0_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-7.2.2-py312h5253ce2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-hb9d3cd8_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-21.0.0-py312h7900ff3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-21.0.0-py312hc195796_3_cpu.conda
@@ -1638,7 +1638,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pillow-12.2.0-py312h4e908a4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/proj-9.6.2-hdbeaa80_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prometheus-cpp-1.3.0-h0967b3e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.1.0-py312h0bf5046_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-7.2.2-py312hb3ab3e3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pthread-stubs-0.4-hd74edd7_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-21.0.0-py312h1f38498_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-core-21.0.0-py312hae6ed00_3_cpu.conda
@@ -1948,7 +1948,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pillow-12.2.0-py312h31f0997_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.46.4-h5112557_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/proj-9.6.2-h7990399_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.1.0-py312h4389bb4_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-7.2.2-py312he5662c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthread-stubs-0.4-h0e40799_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-21.0.0-py312h2e8e312_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-core-21.0.0-py312h85419b5_3_cpu.conda
@@ -2171,7 +2171,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.46.4-h54a6638_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/proj-9.6.2-h18fbb6c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/prometheus-cpp-1.3.0-ha5d0236_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.1.0-py312h66e93f0_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-7.2.2-py312h5253ce2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-hb9d3cd8_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-21.0.0-py312h7900ff3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-21.0.0-py312hc195796_3_cpu.conda
@@ -2775,7 +2775,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pillow-12.2.0-py312h4e908a4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/proj-9.6.2-hdbeaa80_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prometheus-cpp-1.3.0-h0967b3e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.1.0-py312h0bf5046_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-7.2.2-py312hb3ab3e3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pthread-stubs-0.4-hd74edd7_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-21.0.0-py312h1f38498_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-core-21.0.0-py312hae6ed00_3_cpu.conda
@@ -3167,7 +3167,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pillow-12.2.0-py312h31f0997_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.46.4-h5112557_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/proj-9.6.2-h7990399_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.1.0-py312h4389bb4_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-7.2.2-py312he5662c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthread-stubs-0.4-h0e40799_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-21.0.0-py312h2e8e312_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-core-21.0.0-py312h85419b5_3_cpu.conda
@@ -3417,7 +3417,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.46.4-h54a6638_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/proj-9.6.2-h18fbb6c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/prometheus-cpp-1.3.0-ha5d0236_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.1.0-py312h66e93f0_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-7.2.2-py312h5253ce2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-hb9d3cd8_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-21.0.0-py312h7900ff3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-21.0.0-py312hc195796_3_cpu.conda
@@ -3952,7 +3952,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pillow-12.2.0-py312h4e908a4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/proj-9.6.2-hdbeaa80_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prometheus-cpp-1.3.0-h0967b3e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.1.0-py312h0bf5046_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-7.2.2-py312hb3ab3e3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pthread-stubs-0.4-hd74edd7_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-21.0.0-py312h1f38498_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-core-21.0.0-py312hae6ed00_3_cpu.conda
@@ -4298,7 +4298,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pillow-12.2.0-py312h31f0997_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.46.4-h5112557_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/proj-9.6.2-h7990399_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.1.0-py312h4389bb4_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-7.2.2-py312he5662c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthread-stubs-0.4-h0e40799_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-21.0.0-py312h2e8e312_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-core-21.0.0-py312h85419b5_3_cpu.conda
@@ -4523,7 +4523,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.46.4-h54a6638_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/proj-9.6.2-h18fbb6c_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/prometheus-cpp-1.3.0-ha5d0236_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.1.0-py312h66e93f0_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-7.2.2-py312h5253ce2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-hb9d3cd8_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-21.0.0-py312h7900ff3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-core-21.0.0-py312hc195796_3_cpu.conda
@@ -5035,7 +5035,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pillow-12.2.0-py312h4e908a4_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/proj-9.6.2-hdbeaa80_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/prometheus-cpp-1.3.0-h0967b3e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.1.0-py312h0bf5046_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-7.2.2-py312hb3ab3e3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pthread-stubs-0.4-hd74edd7_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-21.0.0-py312h1f38498_3.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyarrow-core-21.0.0-py312hae6ed00_3_cpu.conda
@@ -5372,7 +5372,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pillow-12.2.0-py312h31f0997_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pixman-0.46.4-h5112557_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/proj-9.6.2-h7990399_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.1.0-py312h4389bb4_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/psutil-7.2.2-py312he5662c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pthread-stubs-0.4-h0e40799_1002.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-21.0.0-py312h2e8e312_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/pyarrow-core-21.0.0-py312h85419b5_3_cpu.conda
@@ -7815,20 +7815,20 @@ packages:
   purls: []
   size: 199544
   timestamp: 1730769112346
-- conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-6.1.0-py312h66e93f0_0.conda
-  sha256: 0f309b435174e037d5cfe5ed26c1c5ad8152c68cfe61af17709ec31ec3d9f096
-  md5: 0524eb91d3d78d76d671c6e3cd7cee82
+- conda: https://conda.anaconda.org/conda-forge/linux-64/psutil-7.2.2-py312h5253ce2_0.conda
+  sha256: d834fd656133c9e4eaf63ffe9a117c7d0917d86d89f7d64073f4e3a0020bd8a7
+  md5: dd94c506b119130aef5a9382aed648e7
   depends:
+  - python
+  - libgcc >=14
   - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - python >=3.12,<3.13.0a0
   - python_abi 3.12.* *_cp312
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/psutil?source=hash-mapping
-  size: 488462
-  timestamp: 1729847159916
+  size: 225545
+  timestamp: 1769678155334
 - conda: https://conda.anaconda.org/conda-forge/linux-64/pthread-stubs-0.4-hb9d3cd8_1002.conda
   sha256: 9c88f8c64590e9567c6c80823f0328e58d3b1efb0e1c539c0315ceca764e0973
   md5: b3c17d95b5a10c6e64a21fa17573e70e
@@ -13333,20 +13333,20 @@ packages:
   purls: []
   size: 173220
   timestamp: 1730769371051
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-6.1.0-py312h0bf5046_0.conda
-  sha256: 143a40f9c72d803744ebd6a60801c5cd17af152b293f8d59e90111ce62b53569
-  md5: 61566f5c6e1d29d1d12882eb93e28532
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/psutil-7.2.2-py312hb3ab3e3_0.conda
+  sha256: 6d0e21c76436374635c074208cfeee62a94d3c37d0527ad67fd8a7615e546a05
+  md5: fd856899666759403b3c16dcba2f56ff
   depends:
+  - python
   - __osx >=11.0
-  - python >=3.12,<3.13.0a0
-  - python >=3.12,<3.13.0a0 *_cpython
+  - python 3.12.* *_cpython
   - python_abi 3.12.* *_cp312
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/psutil?source=hash-mapping
-  size: 493431
-  timestamp: 1729847279283
+  size: 239031
+  timestamp: 1769678393511
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pthread-stubs-0.4-hd74edd7_1002.conda
   sha256: 8ed65e17fbb0ca944bfb8093b60086e3f9dd678c3448b5de212017394c247ee3
   md5: 415816daf82e0b23a736a069a75e9da7
@@ -15902,21 +15902,21 @@ packages:
   purls: []
   size: 2788230
   timestamp: 1754928361098
-- conda: https://conda.anaconda.org/conda-forge/win-64/psutil-6.1.0-py312h4389bb4_0.conda
-  sha256: 49640ecea25367e46c89d7ee8556a1d96a0c2b82240b303415b39a29aaec7163
-  md5: ef327db3af50ec234214c3e7566510eb
+- conda: https://conda.anaconda.org/conda-forge/win-64/psutil-7.2.2-py312he5662c2_0.conda
+  sha256: edffc84c001a05b996b5f8607c8164432754e86ec9224e831cd00ebabdec04e7
+  md5: a2724c93b745fc7861948eb8b9f6679a
   depends:
-  - python >=3.12,<3.13.0a0
-  - python_abi 3.12.* *_cp312
+  - python
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
   - ucrt >=10.0.20348.0
-  - vc >=14.2,<15
-  - vc14_runtime >=14.29.30139
+  - python_abi 3.12.* *_cp312
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/psutil?source=hash-mapping
-  size: 503151
-  timestamp: 1729847947592
+  size: 242769
+  timestamp: 1769678170631
 - conda: https://conda.anaconda.org/conda-forge/win-64/pthread-stubs-0.4-h0e40799_1002.conda
   sha256: 7e446bafb4d692792310ed022fe284e848c6a868c861655a92435af7368bae7b
   md5: 3c8f2573569bb816483e5cf57efbbe29
@@ -16654,7 +16654,6 @@ packages:
   - pandas>=2.0
   - pathos>=0.3.3
   - pooch>=1.8
-  - psutil>=6.1.0
   - pyarrow>=20.0
   - pykrige>=1.7
   - rasterio>=1.4.2,<2
