@@ -1,8 +1,5 @@
 [build-system]
-requires = [
-  "hatchling>=1.9",
-  "hatch-vcs>=0.5",
-  ]
+requires = ["hatchling>=1.9", "hatch-vcs>=0.5"]
 build-backend = "hatchling.build"
 
 [project]
@@ -11,28 +8,26 @@ dynamic = ["version"]
 description = "Geothermal Play Fairway Analysis"
 readme = "README.md"
 authors = [
-  {name = "Nicole Taverna", email = "Nicole.Taverna@nrel.gov"},
-  {name = "Scott Mello", email = "Scott.Mello@nrel.gov"},
-  {name = "Guilherme Castelao", email = "gpimenta@nrel.gov"},
-  {name = "Dylan Hettinger", email = "Dylan.Hettinger@nrel.gov"},
-  {name = "Karthik Menon", email = "Karthik.Menon@nrel.gov"},
-  {name = "Emily Holt", email = "Emily.Holt@nrel.gov"}
-  ]
-maintainers = [
-  {name = "Nicole Taverna", email = "Nicole.Taverna@nrel.gov"}
-  ]
+  { name = "Nicole Taverna", email = "Nicole.Taverna@nrel.gov" },
+  { name = "Scott Mello", email = "Scott.Mello@nrel.gov" },
+  { name = "Guilherme Castelao", email = "gpimenta@nrel.gov" },
+  { name = "Dylan Hettinger", email = "Dylan.Hettinger@nrel.gov" },
+  { name = "Karthik Menon", email = "Karthik.Menon@nrel.gov" },
+  { name = "Emily Holt", email = "Emily.Holt@nrel.gov" },
+]
+maintainers = [{ name = "Nicole Taverna", email = "Nicole.Taverna@nrel.gov" }]
 license = "BSD-3-Clause"
-keywords=["geothermal", "PFA"]
+keywords = ["geothermal", "PFA"]
 requires-python = ">= 3.11"
-classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Science/Research",
-        "Natural Language :: English",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13",
-        "Programming Language :: Python :: 3.14",
-    ]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
 dependencies = [
   "iapws>=1.5.4",
   "matplotlib>=3.0",
@@ -54,11 +49,7 @@ dependencies = [
   "tqdm>=4.67",
 ]
 [project.optional-dependencies]
-dev = [
-  "ipython>=8.29.0",
-  "twine>=5.1",
-  "pre-commit>=4.0",
-]
+dev = ["ipython>=8.29.0", "twine>=5.1", "pre-commit>=4.0"]
 doc = [
   "furo>=2025.12.19,<2026",
   "myst-parser>=5.0",
@@ -101,7 +92,7 @@ channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64", "win-64"]
 
 [tool.pixi.feature.doc.tasks]
-python-docs = { cmd = "make html", cwd = "docs", env = { SPHINXOPTS = "--fail-on-warning --keep-going --nitpicky" }}
+python-docs = { cmd = "make html", cwd = "docs", env = { SPHINXOPTS = "--fail-on-warning --keep-going --nitpicky" } }
 
 [tool.pixi.feature.build.tasks]
 build-wheels = { cmd = "uv build --sdist --wheel --out-dir dist/ ." }
@@ -183,76 +174,76 @@ exclude = ["geopfa/geopfa2d/*", "geopfa/geopfa3d/*"]
 [tool.ruff.lint]
 preview = true
 select = [
-  "A", # flake8-builtins
-  "B", # flake8-bugbear
-  "ARG", # flake8-unused-arguments
-  "BLE", # flake8-blind-except
-  "C4", # flake8-comprehensions
-  "C90", # mccabe
-  "COM", # flake8-commas
-  "D", # pydocstyle
-  "E", # pycodestyle
-  "EM", # flake8-errmsg
-  "F", # Pyflakes
+  "A",    # flake8-builtins
+  "B",    # flake8-bugbear
+  "ARG",  # flake8-unused-arguments
+  "BLE",  # flake8-blind-except
+  "C4",   # flake8-comprehensions
+  "C90",  # mccabe
+  "COM",  # flake8-commas
+  "D",    # pydocstyle
+  "E",    # pycodestyle
+  "EM",   # flake8-errmsg
+  "F",    # Pyflakes
   "FURB", # refurb
-  "FLY", #  flynt
-  "G", # flake8-logging-format
-  "I", # isort
-  "INP", # flake8-no-pep420
-  "ISC", # flake8-implicit-str-concat
-  "LOG", # flake8-logging
-  "N", # pep8-naming
-  "NPY", # numpy-specific
-  "PD", # pandas-vet
+  "FLY",  #  flynt
+  "G",    # flake8-logging-format
+  "I",    # isort
+  "INP",  # flake8-no-pep420
+  "ISC",  # flake8-implicit-str-concat
+  "LOG",  # flake8-logging
+  "N",    # pep8-naming
+  "NPY",  # numpy-specific
+  "PD",   # pandas-vet
   "PERF", # Perflint
-  "PIE", # flake8-pie
-  "PL", # Pylint
-  "PTH", # flake8-use-pathlib
-  "PYI", # flake8-pyi
-  "Q", # flake8-quotes
-  "RET", # flake8-return
-  "RSE", # flake8-raise
-  "RUF", # Ruff-specific rules
-  "S", # flake8-bandit
-  "SLF", # flake8-self
-  "SIM", # flake8-simplify
-  "TID", # flake8-tidy-imports (absolute imports)
-  "TRY", # tryceratops
-  "UP", # pyupgrade
-  "W", # Warning
-  ]
+  "PIE",  # flake8-pie
+  "PL",   # Pylint
+  "PTH",  # flake8-use-pathlib
+  "PYI",  # flake8-pyi
+  "Q",    # flake8-quotes
+  "RET",  # flake8-return
+  "RSE",  # flake8-raise
+  "RUF",  # Ruff-specific rules
+  "S",    # flake8-bandit
+  "SLF",  # flake8-self
+  "SIM",  # flake8-simplify
+  "TID",  # flake8-tidy-imports (absolute imports)
+  "TRY",  # tryceratops
+  "UP",   # pyupgrade
+  "W",    # Warning
+]
 ignore = [
-  "PD901", # Generic variable name df
-  "A001", # Shadowing built-in
-  "ARG004",  # Unused argument
-  "B904",  # Use of assert
-  "B905",  # Use of assert
-  "BLE001",  # Using bare except
-  "C901",  # McCabe complexity
-  "COM812",  # Missing trailing comma
-  "D200",  # One-line docstring should fit on one line with quotes
-  "D205",  # 1 blank line required between summary line and description
-  "D400",  # First line should end with a period
-  "D401",  # First line should be in imperative mood
-  "D406",  # Section name should end with a newline
+  "PD901",  # Generic variable name df
+  "A001",   # Shadowing built-in
+  "ARG004", # Unused argument
+  "B904",   # Use of assert
+  "B905",   # Use of assert
+  "BLE001", # Using bare except
+  "C901",   # McCabe complexity
+  "COM812", # Missing trailing comma
+  "D200",   # One-line docstring should fit on one line with quotes
+  "D205",   # 1 blank line required between summary line and description
+  "D400",   # First line should end with a period
+  "D401",   # First line should be in imperative mood
+  "D406",   # Section name should end with a newline
   "D407",
   "D202",
   "D209",
   "D210",
-  "D409",  # Section underline should match the length of its name
-  "D410",  # Missing blank line after section
-  "D411",  # Missing blank line before section
-  "E226",  # Missing whitespace around arithmetic operator
-  "E231",  # Missing whitespace after ','
-  "E402",  # Module level import not at top of file
-  "E501",  # Line too long
-  "E702",  # Multiple statements on one line
-  "EM101", # Exception must not use a string literal
-  "EM102", # Exception must not use an f-string literal, assign to variable firs
-  "F401",  # Unused import
-  "F811",  # Redefinition of unused
-  "F841",  # Unused variable
-  "I001",  # isort found an import in the wrong position
+  "D409",   # Section underline should match the length of its name
+  "D410",   # Missing blank line after section
+  "D411",   # Missing blank line before section
+  "E226",   # Missing whitespace around arithmetic operator
+  "E231",   # Missing whitespace after ','
+  "E402",   # Module level import not at top of file
+  "E501",   # Line too long
+  "E702",   # Multiple statements on one line
+  "EM101",  # Exception must not use a string literal
+  "EM102",  # Exception must not use an f-string literal, assign to variable firs
+  "F401",   # Unused import
+  "F811",   # Redefinition of unused
+  "F841",   # Unused variable
+  "I001",   # isort found an import in the wrong position
   "N803",
   "N806",
   "N805",
@@ -261,19 +252,51 @@ ignore = [
   "PTH110",
   "PTH120",
   "RET504",
-  "Q000",  # Single quote
-  "S101", # Use of assert
+  "Q000",   # Single quote
+  "S101",   # Use of assert
   "TRY003",
-  "W505",  # Doc line too long
+  "W505",   # Doc line too long
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "docs/source/conf.py" = ["INP001", "D100"]
-"geopfa/geopfa3d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
-"geopfa/geopfa2d/*" = ["D", "E", "FURB", "N", "Q", "PD", "PERF", "PL", "PTH", "RET", "RUF", "SIM", "TRY", "UP009", "W"]
+"geopfa/geopfa3d/*" = [
+  "D",
+  "E",
+  "FURB",
+  "N",
+  "Q",
+  "PD",
+  "PERF",
+  "PL",
+  "PTH",
+  "RET",
+  "RUF",
+  "SIM",
+  "TRY",
+  "UP009",
+  "W",
+]
+"geopfa/geopfa2d/*" = [
+  "D",
+  "E",
+  "FURB",
+  "N",
+  "Q",
+  "PD",
+  "PERF",
+  "PL",
+  "PTH",
+  "RET",
+  "RUF",
+  "SIM",
+  "TRY",
+  "UP009",
+  "W",
+]
 "geopfa/processing.py" = [
-  "E722", # bare except
-  "PD008", # Use `.loc` instead of `.at`.
+  "E722",    # bare except
+  "PD008",   # Use `.loc` instead of `.at`.
   "PERF203", # `try`-`except` within a loop incurs performance overhead
   "PERF401", # Use `list.extend` to create a transformed list
   "PLR0912", # too-many-branches
@@ -286,20 +309,20 @@ ignore = [
   "PLR6201", # Use a set literal when testing for membership
   "FURB118", # Use `operator.itemgetter(0, 1)` instead of defining a function
   "PLR2004", # Magic value used in comparison, consider using a constant variable
-  "RUF059", # Unpacked variable `dists` is never used
+  "RUF059",  # Unpacked variable `dists` is never used
   "PLR0904",
-  ]
+]
 "geopfa/geopfa3d/plotters.py" = [
   "F821", # Undefined name `MultiLineString`
   "S110", # `try`-`except`-`pass` detected, consider logging the exception
-  ]
+]
 "geopfa/data_readers.py" = [
   "PLR2004", # Magic value used in comparison, consider using a constant variable
-  "PD901", # Avoid using the generic variable name `df` for DataFrames
+  "PD901",   # Avoid using the generic variable name `df` for DataFrames
   "PLR0912", # Too many branches (15 > 12)
   "RUF100",
   "PLR0913", # Too many arguments in function definition (15 > 5)
-  ]
+]
 "tests/*py" = ["D"]
 
 [tool.ruff.lint.pycodestyle]
@@ -313,22 +336,19 @@ branch = true
 
 [tool.coverage.report]
 # Regexes for lines to exclude from consideration
-exclude_also = [
-]
+exclude_also = []
 
 omit = [
-    # omit test files
-    "tests/*",
-    # omit init files
-    "__init__.py",
-    # omit version file
-    "_version.py",
-    # omit pixi files
-    ".pixi/*",
+  # omit test files
+  "tests/*",
+  # omit init files
+  "__init__.py",
+  # omit version file
+  "_version.py",
+  # omit pixi files
+  ".pixi/*",
 ]
 
 [tool.pytest.ini_options]
 addopts = "--cov=geopfa --cov-report=html --cov-report=xml:coverage.xml --disable-warnings --cov-fail-under=8.0"
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
