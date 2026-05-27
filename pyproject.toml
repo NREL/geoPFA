@@ -34,11 +34,10 @@ dependencies = [
   "notebook",
   "numpy>=1.21.6",
   "pandas>=2.0",
-  "psutil>=6.1.0",
   "pyarrow>=20.0",
   "pooch>=1.8",
   "geopandas>=0.14.4",
-  "rasterio>=1.4.2",
+  "rasterio>=1.4.2,<2",
   "shapely>=2.0.6",
   "scipy>=1.11",
   "contextily>=1.6.2",
@@ -113,7 +112,7 @@ geoPFA = { path = ".", editable = true }
 json5 = "*"
 
 [tool.pixi.dependencies]
-contextily = "==1.6.2"
+contextily = ">=1.7.0,<2"
 gdal = ">=3.10.2,<4"
 geopandas = ">=0.14.4,<2"
 jupyterlab = ">=4.3.4,<5"
@@ -121,12 +120,11 @@ iapws = "==1.5.4"
 matplotlib = ">=3.10.7,<4"
 numpy = ">=1.21.6,<2"
 pandas = ">=2.3.3,<3"
-pathos = "==0.3.3"
+pathos = ">=0.3.5,<0.4"
 pyarrow = ">=21.0.0,<22"
 pykrige = ">=1.7.1,<2"
 pooch = ">=1.8.2,<2"
-psutil = "==6.1.0"
-rasterio = "==1.4.2"
+rasterio = ">=1.4.3,<2"
 scipy = ">=1.11,<=1.12.0"
 shapely = ">=2.1.0,<3"
 statsmodels = ">=0.14.6,<0.15"
