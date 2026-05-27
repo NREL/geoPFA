@@ -4,7 +4,6 @@ import pytest
 from shapely.geometry import LineString, MultiLineString, Point
 
 from geopfa.conceptual_modeling import (
-
     _apply_slices,
     _build_well_pts,
     _camera_from_view,
@@ -17,6 +16,7 @@ from geopfa.conceptual_modeling import (
 # ---------------------------------------------------------------------------
 # _coords3_from_point
 # ---------------------------------------------------------------------------
+
 
 def test_coords3_from_point_3d():
     pt = Point(1.0, 2.0, 3.0)
@@ -33,6 +33,7 @@ def test_coords3_from_point_2d_defaults_z_zero():
 # ---------------------------------------------------------------------------
 # _build_well_pts
 # ---------------------------------------------------------------------------
+
 
 def test_build_well_pts_none_returns_none():
     assert _build_well_pts(None) is None
@@ -77,6 +78,7 @@ def test_build_well_pts_multilinestring():
 # _apply_slices
 # ---------------------------------------------------------------------------
 
+
 def test_apply_slices_none_input():
     assert _apply_slices(None) is None
 
@@ -116,6 +118,7 @@ def test_apply_slices_combined_filters():
 # _infer_spacing
 # ---------------------------------------------------------------------------
 
+
 def test_infer_spacing_single_value_returns_one():
     result = _infer_spacing(np.array([5.0, 5.0, 5.0]))
     assert result == 1.0
@@ -136,6 +139,7 @@ def test_infer_spacing_uses_median():
 # ---------------------------------------------------------------------------
 # _camera_from_view
 # ---------------------------------------------------------------------------
+
 
 def test_camera_from_view_returns_three_elements():
     bounds = (0, 10, 0, 10, 0, 10)
@@ -160,6 +164,7 @@ def test_camera_from_view_focal_is_center():
 # _require_3d
 # ---------------------------------------------------------------------------
 
+
 def test_require_3d_passes_for_3d_points():
     gdf = gpd.GeoDataFrame({"geometry": [Point(0, 0, 1), Point(1, 1, 2)]})
     _require_3d(gdf, "test")  # should not raise
@@ -174,4 +179,4 @@ def test_require_3d_raises_for_2d_points():
 def test_require_3d_raises_for_mixed_2d_3d():
     gdf = gpd.GeoDataFrame({"geometry": [Point(0, 0, 1), Point(1, 1)]})
     with pytest.raises(ValueError, match="Z coordinates"):
-	_require_3d(gdf, "test")
+        _require_3d(gdf, "test")
