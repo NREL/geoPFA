@@ -111,10 +111,6 @@ test = { features = ["test"], solve-group = "default" }
 
 [tool.pixi.pypi-dependencies]
 geoPFA = { path = ".", editable = true }
-json5 = "*"
-trame = ">=2.5.2"
-trame-vtk = ">=2.0.7"
-trame-vuetify = ">=2.3.1"
 
 [tool.pixi.dependencies]
 contextily = ">=1.7.0,<2"
@@ -139,6 +135,7 @@ proj-data = ">=1.20"
 trame = ">=3.13.0,<4"
 trame-vtk = ">=2.11.8,<3"
 trame-vuetify = ">=3.2.2,<4"
+json5 = ">=0.14.0,<0.15"
 
 [tool.pixi.feature.build.dependencies]
 uv = ">=0.7.22,<0.8"
