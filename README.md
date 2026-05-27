@@ -44,22 +44,14 @@ of results.
 <!-- start-license -->
 # NOTICE
 
-Copyright © 2023 Alliance for Sustainable Energy, LLC
+Copyright © 2025 Alliance for Energy Innovation, LLC
 
-These data were produced by the Alliance for Sustainable Energy, LLC
-(Contractor) under Contract No. DE-AC36-08GO28308 with the U.S. Department of
-Energy (DOE). During the period of commercialization or such other time period
-specified by the DOE, the Government is granted for itself and others acting on
-its behalf a nonexclusive, paid-up, irrevocable worldwide license in this data
-to reproduce, prepare derivative works, and perform publicly and display
-publicly, by or on behalf of the Government. Subsequent to that period the
-Government is granted for itself and others acting on its behalf a
-nonexclusive, paid-up, irrevocable worldwide license in this data to reproduce,
-prepare derivative works, distribute copies to the public, perform publicly and
-display publicly, and to permit others to do so. The specific term of the
-license can be identified by inquiry made to the Contractor or DOE. NEITHER
-CONTRACTOR, THE UNITED STATES, NOR THE UNITED STATES DEPARTMENT OF ENERGY, NOR
-ANY OF THEIR EMPLOYEES, MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY
-LEGAL LIABILITY OR RESPONSIBILITY FOR THE ACCURACY, COMPLETENESS, OR USEFULNESS
-OF ANY DATA, APPARATUS, PRODUCT, OR PROCESS DISCLOSED, OR REPRESENTS THAT ITS
-USE WOULD NOT INFRINGE PRIVATELY OWNED RIGHTS.
+This work was authored by the National Laboratory of the Rockies for the 
+U.S. Department of Energy (DOE), operated under Contract No. DE-AC36-08GO28308. 
+Funding provided by Department of Energy Hydrocarbons and Geothermal Energy Office, 
+Office of Geothermal. The views expressed in the article do not necessarily represent 
+the views of the DOE or the U.S. Government. The U.S. Government retains and the 
+publisher, by accepting the article for publication, acknowledges that the U.S. 
+Government retains a nonexclusive, paid-up, irrevocable, worldwide license to 
+publish or reproduce the published form of this work, or allow others to do so, 
+for U.S. Government purposes. 
