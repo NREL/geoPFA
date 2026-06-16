@@ -301,43 +301,55 @@ def fit_component_probability(  # noqa: PLR0912, PLR0913, PLR0914, PLR0915
 ) -> DemoComponentProbability:
     """Fit near-term probabilistic component model.
 
-    Structure: logit p_c = alpha_c + Sigma beta_ck x_k + u_c
-      - alpha_c: prior offset. Two modes:
-          (a) Scalar: logit(prior_probability), applied uniformly.
-          (b) Spatial (Option 2 in the memo): per-cell offset from a designated
-              raster layer (e.g., `heat_source_t3km`). The layer's interpolated
-              values are min-max rescaled to [prior_p_min, prior_p_max] and then
-              passed through logit to give `alpha_c(s)`. The chosen layer is
-              automatically excluded from the regression features to avoid
-              double-counting.
-      - Sigma beta_ck x_k: evidence layers fitted via logistic regression
-      - u_c: spatial field (optional; sequential smooth residual field)
+    Structure: ``logit p_c = alpha_c + Sigma beta_ck x_k + u_c``
 
-    Training mode:
-      - If labeled_wells and label_column are provided, regression is fit on
-        evidence features sampled at well points using actual labels (the
-        consistent, label-driven mode).
-      - Otherwise the legacy proxy-label path is used (favorability >= threshold
-        on the grid). This is kept only for backward compatibility and is
-        clearly inconsistent with the labeled-well overlay.
+    The prior offset ``alpha_c`` has two modes. In the scalar mode it is
+    ``logit(prior_probability)``, applied uniformly to every cell. In the
+    spatial mode (Option 2 in the methodology memo) it is a per-cell
+    offset built from a designated raster layer; the layer's interpolated
+    values are min-max rescaled to ``[prior_p_min, prior_p_max]`` and then
+    passed through ``logit`` to give ``alpha_c(s)``. The chosen layer is
+    automatically excluded from the regression features to avoid
+    double-counting. ``Sigma beta_ck x_k`` is the evidence-layer logistic
+    regression. ``u_c`` is an optional spatial residual field fit by an
+    RBF smoother.
 
-    Args:
-        component_data: component config with layers and pr_norm surface
-        prior_probability: scalar P(component|no wells), used if no prior layer
-        threshold_fraction: legacy proxy threshold (only used in fallback)
-        include_spatial: if True, fit spatial residual field u_c(s)
-        excluded_layer_names: layers to exclude from fit
-        labeled_wells: GeoDataFrame of labeled wells (preferred training data)
-        label_column: column on labeled_wells with 0/1 labels for this component
-        prior_layer_name: optional layer name to use as a spatial prior offset.
-            If provided AND the layer exists, it overrides the scalar
-            prior_probability and is excluded from regression predictors.
-        prior_p_min, prior_p_max: min/max probability bounds for the spatial
-            prior after min-max rescaling (default [0.2, 0.8] to avoid logit
-            blow-ups near 0/1).
+    Training mode: if ``labeled_wells`` and ``label_column`` are provided,
+    the regression is fit on evidence features sampled at well points
+    using actual labels. Otherwise the legacy proxy-label path is used
+    (favorability above a threshold on the grid); it is kept only for
+    backward compatibility and is inconsistent with the labelled-well
+    overlay.
 
-    Returns:
-        DemoComponentProbability with probability surface and model metadata
+    Parameters
+    ----------
+    component_data : dict
+        Component config with layers and ``pr_norm`` surface.
+    prior_probability : float
+        Scalar ``P(component | no wells)``, used if no prior layer.
+    threshold_fraction : float, optional
+        Legacy proxy threshold; only used in fallback.
+    include_spatial : bool, optional
+        If True, fit spatial residual field ``u_c(s)``.
+    excluded_layer_names : tuple of str, optional
+        Layers to exclude from fit.
+    labeled_wells : geopandas.GeoDataFrame, optional
+        GeoDataFrame of labelled wells (preferred training data).
+    label_column : str, optional
+        Column on ``labeled_wells`` with 0/1 labels for this component.
+    prior_layer_name : str, optional
+        Optional layer name to use as a spatial prior offset. If provided
+        AND the layer exists, it overrides the scalar
+        ``prior_probability`` and is excluded from regression predictors.
+    prior_p_min : float, optional
+        Minimum probability bound for the spatial-prior rescale.
+    prior_p_max : float, optional
+        Maximum probability bound for the spatial-prior rescale.
+
+    Returns
+    -------
+    DemoComponentProbability
+        Probability surface and model metadata.
     """
 
     # Determine prior offset (scalar fallback or spatial from prior_layer_name).
