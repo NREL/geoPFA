@@ -16,7 +16,7 @@ import pyproj
 import rasterio
 import re
 from itertools import starmap
-from geopfa.processing import Processing
+from geopfa.processing import Processing, _normalize_data_col
 
 
 def safe_json_load(path):
@@ -663,6 +663,9 @@ class GeospatialDataReaders:
                 for layer, layer_config in pfa["criteria"][criteria][
                     "components"
                 ][component]["layers"].items():
+                    layer_config["data_col"] = _normalize_data_col(
+                        layer_config.get("data_col")
+                    )
                     if "transformation_method" not in layer_config:
                         print(
                             "Warning: no transformation method specified for "
@@ -842,6 +845,9 @@ class GeospatialDataReaders:
                 for layer, layer_config in pfa["criteria"][criteria][
                     "components"
                 ][component]["layers"].items():
+                    layer_config["data_col"] = _normalize_data_col(
+                        layer_config.get("data_col")
+                    )
                     if "transformation_method" not in layer_config:
                         print(
                             "Warning: no transformation method specified for "

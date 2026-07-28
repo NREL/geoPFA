@@ -646,6 +646,40 @@ class Exclusions:
         return gdf_points
 
 
+def _normalize_data_col(value):
+    """Return a configured column name or None for a no-column value."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value or value.lower() == "none":
+            return None
+    return value
+
+
+def _optional_data_col(layer_config, gdf, context):
+    """Return and validate an optional data column."""
+    data_col = _normalize_data_col(layer_config.get("data_col"))
+    layer_config["data_col"] = data_col
+    if data_col is not None and data_col not in gdf.columns:
+        raise ValueError(
+            f"Configured data column '{data_col}' was not found for "
+            f"'{context}'. Available columns: {list(gdf.columns)}"
+        )
+    return data_col
+
+
+def _required_data_col(layer_config, gdf, context, method):
+    """Return a validated data column required by a processing method."""
+    data_col = _optional_data_col(layer_config, gdf, context)
+    if data_col is None:
+        raise ValueError(
+            f"Processing method '{method}' requires a data column for "
+            f"'{context}', but no 'data_col' was configured."
+        )
+    return data_col
+
+
 class Processing:
     """Class of functions for use in processing data into models"""
 
@@ -698,12 +732,16 @@ class Processing:
         pfa : dict
             Updated pfa config which includes interpolation
         """
-        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        data_col = pfa["criteria"][criteria]["components"][component][
+        layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
-        ][layer]["data_col"]
+        ][layer]
+        gdf = layer_dict["data"]
+        data_col = _required_data_col(
+            layer_dict,
+            gdf,
+            f"{criteria}/{component}/{layer}",
+            "interpolate_points_2d",
+        )
 
         if gdf.geometry.type.iloc[0] == "Polygon":
             print(
@@ -925,12 +963,16 @@ class Processing:
             Updated pfa config which includes the aggregated polygon values as a point model.
         """
         # Extract GeoDataFrame containing polygons
-        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+        layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
-        ][layer]["data"]
-        col = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data_col"]
+        ][layer]
+        gdf_polygons = layer_dict["data"]
+        col = _required_data_col(
+            layer_dict,
+            gdf_polygons,
+            f"{criteria}/{component}/{layer}",
+            "polygons_to_points",
+        )
 
         # Define the extent
         x_min, y_min, x_max, y_max = extent
@@ -1672,8 +1714,12 @@ class Processing:
         layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
         ][layer]
-        data_col = layer_dict.get("data_col", None)
         gdf_points = layer_dict["data"].copy()
+        data_col = _optional_data_col(
+            layer_dict,
+            gdf_points,
+            f"{criteria}/{component}/{layer}",
+        )
 
         if data_col is None:
             print("No data_col => defaulting all weights=1.0")
@@ -2289,12 +2335,16 @@ class Processing:
                 stacklevel=2,
             )
 
-        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        data_col = pfa["criteria"][criteria]["components"][component][
+        layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
-        ][layer]["data_col"]
+        ][layer]
+        gdf = layer_dict["data"]
+        data_col = _required_data_col(
+            layer_dict,
+            gdf,
+            f"{criteria}/{component}/{layer}",
+            "interpolate_points_3d",
+        )
 
         # Convert polygons → centroids if needed
         if gdf.geometry.type.iloc[0] == "Polygon":
@@ -2440,7 +2490,12 @@ class Processing:
             layer
         ]
         gdf = node["data"]
-        data_col = node["data_col"]
+        data_col = _required_data_col(
+            node,
+            gdf,
+            f"{criteria}/{component}/{layer}",
+            "fast_interpolate_points_3d",
+        )
 
         # If polygons: convert to points once
         if gdf.geometry.type.iloc[0] == "Polygon":
@@ -2631,12 +2686,16 @@ class Processing:
         pfa : dict
             Updated pfa config which includes interpolation results.
         """
-        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        data_col = pfa["criteria"][criteria]["components"][component][
+        layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
-        ][layer]["data_col"]
+        ][layer]
+        gdf = layer_dict["data"]
+        data_col = _required_data_col(
+            layer_dict,
+            gdf,
+            f"{criteria}/{component}/{layer}",
+            "kriging_3d",
+        )
 
         if gdf.geometry.type.iloc[0] == "Polygon":
             print(
@@ -2999,7 +3058,11 @@ class Processing:
             "layers"
         ][layer]
         gdf_pts = layer_dict["data"]
-        data_col = layer_dict.get("data_col")
+        data_col = _optional_data_col(
+            layer_dict,
+            gdf_pts,
+            f"{criteria}/{component}/{layer}",
+        )
 
         # collect points and values
         pts, vals = [], []
@@ -3473,7 +3536,7 @@ class Processing:
 
         # Replace layer data with 3D solids
         layer_dict["data"] = gdf3
-        layer_dict["data_col"] = "None"
+        layer_dict["data_col"] = None
         layer_dict["units"] = ""
         layer_dict["z_meas"] = target_z_meas
 
@@ -3603,12 +3666,16 @@ class Processing:
         - The units of the data are updated to reflect the aggregation performed.
         """
         # Extract GeoDataFrame containing 3D data
-        gdf_3d = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        col = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data_col"]
+        layer_dict = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]
+        gdf_3d = layer_dict["data"]
+        col = _required_data_col(
+            layer_dict,
+            gdf_3d,
+            f"{criteria}/{component}/{layer}",
+            "convert_3d_to_2d",
+        )
         units = pfa["criteria"][criteria]["components"][component]["layers"][
             layer
         ]["units"]
