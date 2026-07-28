@@ -429,6 +429,11 @@ class VoterVeto:
                     ]["layers"][layer]
                     model = layer_cfg["model"]
                     col = layer_cfg["model_data_col"]
+                    if "transformation_method" not in layer_cfg:
+                        raise ValueError(
+                            "Missing 'transformation_method' for layer "
+                            f"'{criteria}/{component}/{layer}'."
+                        )
                     transformation_method = layer_cfg["transformation_method"]
 
                     last_model_geom = (
@@ -443,10 +448,9 @@ class VoterVeto:
                         raise ValueError("Layer grid shape mismatch.")
 
                     # transform
-                    if transformation_method not in {"none", "None"}:
-                        model_array = transformation.transform(
-                            model_array, transformation_method
-                        )
+                    model_array = transformation.transform(
+                        model_array, transformation_method
+                    )
                     print(
                         f"        - Transformed with method: {transformation_method}"
                     )

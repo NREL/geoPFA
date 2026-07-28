@@ -660,6 +660,14 @@ class GeospatialDataReaders:
                 print("\t component: " + component)
                 COMPONENT_DIR = data_dir / criteria / component
                 file_names = sorted(COMPONENT_DIR.iterdir())
+                for layer, layer_config in pfa["criteria"][criteria][
+                    "components"
+                ][component]["layers"].items():
+                    if "transformation_method" not in layer_config:
+                        print(
+                            "Warning: no transformation method specified for "
+                            f"layer '{criteria}/{component}/{layer}'."
+                        )
 
                 # --- Shapefiles -------------------------------------------------
                 if ".shp" in file_types:
@@ -831,6 +839,14 @@ class GeospatialDataReaders:
                 print("\t component: " + component)
                 COMPONENT_DIR = data_dir / criteria / component
                 file_names = sorted(COMPONENT_DIR.iterdir())
+                for layer, layer_config in pfa["criteria"][criteria][
+                    "components"
+                ][component]["layers"].items():
+                    if "transformation_method" not in layer_config:
+                        print(
+                            "Warning: no transformation method specified for "
+                            f"layer '{criteria}/{component}/{layer}'."
+                        )
                 csv_file_names = [
                     x.name
                     for x in file_names

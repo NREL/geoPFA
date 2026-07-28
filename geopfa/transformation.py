@@ -6,6 +6,9 @@ import shapely
 import warnings
 
 
+_MISSING = object()
+
+
 def normalize_gdf(gdf, col, norm_to=1):
     """Normalize a GeoDataFrame using min-max scaling
 
@@ -95,7 +98,7 @@ def normalize_array(rasterized_array, method):
     return normalized_array
 
 
-def transform(array, method):
+def transform(array, method=_MISSING):
     """Transform to relative favorability values
 
     Function to transform rasterized array to map data values to
@@ -116,15 +119,25 @@ def transform(array, method):
         Array with data values transformed to relative favorability
         values
     """
-    if method.lower() == "inverse":
+    if method is _MISSING:
+        raise ValueError("A transformation method must be specified.")
+    if method is None:
+        return array
+    if not isinstance(method, str) or not method.strip():
+        raise ValueError(
+            "Transformation method must be a supported method or 'none'."
+        )
+
+    method = method.lower()
+    if method == "inverse":
         transformed_array = 1 / array
-    elif method.lower() == "negate":
+    elif method == "negate":
         transformed_array = -array
-    elif method.lower() == "ln":
+    elif method == "ln":
         transformed_array = np.log(array)
-    elif method.lower() == "none":
+    elif method == "none":
         transformed_array = array
-    elif method.lower() in {"hill", "valley"}:
+    elif method in {"hill", "valley"}:
         median = np.nanmedian(array)
         mad = np.nanmedian(np.abs(array - median))
         if mad == 0:
@@ -132,11 +145,11 @@ def transform(array, method):
         squared_dist = (array - median) ** 2
         gaussian = np.exp(-squared_dist / (2 * mad**2))
         transformed_array = (
-            gaussian if method.lower() == "hill" else 1 - gaussian
+            gaussian if method == "hill" else 1 - gaussian
         )
     else:
         raise ValueError(
-            "Transformation method ", method, " not yet implemented."
+            f"Transformation method '{method}' is not supported."
         )
 
     return transformed_array
