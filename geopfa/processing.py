@@ -121,6 +121,45 @@ class Cleaners:
         return pfa
 
     @staticmethod
+    def clean_data_column(gdf, data_col, drop_invalid=True, context=None):
+        """Convert a configured data column to numeric values.
+
+        Numeric strings are converted to numbers. Nonnumeric, non-null values
+        are coerced to NaN and optionally removed. Geometry-only layers are
+        returned unchanged.
+        """
+        data_col = _normalize_data_col(data_col)
+        if data_col is None:
+            return gdf
+        if data_col not in gdf.columns:
+            raise ValueError(
+                f"Configured data column '{data_col}' was not found"
+                f"{f' for {context!r}' if context else ''}. "
+                f"Available columns: {list(gdf.columns)}"
+            )
+
+        cleaned = gdf.copy()
+        original = cleaned[data_col]
+        numeric = pd.to_numeric(original, errors="coerce")
+        invalid = numeric.isna() & original.notna()
+        invalid_count = int(invalid.sum())
+        cleaned[data_col] = numeric
+
+        if invalid_count:
+            action = "removed" if drop_invalid else "coerced to NaN"
+            warnings.warn(
+                f"{action.capitalize()} {invalid_count} nonnumeric value(s) "
+                f"from data column '{data_col}'"
+                f"{f' for {context!r}' if context else ''}.",
+                UserWarning,
+                stacklevel=2,
+            )
+            if drop_invalid:
+                cleaned = cleaned.loc[~invalid].copy()
+
+        return cleaned
+
+    @staticmethod
     def convert_z_measurements(gdf, z_meas, target_z_meas):
         """
         Converts depth or elevation measurements from one reference system to another using GDAL Python Bindings.

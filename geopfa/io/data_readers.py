@@ -16,7 +16,7 @@ import pyproj
 import rasterio
 import re
 from itertools import starmap
-from geopfa.processing import Processing, _normalize_data_col
+from geopfa.processing import Cleaners, Processing, _normalize_data_col
 
 
 def safe_json_load(path):
@@ -617,7 +617,13 @@ class GeospatialDataReaders:
 
     @classmethod
     def gather_data(  # noqa: PLR0912
-        cls, data_dir, pfa, file_types, validate=False, strict=False
+        cls,
+        data_dir,
+        pfa,
+        file_types,
+        validate=False,
+        strict=False,
+        clean_data_columns=False,
     ):
         """Function to read in data layers associated with each component of each criteria.
         Note that data must be stored in a directory with the following structure which matches
@@ -646,6 +652,10 @@ class GeospatialDataReaders:
             If True and validation is enabled, raise a ValueError if any layers
             are missing data or contain empty datasets. If False, issues are
             reported as warnings.
+        clean_data_columns : bool, optional
+            If True, convert each configured ``data_col`` to numeric values and
+            remove rows containing nonnumeric, non-null values. Geometry-only
+            layers are unchanged. Defaults to False.
 
         Returns
         -------
@@ -682,13 +692,19 @@ class GeospatialDataReaders:
                     ]["layers"]:
                         if f"{layer}.shp" in shapefile_names:
                             print("\t\t reading layer: " + layer)
-                            pfa["criteria"][criteria]["components"][component][
-                                "layers"
-                            ][layer][
-                                "data"
-                            ] = GeospatialDataReaders.read_shapefile(
+                            layer_config = pfa["criteria"][criteria][
+                                "components"
+                            ][component]["layers"][layer]
+                            data = GeospatialDataReaders.read_shapefile(
                                 COMPONENT_DIR / f"{layer}.shp"
                             )
+                            if clean_data_columns:
+                                data = Cleaners.clean_data_column(
+                                    data,
+                                    layer_config["data_col"],
+                                    context=f"{criteria}/{component}/{layer}",
+                                )
+                            layer_config["data"] = data
 
                 # --- CSV files ---------------------------------------------------
                 if ".csv" in file_types:
@@ -734,9 +750,13 @@ class GeospatialDataReaders:
                                     csv_crs,
                                 )
 
-                            pfa["criteria"][criteria]["components"][component][
-                                "layers"
-                            ][layer]["data"] = data
+                            if clean_data_columns:
+                                data = Cleaners.clean_data_column(
+                                    data,
+                                    layer_config["data_col"],
+                                    context=f"{criteria}/{component}/{layer}",
+                                )
+                            layer_config["data"] = data
 
                 # --- TEC files ---------------------------------------------------
                 if ".tec" in file_types:
@@ -782,9 +802,13 @@ class GeospatialDataReaders:
                                     COMPONENT_DIR / f"{layer}.tec",
                                     tec_crs,
                                 )
-                            pfa["criteria"][criteria]["components"][component][
-                                "layers"
-                            ][layer]["data"] = data
+                            if clean_data_columns:
+                                data = Cleaners.clean_data_column(
+                                    data,
+                                    layer_config["data_col"],
+                                    context=f"{criteria}/{component}/{layer}",
+                                )
+                            layer_config["data"] = data
 
                 # --- Unknown file types -----------------------------------------
                 for file_type in file_types:

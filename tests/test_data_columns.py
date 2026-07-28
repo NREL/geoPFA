@@ -4,7 +4,7 @@ import pytest
 from shapely.geometry import Point
 
 from geopfa.io.data_readers import GeospatialDataReaders
-from geopfa.processing import Processing
+from geopfa.processing import Cleaners, Processing
 
 
 def _pfa(data_col=...):
@@ -134,3 +134,56 @@ def test_gather_normalizes_missing_data_column(tmp_path, gather_method):
         "layers"
     ]["layer"]
     assert layer["data_col"] is None
+
+
+def test_clean_data_column_converts_numeric_strings_and_removes_text():
+    gdf = gpd.GeoDataFrame(
+        {"value": ["1.5", "unknown", None]},
+        geometry=[Point(0, 0), Point(1, 1), Point(2, 2)],
+    )
+
+    with pytest.warns(UserWarning, match="Removed 1 nonnumeric value"):
+        cleaned = Cleaners.clean_data_column(gdf, "value")
+
+    assert cleaned["value"].iloc[0] == 1.5
+    assert np.isnan(cleaned["value"].iloc[1])
+    assert len(gdf) == 3
+
+
+def test_clean_data_column_skips_geometry_only_layer():
+    gdf = _pfa(None)["criteria"]["criterion"]["components"]["component"][
+        "layers"
+    ]["layer"]["data"]
+
+    assert Cleaners.clean_data_column(gdf, "NONE") is gdf
+
+
+def test_gather_optionally_cleans_configured_data_column(tmp_path):
+    component_dir = tmp_path / "criterion" / "component"
+    component_dir.mkdir(parents=True)
+    csv_path = component_dir / "layer.csv"
+    csv_path.write_text(
+        "x,y,value\n0,0,1.5\n1,1,unknown\n", encoding="utf-8"
+    )
+    pfa = _pfa("value")
+    layer = pfa["criteria"]["criterion"]["components"]["component"][
+        "layers"
+    ]["layer"]
+    layer.update(
+        {
+            "crs": "EPSG:3857",
+            "x_col": "x",
+            "y_col": "y",
+            "transformation_method": "none",
+        }
+    )
+
+    with pytest.warns(UserWarning, match="criterion/component/layer"):
+        GeospatialDataReaders.gather_data(
+            tmp_path,
+            pfa,
+            file_types=[".csv"],
+            clean_data_columns=True,
+        )
+
+    assert layer["data"]["value"].tolist() == [1.5]
