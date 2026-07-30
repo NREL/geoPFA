@@ -1,0 +1,26 @@
+{
+    "criteria": {
+        "criterion_name": {
+            "weight": 1.0,
+            "components": {
+                "component_name": {
+                    "weight": 1.0,
+                    "pr0": 0.5,
+                    "layers": {
+                        "layer_name": {
+                            "weight": 1.0,
+                            "units": "measurement units",
+                            "data_col": "value column",
+                            "x_col": "x column",
+                            "y_col": "y column",
+                            "crs": "EPSG:0000",
+                            "transformation_method": "none",
+                            "processing_method": "interpolate",
+                            "notes": "Remove coordinate fields for shapefiles or WKT geometry inputs."
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,43 @@
+{
+    "criteria": {
+        "geologic": {
+            "weight": 1.0,
+            "components": {
+                "heat": {
+                    "weight": 0.6,
+                    "pr0": 0.5,
+                    "layers": {
+                        "temperature": {
+                            "weight": 1.0,
+                            "units": "degC",
+                            "data_col": "temperature",
+                            "x_col": "x",
+                            "y_col": "y",
+                            "z_col": "z",
+                            "crs": "EPSG:26910",
+                            "z_meas": "m-msl",
+                            "transformation_method": null,
+                            "processing_method": "interpolate",
+                            "notes": "Value-based 3D CSV layer."
+                        }
+                    }
+                },
+                "permeability": {
+                    "weight": 0.4,
+                    "pr0": 0.5,
+                    "layers": {
+                        "faults": {
+                            "weight": 1.0,
+                            "units": null,
+                            "data_col": null,
+                            "crs": "EPSG:26910",
+                            "transformation_method": "negate",
+                            "processing_method": "distance",
+                            "notes": "Geometry-only shapefile; coordinate columns are omitted."
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

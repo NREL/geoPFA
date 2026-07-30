@@ -509,7 +509,7 @@ class GeospatialDataReaders:
             and z_meas is not None
             and target_z_meas is not None
         ):
-            well_gdf = Processing.convert_z_measurements(
+            well_gdf = Cleaners.convert_z_measurements(
                 well_gdf, z_meas, target_z_meas
             )
 

@@ -33,6 +33,7 @@ dependencies = [
   "matplotlib>=3.0",
   "notebook",
   "numpy>=1.21.6",
+  "openpyxl>=3.1",
   "pandas>=2.0",
   "pyarrow>=20.0",
   "pooch>=1.8",
@@ -121,6 +122,7 @@ jupyterlab = ">=4.3.4,<5"
 iapws = "==1.5.4"
 matplotlib = ">=3.10.7,<4"
 numpy = ">=1.21.6,<2"
+openpyxl = ">=3.1,<4"
 pandas = ">=2.3.3,<3"
 pathos = ">=0.3.5,<0.4"
 pyarrow = ">=21.0.0,<22"
