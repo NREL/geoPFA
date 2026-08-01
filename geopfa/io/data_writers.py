@@ -45,7 +45,9 @@ class GeospatialDataWriters:
     """Write geopandas dataframes to various geospatial data formats"""
 
     @staticmethod
-    def excel_to_pfa_json(excel_path, output_json_path=None, sheet_name=0):  # ruff: ignore[too-many-branches, too-many-locals, too-many-statements]
+    def excel_to_pfa_json(  # noqa: PLR0912, PLR0914, PLR0915
+        excel_path, output_json_path=None, sheet_name=0
+    ):
         """Convert a flat Excel configuration table to a PFA JSON config.
 
         Blank hierarchy cells are forward-filled, blank optional cells are
@@ -113,7 +115,7 @@ class GeospatialDataWriters:
             last_value = None
             values = []
             for value in df[column]:
-                if value != "":  # ruff: ignore[compare-to-empty-string]
+                if value != "":  # noqa: PLC1901
                     last_value = value
                 values.append(last_value)
             df[column] = values
@@ -189,7 +191,7 @@ class GeospatialDataWriters:
             for field, value in row.items():
                 if field in structural:
                     continue
-                value, present = clean(value)  # ruff: ignore[redefined-loop-name]
+                value, present = clean(value)  # noqa: PLW2901
                 if present:
                     layer[field] = value
             component["layers"][names["layer"]] = layer

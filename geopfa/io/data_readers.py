@@ -616,7 +616,7 @@ class GeospatialDataReaders:
         return issues
 
     @classmethod
-    def gather_data(  # noqa: PLR0912  # ruff: ignore[too-many-arguments, too-many-positional-arguments, too-many-statements]
+    def gather_data(  # noqa: PLR0912, PLR0913, PLR0915, PLR0917
         cls,
         data_dir,
         pfa,
