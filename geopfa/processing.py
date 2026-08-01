@@ -194,7 +194,7 @@ class Cleaners:
         FEET_TO_METERS = 1 / METERS_TO_FEET
 
         if not isinstance(z_meas, str) or not isinstance(target_z_meas, str):
-            raise ValueError("Z measurement references must be strings.")
+            raise ValueError("Z measurement references must be strings.")  # ruff: ignore[type-check-without-type-error]
         z_meas = z_meas.strip().lower()
         target_z_meas = target_z_meas.strip().lower()
 

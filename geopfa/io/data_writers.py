@@ -45,7 +45,7 @@ class GeospatialDataWriters:
     """Write geopandas dataframes to various geospatial data formats"""
 
     @staticmethod
-    def excel_to_pfa_json(excel_path, output_json_path=None, sheet_name=0):
+    def excel_to_pfa_json(excel_path, output_json_path=None, sheet_name=0):  # ruff: ignore[too-many-branches, too-many-locals, too-many-statements]
         """Convert a flat Excel configuration table to a PFA JSON config.
 
         Blank hierarchy cells are forward-filled, blank optional cells are
@@ -75,7 +75,9 @@ class GeospatialDataWriters:
         if excel_path.suffix.lower() != ".xlsx":
             raise ValueError(f"Input path must be an .xlsx file: {excel_path}")
         if output_path.suffix.lower() != ".json":
-            raise ValueError(f"Output path must be a .json file: {output_path}")
+            raise ValueError(
+                f"Output path must be a .json file: {output_path}"
+            )
 
         df = pd.read_excel(
             excel_path,
@@ -111,7 +113,7 @@ class GeospatialDataWriters:
             last_value = None
             values = []
             for value in df[column]:
-                if value != "":
+                if value != "":  # ruff: ignore[compare-to-empty-string]
                     last_value = value
                 values.append(last_value)
             df[column] = values
@@ -141,7 +143,7 @@ class GeospatialDataWriters:
                 ) from error
 
         pfa = {"criteria": {}}
-        structural = set(hierarchy + ["layer", "layer_weight"])
+        structural = {*hierarchy, "layer", "layer_weight"}
         for index, row in df.iterrows():
             row_number = index + 2
             names = {}
@@ -187,7 +189,7 @@ class GeospatialDataWriters:
             for field, value in row.items():
                 if field in structural:
                     continue
-                value, present = clean(value)
+                value, present = clean(value)  # ruff: ignore[redefined-loop-name]
                 if present:
                     layer[field] = value
             component["layers"][names["layer"]] = layer
