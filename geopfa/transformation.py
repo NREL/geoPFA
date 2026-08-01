@@ -144,13 +144,9 @@ def transform(array, method=_MISSING):
             mad = 1e-6  # prevent division by zero
         squared_dist = (array - median) ** 2
         gaussian = np.exp(-squared_dist / (2 * mad**2))
-        transformed_array = (
-            gaussian if method == "hill" else 1 - gaussian
-        )
+        transformed_array = gaussian if method == "hill" else 1 - gaussian
     else:
-        raise ValueError(
-            f"Transformation method '{method}' is not supported."
-        )
+        raise ValueError(f"Transformation method '{method}' is not supported.")
 
     return transformed_array
 
