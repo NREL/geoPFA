@@ -122,11 +122,10 @@ class Cleaners:
 
     @staticmethod
     def clean_data_column(gdf, data_col, drop_invalid=True, context=None):
-        """Convert a configured data column to numeric values.
-
-        Numeric strings are converted to numbers. Nonnumeric, non-null values
-        are coerced to NaN and optionally removed. Geometry-only layers are
-        returned unchanged.
+        """Convert a configured data column to numeric values. Numeric strings are
+        converted to numbers. Nonnumeric, non-null values are coerced to NaN and,
+        by default, their rows are removed; set drop_invalid=False to retain those
+        rows with NaN values. Geometry-only layers are returned unchanged.
         """
         data_col = _normalize_data_col(data_col)
         if data_col is None:

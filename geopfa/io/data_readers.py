@@ -653,9 +653,10 @@ class GeospatialDataReaders:
             are missing data or contain empty datasets. If False, issues are
             reported as warnings.
         clean_data_columns : bool, optional
-            If True, convert each configured ``data_col`` to numeric values and
-            remove rows containing nonnumeric, non-null values. Geometry-only
-            layers are unchanged. Defaults to False.
+            If True, apply Cleaners.clean_data_column to each configured data_col.
+            Numeric strings are converted to numbers, and rows containing nonnumeric,
+            non-null values are removed using the cleaner's default behavior.
+            Geometry-only layers are unchanged. Defaults to False.
 
         Returns
         -------
