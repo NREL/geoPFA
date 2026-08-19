@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import pytest
 
-from geopfa.io import GeospatialDataWriters
+from geopfa.io.data_readers import GeospatialDataReaders
 
 
 pytest.importorskip("openpyxl")
@@ -46,7 +46,7 @@ def test_excel_to_pfa_json(tmp_path):
     json_path = tmp_path / "config.json"
     pd.DataFrame(rows).to_excel(excel_path, index=False)
 
-    pfa = GeospatialDataWriters.excel_to_pfa_json(excel_path, json_path)
+    pfa = GeospatialDataReaders.excel_to_pfa_json(excel_path, json_path)
 
     faults = pfa["criteria"]["geologic"]["components"]["structure"][
         "layers"
@@ -64,4 +64,4 @@ def test_excel_to_pfa_json_reports_missing_columns(tmp_path):
     )
 
     with pytest.raises(ValueError, match="missing required column"):
-        GeospatialDataWriters.excel_to_pfa_json(excel_path)
+        GeospatialDataReaders.excel_to_pfa_json(excel_path)

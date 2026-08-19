@@ -3,6 +3,7 @@ Set of methods to read in data in various formats.
 """
 
 import os
+import json
 from pathlib import Path
 from contextlib import suppress
 import json5
@@ -64,6 +65,165 @@ def safe_json_load(path):
 
 class GeospatialDataReaders:
     """Read geospatial data in various formats"""
+
+    @staticmethod
+    def excel_to_pfa_json(  # noqa: PLR0912, PLR0914, PLR0915
+        excel_path, output_json_path=None, sheet_name=0
+    ):
+        """Convert a flat Excel configuration table to a PFA JSON config.
+
+        Blank hierarchy cells are forward-filled, blank optional cells are
+        omitted, and case-insensitive ``"none"`` values become JSON ``null``.
+
+        Parameters
+        ----------
+        excel_path : str or pathlib.Path
+            Input ``.xlsx`` workbook.
+        output_json_path : str or pathlib.Path, optional
+            Output JSON path. Defaults to the input path with a ``.json``
+            suffix.
+        sheet_name : str or int, optional
+            Configuration worksheet name or zero-based index.
+
+        Returns
+        -------
+        dict
+            Converted PFA configuration.
+        """
+        excel_path = Path(excel_path)
+        output_path = (
+            excel_path.with_suffix(".json")
+            if output_json_path is None
+            else Path(output_json_path)
+        )
+        if excel_path.suffix.lower() != ".xlsx":
+            raise ValueError(f"Input path must be an .xlsx file: {excel_path}")
+        if output_path.suffix.lower() != ".json":
+            raise ValueError(
+                f"Output path must be a .json file: {output_path}"
+            )
+
+        df = pd.read_excel(
+            excel_path,
+            sheet_name=sheet_name,
+            dtype=object,
+            keep_default_na=False,
+        )
+        df.columns = [str(column).strip().lower() for column in df.columns]
+        required = {
+            "criteria",
+            "criteria_weight",
+            "component",
+            "component_weight",
+            "pr0",
+            "layer",
+            "layer_weight",
+        }
+        missing = sorted(required - set(df.columns))
+        if missing:
+            raise ValueError(
+                "Excel configuration is missing required column(s): "
+                + ", ".join(missing)
+            )
+
+        hierarchy = [
+            "criteria",
+            "criteria_weight",
+            "component",
+            "component_weight",
+            "pr0",
+        ]
+        for column in hierarchy:
+            last_value = None
+            values = []
+            for value in df[column]:
+                if value != "":  # noqa: PLC1901
+                    last_value = value
+                values.append(last_value)
+            df[column] = values
+
+        def clean(value):
+            if value is None or pd.isna(value):
+                return None, False
+            if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    return None, False
+                if value.lower() == "none":
+                    return None, True
+            return value, True
+
+        def number(value, field, row_number):
+            value, present = clean(value)
+            if not present:
+                raise ValueError(
+                    f"Missing required '{field}' in Excel row {row_number}."
+                )
+            try:
+                return float(value)
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    f"'{field}' must be numeric in Excel row {row_number}."
+                ) from error
+
+        pfa = {"criteria": {}}
+        structural = {*hierarchy, "layer", "layer_weight"}
+        for index, row in df.iterrows():
+            row_number = index + 2
+            names = {}
+            for field in ("criteria", "component", "layer"):
+                names[field], present = clean(row[field])
+                if not present:
+                    raise ValueError(
+                        f"Missing required '{field}' in Excel row {row_number}."
+                    )
+
+            criterion = pfa["criteria"].setdefault(
+                names["criteria"],
+                {
+                    "weight": number(
+                        row["criteria_weight"], "criteria_weight", row_number
+                    ),
+                    "components": {},
+                },
+            )
+            component = criterion["components"].setdefault(
+                names["component"],
+                {
+                    "weight": number(
+                        row["component_weight"],
+                        "component_weight",
+                        row_number,
+                    ),
+                    "pr0": number(row["pr0"], "pr0", row_number),
+                    "layers": {},
+                },
+            )
+            if names["layer"] in component["layers"]:
+                raise ValueError(
+                    f"Duplicate layer '{names['layer']}' in Excel row "
+                    f"{row_number}."
+                )
+
+            layer = {
+                "weight": number(
+                    row["layer_weight"], "layer_weight", row_number
+                )
+            }
+            for field, value in row.items():
+                if field in structural:
+                    continue
+                value, present = clean(value)  # noqa: PLW2901
+                if present:
+                    layer[field] = value
+            component["layers"][names["layer"]] = layer
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w", encoding="utf-8") as file:
+            json.dump(pfa, file, indent=4)
+            file.write("\n")
+        print(f"PFA JSON configuration written to: {output_path}")
+        return pfa
 
     @staticmethod
     def read_shapefile(path):

@@ -1,7 +1,7 @@
 # PFA configuration templates
 
 This directory demonstrates the flat Excel format accepted by
-`GeospatialDataWriters.excel_to_pfa_json()` and the nested JSON configuration
+`GeospatialDataReaders.excel_to_pfa_json()` and the nested JSON configuration
 consumed by geoPFA.
 
 - `pfa_config_example.xlsx` and `pfa_config_example.json` are a matching,
@@ -14,9 +14,9 @@ This is how to use the Excel format: fill in the workbook's `Configuration`
 sheet, then convert it to geoPFA's nested JSON format with the function below.
 
 ```python
-from geopfa.io import GeospatialDataWriters
+from geopfa.io.data_readers import GeospatialDataReaders
 
-pfa = GeospatialDataWriters.excel_to_pfa_json(
+pfa = GeospatialDataReaders.excel_to_pfa_json(
     "pfa_config_example.xlsx",
     "pfa_config_example.json",
     sheet_name="Configuration",
