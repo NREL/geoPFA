@@ -121,36 +121,114 @@ class Cleaners:
         return pfa
 
     @staticmethod
-    def convert_z_measurements(gdf, z_meas, target_z_meas):
+    def clean_data_column(gdf, data_col, drop_invalid=True, context=None):
+        """Convert a configured data column to numeric values. Numeric strings are
+        converted to numbers. Nonnumeric, non-null values are coerced to NaN and,
+        by default, their rows are removed; set drop_invalid=False to retain those
+        rows with NaN values. Geometry-only layers are returned unchanged.
         """
-        Converts depth or elevation measurements from one reference system to another using GDAL Python Bindings.
+        data_col = _normalize_data_col(data_col)
+        if data_col is None:
+            return gdf
+        if data_col not in gdf.columns:
+            raise ValueError(
+                f"Configured data column '{data_col}' was not found"
+                f"{f' for {context!r}' if context else ''}. "
+                f"Available columns: {list(gdf.columns)}"
+            )
+
+        cleaned = gdf.copy()
+        original = cleaned[data_col]
+        numeric = pd.to_numeric(original, errors="coerce")
+        invalid = numeric.isna() & original.notna()
+        invalid_count = int(invalid.sum())
+        cleaned[data_col] = numeric
+
+        if invalid_count:
+            action = "removed" if drop_invalid else "coerced to NaN"
+            warnings.warn(
+                f"{action.capitalize()} {invalid_count} nonnumeric value(s) "
+                f"from data column '{data_col}'"
+                f"{f' for {context!r}' if context else ''}.",
+                UserWarning,
+                stacklevel=2,
+            )
+            if drop_invalid:
+                cleaned = cleaned.loc[~invalid].copy()
+
+        return cleaned
+
+    @staticmethod
+    def convert_z_measurements(gdf, z_meas, target_z_meas):
+        """Convert point Z values between supported vertical references.
+
+        Supported conversions are ``"m-msl"`` to/from ``"ft-msl"`` and
+        ``"epsg:<integer>"`` to ``"epsg:<integer>"``. Source and target
+        references of the same value leave Z unchanged. Reference strings are
+        case-insensitive and surrounding whitespace is ignored. Mixing an MSL
+        unit reference with an EPSG reference is not supported.
 
         Parameters
         ----------
-            gdf (GeoDataFrame): GeoDataFrame containing point geometry and Z values in the geometry.
-            z_meas (str): Current measurement reference (e.g., 'm-msl', 'epsg:####', or 'ft-msl').
-            target_z_meas (str): Target measurement reference (e.g., 'm-msl', 'epsg:####', or 'ft-msl').
+        gdf : geopandas.GeoDataFrame
+            GeoDataFrame containing 3D point geometries.
+        z_meas : str
+            Current reference: ``"m-msl"``, ``"ft-msl"``, or
+            ``"epsg:<integer>"``.
+        target_z_meas : str
+            Target reference in the same supported format.
 
         Returns
         -------
-            GeoDataFrame: A GeoDataFrame with updated geometry where the Z value is converted to the target reference.
+        geopandas.GeoDataFrame
+            Input GeoDataFrame with converted point geometries.
+
+        Raises
+        ------
+        ValueError
+            If a reference is invalid or the requested conversion is not
+            supported.
         """
         METERS_TO_FEET = 3.28084
         FEET_TO_METERS = 1 / METERS_TO_FEET
 
-        # Set up source and target spatial references
-        source_srs = osr.SpatialReference()
-        if z_meas.startswith("epsg:"):
-            source_srs.ImportFromEPSG(int(z_meas.split(":")[1]))
-            print("\t\t successful import")
+        if not isinstance(z_meas, str) or not isinstance(target_z_meas, str):
+            raise ValueError("Z measurement references must be strings.")  # noqa: TRY004
+        z_meas = z_meas.strip().lower()
+        target_z_meas = target_z_meas.strip().lower()
 
-        target_srs = osr.SpatialReference()
-        if target_z_meas.startswith("epsg:"):
-            target_srs.ImportFromEPSG(int(target_z_meas.split(":")[1]))
-            print("\t\t successful import")
+        unit_references = {"m-msl", "ft-msl"}
 
-        # Coordinate transformation
-        transform = osr.CoordinateTransformation(source_srs, target_srs)
+        def epsg_code(reference):
+            if not reference.startswith("epsg:"):
+                return None
+            try:
+                return int(reference.removeprefix("epsg:"))
+            except ValueError as error:
+                raise ValueError(
+                    f"Invalid Z measurement reference: {reference!r}."
+                ) from error
+
+        source_epsg = epsg_code(z_meas)
+        target_epsg = epsg_code(target_z_meas)
+        units_conversion = (
+            z_meas in unit_references and target_z_meas in unit_references
+        )
+        epsg_conversion = source_epsg is not None and target_epsg is not None
+        if not units_conversion and not epsg_conversion:
+            raise ValueError(
+                f"Unsupported Z conversion from {z_meas!r} to "
+                f"{target_z_meas!r}. Use m-msl/ft-msl conversions or "
+                "EPSG-to-EPSG conversions."
+            )
+
+        transform = None
+        if epsg_conversion and source_epsg != target_epsg:
+            source_srs = osr.SpatialReference()
+            source_srs.ImportFromEPSG(source_epsg)
+            target_srs = osr.SpatialReference()
+            target_srs.ImportFromEPSG(target_epsg)
+            transform = osr.CoordinateTransformation(source_srs, target_srs)
 
         # Function to update Z values based on input and target references
         def convert_z(geom):
@@ -161,10 +239,7 @@ class Cleaners:
                 new_z = current_z * METERS_TO_FEET
             elif z_meas == "ft-msl" and target_z_meas == "m-msl":
                 new_z = current_z * FEET_TO_METERS
-            elif z_meas.startswith("epsg:") and target_z_meas.startswith(
-                "epsg:"
-            ):
-                print("\t\t ", "transforming ", z_meas, " to ", target_z_meas)
+            elif transform is not None:
                 _x, _y, z = transform.TransformPoint(geom.x, geom.y, current_z)
                 new_z = z  # Updated Z from the transformation
 
@@ -646,6 +721,40 @@ class Exclusions:
         return gdf_points
 
 
+def _normalize_data_col(value):
+    """Return a configured column name or None for a no-column value."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value or value.lower() == "none":
+            return None
+    return value
+
+
+def _optional_data_col(layer_config, gdf, context):
+    """Return and validate an optional data column."""
+    data_col = _normalize_data_col(layer_config.get("data_col"))
+    layer_config["data_col"] = data_col
+    if data_col is not None and data_col not in gdf.columns:
+        raise ValueError(
+            f"Configured data column '{data_col}' was not found for "
+            f"'{context}'. Available columns: {list(gdf.columns)}"
+        )
+    return data_col
+
+
+def _required_data_col(layer_config, gdf, context, method):
+    """Return a validated data column required by a processing method."""
+    data_col = _optional_data_col(layer_config, gdf, context)
+    if data_col is None:
+        raise ValueError(
+            f"Processing method '{method}' requires a data column for "
+            f"'{context}', but no 'data_col' was configured."
+        )
+    return data_col
+
+
 class Processing:
     """Class of functions for use in processing data into models"""
 
@@ -698,12 +807,16 @@ class Processing:
         pfa : dict
             Updated pfa config which includes interpolation
         """
-        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        data_col = pfa["criteria"][criteria]["components"][component][
+        layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
-        ][layer]["data_col"]
+        ][layer]
+        gdf = layer_dict["data"]
+        data_col = _required_data_col(
+            layer_dict,
+            gdf,
+            f"{criteria}/{component}/{layer}",
+            "interpolate_points_2d",
+        )
 
         if gdf.geometry.type.iloc[0] == "Polygon":
             print(
@@ -925,12 +1038,16 @@ class Processing:
             Updated pfa config which includes the aggregated polygon values as a point model.
         """
         # Extract GeoDataFrame containing polygons
-        gdf_polygons = pfa["criteria"][criteria]["components"][component][
+        layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
-        ][layer]["data"]
-        col = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data_col"]
+        ][layer]
+        gdf_polygons = layer_dict["data"]
+        col = _required_data_col(
+            layer_dict,
+            gdf_polygons,
+            f"{criteria}/{component}/{layer}",
+            "polygons_to_points",
+        )
 
         # Define the extent
         x_min, y_min, x_max, y_max = extent
@@ -1672,8 +1789,12 @@ class Processing:
         layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
         ][layer]
-        data_col = layer_dict.get("data_col", None)
         gdf_points = layer_dict["data"].copy()
+        data_col = _optional_data_col(
+            layer_dict,
+            gdf_points,
+            f"{criteria}/{component}/{layer}",
+        )
 
         if data_col is None:
             print("No data_col => defaulting all weights=1.0")
@@ -2289,12 +2410,16 @@ class Processing:
                 stacklevel=2,
             )
 
-        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        data_col = pfa["criteria"][criteria]["components"][component][
+        layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
-        ][layer]["data_col"]
+        ][layer]
+        gdf = layer_dict["data"]
+        data_col = _required_data_col(
+            layer_dict,
+            gdf,
+            f"{criteria}/{component}/{layer}",
+            "interpolate_points_3d",
+        )
 
         # Convert polygons → centroids if needed
         if gdf.geometry.type.iloc[0] == "Polygon":
@@ -2440,7 +2565,12 @@ class Processing:
             layer
         ]
         gdf = node["data"]
-        data_col = node["data_col"]
+        data_col = _required_data_col(
+            node,
+            gdf,
+            f"{criteria}/{component}/{layer}",
+            "fast_interpolate_points_3d",
+        )
 
         # If polygons: convert to points once
         if gdf.geometry.type.iloc[0] == "Polygon":
@@ -2631,12 +2761,16 @@ class Processing:
         pfa : dict
             Updated pfa config which includes interpolation results.
         """
-        gdf = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        data_col = pfa["criteria"][criteria]["components"][component][
+        layer_dict = pfa["criteria"][criteria]["components"][component][
             "layers"
-        ][layer]["data_col"]
+        ][layer]
+        gdf = layer_dict["data"]
+        data_col = _required_data_col(
+            layer_dict,
+            gdf,
+            f"{criteria}/{component}/{layer}",
+            "kriging_3d",
+        )
 
         if gdf.geometry.type.iloc[0] == "Polygon":
             print(
@@ -2999,7 +3133,11 @@ class Processing:
             "layers"
         ][layer]
         gdf_pts = layer_dict["data"]
-        data_col = layer_dict.get("data_col")
+        data_col = _optional_data_col(
+            layer_dict,
+            gdf_pts,
+            f"{criteria}/{component}/{layer}",
+        )
 
         # collect points and values
         pts, vals = [], []
@@ -3473,7 +3611,7 @@ class Processing:
 
         # Replace layer data with 3D solids
         layer_dict["data"] = gdf3
-        layer_dict["data_col"] = "None"
+        layer_dict["data_col"] = None
         layer_dict["units"] = ""
         layer_dict["z_meas"] = target_z_meas
 
@@ -3603,12 +3741,16 @@ class Processing:
         - The units of the data are updated to reflect the aggregation performed.
         """
         # Extract GeoDataFrame containing 3D data
-        gdf_3d = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data"]
-        col = pfa["criteria"][criteria]["components"][component]["layers"][
-            layer
-        ]["data_col"]
+        layer_dict = pfa["criteria"][criteria]["components"][component][
+            "layers"
+        ][layer]
+        gdf_3d = layer_dict["data"]
+        col = _required_data_col(
+            layer_dict,
+            gdf_3d,
+            f"{criteria}/{component}/{layer}",
+            "convert_3d_to_2d",
+        )
         units = pfa["criteria"][criteria]["components"][component]["layers"][
             layer
         ]["units"]

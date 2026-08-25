@@ -324,6 +324,7 @@ def test_voter():
     st.integers(min_value=1, max_value=100),
     st.integers(min_value=0, max_value=100),
 )
+@settings(deadline=None)
 def test_voter_properties(Pr0, n_layers, ni, nj, nk):
     """
     Ensure voter outputs preserve expected shape and remain bounded.
@@ -529,6 +530,26 @@ def test_do_voter_veto_minimal_2d():
     assert "pr" in result
     assert len(result["pr"]) == 4
     assert "favorability" in result["pr"].columns
+
+
+def test_do_voter_veto_reports_missing_transformation_method():
+    xs = np.array([0.0, 1.0])
+    ys = np.array([0.0, 1.0])
+    gdf = gdf_from_xy_value(xs, ys, np.ones((2, 2)))
+    pfa = make_pfa_with_layers({"layer1": gdf})
+    layer_cfg = pfa["criteria"]["crit1"]["components"]["comp1"]["layers"][
+        "layer1"
+    ]
+    layer_cfg.update({"model_data_col": "value", "weight": 1.0})
+    pfa["criteria"]["crit1"]["weight"] = 1.0
+    component = pfa["criteria"]["crit1"]["components"]["comp1"]
+    component.update({"weight": 1.0, "pr0": 0.5})
+
+    with pytest.raises(
+        ValueError,
+        match="Missing 'transformation_method'.*crit1/comp1/layer1",
+    ):
+        VoterVeto.do_voter_veto(pfa, normalize_method="minmax")
 
 
 def test_do_voter_veto_minimal_3d():

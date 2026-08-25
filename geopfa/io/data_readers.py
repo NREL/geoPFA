@@ -3,6 +3,7 @@ Set of methods to read in data in various formats.
 """
 
 import os
+import json
 from pathlib import Path
 from contextlib import suppress
 import json5
@@ -16,7 +17,7 @@ import pyproj
 import rasterio
 import re
 from itertools import starmap
-from geopfa.processing import Processing
+from geopfa.processing import Cleaners, Processing, _normalize_data_col
 
 
 def safe_json_load(path):
@@ -64,6 +65,165 @@ def safe_json_load(path):
 
 class GeospatialDataReaders:
     """Read geospatial data in various formats"""
+
+    @staticmethod
+    def excel_to_pfa_json(  # noqa: PLR0912, PLR0914, PLR0915
+        excel_path, output_json_path=None, sheet_name=0
+    ):
+        """Convert a flat Excel configuration table to a PFA JSON config.
+
+        Blank hierarchy cells are forward-filled, blank optional cells are
+        omitted, and case-insensitive ``"none"`` values become JSON ``null``.
+
+        Parameters
+        ----------
+        excel_path : str or pathlib.Path
+            Input ``.xlsx`` workbook.
+        output_json_path : str or pathlib.Path, optional
+            Output JSON path. Defaults to the input path with a ``.json``
+            suffix.
+        sheet_name : str or int, optional
+            Configuration worksheet name or zero-based index.
+
+        Returns
+        -------
+        dict
+            Converted PFA configuration.
+        """
+        excel_path = Path(excel_path)
+        output_path = (
+            excel_path.with_suffix(".json")
+            if output_json_path is None
+            else Path(output_json_path)
+        )
+        if excel_path.suffix.lower() != ".xlsx":
+            raise ValueError(f"Input path must be an .xlsx file: {excel_path}")
+        if output_path.suffix.lower() != ".json":
+            raise ValueError(
+                f"Output path must be a .json file: {output_path}"
+            )
+
+        df = pd.read_excel(
+            excel_path,
+            sheet_name=sheet_name,
+            dtype=object,
+            keep_default_na=False,
+        )
+        df.columns = [str(column).strip().lower() for column in df.columns]
+        required = {
+            "criteria",
+            "criteria_weight",
+            "component",
+            "component_weight",
+            "pr0",
+            "layer",
+            "layer_weight",
+        }
+        missing = sorted(required - set(df.columns))
+        if missing:
+            raise ValueError(
+                "Excel configuration is missing required column(s): "
+                + ", ".join(missing)
+            )
+
+        hierarchy = [
+            "criteria",
+            "criteria_weight",
+            "component",
+            "component_weight",
+            "pr0",
+        ]
+        for column in hierarchy:
+            last_value = None
+            values = []
+            for value in df[column]:
+                if value != "":  # noqa: PLC1901
+                    last_value = value
+                values.append(last_value)
+            df[column] = values
+
+        def clean(value):
+            if value is None or pd.isna(value):
+                return None, False
+            if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    return None, False
+                if value.lower() == "none":
+                    return None, True
+            return value, True
+
+        def number(value, field, row_number):
+            value, present = clean(value)
+            if not present:
+                raise ValueError(
+                    f"Missing required '{field}' in Excel row {row_number}."
+                )
+            try:
+                return float(value)
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    f"'{field}' must be numeric in Excel row {row_number}."
+                ) from error
+
+        pfa = {"criteria": {}}
+        structural = {*hierarchy, "layer", "layer_weight"}
+        for index, row in df.iterrows():
+            row_number = index + 2
+            names = {}
+            for field in ("criteria", "component", "layer"):
+                names[field], present = clean(row[field])
+                if not present:
+                    raise ValueError(
+                        f"Missing required '{field}' in Excel row {row_number}."
+                    )
+
+            criterion = pfa["criteria"].setdefault(
+                names["criteria"],
+                {
+                    "weight": number(
+                        row["criteria_weight"], "criteria_weight", row_number
+                    ),
+                    "components": {},
+                },
+            )
+            component = criterion["components"].setdefault(
+                names["component"],
+                {
+                    "weight": number(
+                        row["component_weight"],
+                        "component_weight",
+                        row_number,
+                    ),
+                    "pr0": number(row["pr0"], "pr0", row_number),
+                    "layers": {},
+                },
+            )
+            if names["layer"] in component["layers"]:
+                raise ValueError(
+                    f"Duplicate layer '{names['layer']}' in Excel row "
+                    f"{row_number}."
+                )
+
+            layer = {
+                "weight": number(
+                    row["layer_weight"], "layer_weight", row_number
+                )
+            }
+            for field, value in row.items():
+                if field in structural:
+                    continue
+                value, present = clean(value)  # noqa: PLW2901
+                if present:
+                    layer[field] = value
+            component["layers"][names["layer"]] = layer
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w", encoding="utf-8") as file:
+            json.dump(pfa, file, indent=4)
+            file.write("\n")
+        print(f"PFA JSON configuration written to: {output_path}")
+        return pfa
 
     @staticmethod
     def read_shapefile(path):
@@ -509,7 +669,7 @@ class GeospatialDataReaders:
             and z_meas is not None
             and target_z_meas is not None
         ):
-            well_gdf = Processing.convert_z_measurements(
+            well_gdf = Cleaners.convert_z_measurements(
                 well_gdf, z_meas, target_z_meas
             )
 
@@ -616,8 +776,14 @@ class GeospatialDataReaders:
         return issues
 
     @classmethod
-    def gather_data(  # noqa: PLR0912
-        cls, data_dir, pfa, file_types, validate=False, strict=False
+    def gather_data(  # noqa: PLR0912, PLR0913, PLR0915, PLR0917
+        cls,
+        data_dir,
+        pfa,
+        file_types,
+        validate=False,
+        strict=False,
+        clean_data_columns=False,
     ):
         """Function to read in data layers associated with each component of each criteria.
         Note that data must be stored in a directory with the following structure which matches
@@ -646,6 +812,11 @@ class GeospatialDataReaders:
             If True and validation is enabled, raise a ValueError if any layers
             are missing data or contain empty datasets. If False, issues are
             reported as warnings.
+        clean_data_columns : bool, optional
+            If True, apply Cleaners.clean_data_column to each configured data_col.
+            Numeric strings are converted to numbers, and rows containing nonnumeric,
+            non-null values are removed using the cleaner's default behavior.
+            Geometry-only layers are unchanged. Defaults to False.
 
         Returns
         -------
@@ -660,6 +831,17 @@ class GeospatialDataReaders:
                 print("\t component: " + component)
                 COMPONENT_DIR = data_dir / criteria / component
                 file_names = sorted(COMPONENT_DIR.iterdir())
+                for layer, layer_config in pfa["criteria"][criteria][
+                    "components"
+                ][component]["layers"].items():
+                    layer_config["data_col"] = _normalize_data_col(
+                        layer_config.get("data_col")
+                    )
+                    if "transformation_method" not in layer_config:
+                        print(
+                            "Warning: no transformation method specified for "
+                            f"layer '{criteria}/{component}/{layer}'."
+                        )
 
                 # --- Shapefiles -------------------------------------------------
                 if ".shp" in file_types:
@@ -671,13 +853,19 @@ class GeospatialDataReaders:
                     ]["layers"]:
                         if f"{layer}.shp" in shapefile_names:
                             print("\t\t reading layer: " + layer)
-                            pfa["criteria"][criteria]["components"][component][
-                                "layers"
-                            ][layer][
-                                "data"
-                            ] = GeospatialDataReaders.read_shapefile(
+                            layer_config = pfa["criteria"][criteria][
+                                "components"
+                            ][component]["layers"][layer]
+                            data = GeospatialDataReaders.read_shapefile(
                                 COMPONENT_DIR / f"{layer}.shp"
                             )
+                            if clean_data_columns:
+                                data = Cleaners.clean_data_column(
+                                    data,
+                                    layer_config["data_col"],
+                                    context=f"{criteria}/{component}/{layer}",
+                                )
+                            layer_config["data"] = data
 
                 # --- CSV files ---------------------------------------------------
                 if ".csv" in file_types:
@@ -723,9 +911,13 @@ class GeospatialDataReaders:
                                     csv_crs,
                                 )
 
-                            pfa["criteria"][criteria]["components"][component][
-                                "layers"
-                            ][layer]["data"] = data
+                            if clean_data_columns:
+                                data = Cleaners.clean_data_column(
+                                    data,
+                                    layer_config["data_col"],
+                                    context=f"{criteria}/{component}/{layer}",
+                                )
+                            layer_config["data"] = data
 
                 # --- TEC files ---------------------------------------------------
                 if ".tec" in file_types:
@@ -771,9 +963,13 @@ class GeospatialDataReaders:
                                     COMPONENT_DIR / f"{layer}.tec",
                                     tec_crs,
                                 )
-                            pfa["criteria"][criteria]["components"][component][
-                                "layers"
-                            ][layer]["data"] = data
+                            if clean_data_columns:
+                                data = Cleaners.clean_data_column(
+                                    data,
+                                    layer_config["data_col"],
+                                    context=f"{criteria}/{component}/{layer}",
+                                )
+                            layer_config["data"] = data
 
                 # --- Unknown file types -----------------------------------------
                 for file_type in file_types:
@@ -831,6 +1027,17 @@ class GeospatialDataReaders:
                 print("\t component: " + component)
                 COMPONENT_DIR = data_dir / criteria / component
                 file_names = sorted(COMPONENT_DIR.iterdir())
+                for layer, layer_config in pfa["criteria"][criteria][
+                    "components"
+                ][component]["layers"].items():
+                    layer_config["data_col"] = _normalize_data_col(
+                        layer_config.get("data_col")
+                    )
+                    if "transformation_method" not in layer_config:
+                        print(
+                            "Warning: no transformation method specified for "
+                            f"layer '{criteria}/{component}/{layer}'."
+                        )
                 csv_file_names = [
                     x.name
                     for x in file_names
